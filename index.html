@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meu Turno</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2b2b2b;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .servico {
+            background: #ffffff;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .buttons button {
+            flex: 1 1 45%;
+            max-width: 180px;
+            background: #2b2b2b;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #eeeeee;
+            padding: 10px;
+            white-space: pre-wrap;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 600px) {
+            .input-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+
+            .input-row>div {
+                flex: 1 1 45%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Meu Turno</h1>
+
+    <div class="input-row">
+        <div>
+            <label>Data</label>
+            <input type="date" id="data" />
+            <label>Fazenda</label>
+            <input type="text" id="fazenda" />
+            <label>Frente</label>
+            <input type="text" id="frente" />
+            <label>Qtde de Máquinas</label>
+            <input type="number" id="maquinas" value="2" />
+            <label>Horas por Máquina</label>
+            <input type="number" id="horaMaquina" step="0.1" placeholder="Padrão: 7.20h" />
+        </div>
+    </div>
+
+    <h2>Serviços</h2>
+    <div id="servicos"></div>
+    <button onclick="adicionarServico()">Adicionar Serviço</button>
+
+    <div class="buttons">
+        <button onclick="gerarRelatorio()">Gerar Relatório</button>
+        <button onclick="limparRelatorio()">Limpar</button>
+        <button onclick="salvarComoTxt()">Salvar .TXT</button>
+        <button onclick="compartilharWhatsApp()">WhatsApp</button>
+    </div>
+
+    <pre id="relatorio"></pre>
+
+    <script>
+        const subsistemas = {
+            "1": ["1.1 - Chassi", "1.2 - Proteção", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixação", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"],
+            "2": ["2.1 - Refrigeração", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodômetro", "2.7 - Rádio", "2.8 - Tacógrafo", "2.9 - Cinto de Segurança", "2.10 - Cabine", "2.11 - Capô", "2.12 - Buzina"],
+            "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignição"],
+            "4": ["4.1 - Iluminação", "4.2 - Elétrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Câmera", "4.9 - Módulo", "4.10 - Comutador", "4.11 - Fluxômetro", "4.12 - GPS"],
+            "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Câmbio", "5.4 - Diferencial", "5.5 - Transmissão"],
+            "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"],
+            "7": ["7.1 - Mangueiras", "7.2 - Válvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"],
+            "8": ["8.1 - Barra de Direção", "8.2 - Coluna de Direção", "8.3 - Volante"],
+            "9": ["9.1 - Freio", "9.2 - Acumulador"],
+            "10": ["10.1 - Disco de Corte", "10.2 - Cabeçalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixação", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braço"],
+            "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"],
+            "12": ["12.1 - Caixa de Adubo"],
+            "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Válvula"],
+            "14": ["14.1 - Sensores", "14.2 - Chicote"],
+            "15": ["15.1 - Lâmina", "15.2 - Ball"]
+        };
+
+        const atividades = [
+            "P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO",
+            "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO",
+            "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO",
+            "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO",
+            "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO",
+            "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO",
+            "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO",
+            "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza",
+            "H05 - Aguardando peça", "H06 - Aguardando ferramenta", "H07 - Aguardando serviço",
+            "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatório", "H11 - Treinamento",
+            "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto",
+            "H15 - Inventário", "H16 - Apoio à operação"
+        ];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const hoje = new Date().toISOString().split("T")[0];
+            document.getElementById("data").value = hoje;
+        });
+
+        function adicionarServico() {
+            const data = document.getElementById("data").value;
+            const fazenda = document.getElementById("fazenda").value.trim();
+            const frente = document.getElementById("frente").value.trim();
+            const maquinas = parseInt(document.getElementById("maquinas").value);
+
+            if (!data || !fazenda || !frente || isNaN(maquinas) || maquinas <= 0) {
+                alert("Preencha todos os dados do turno (data, fazenda, frente e quantidade de máquinas) antes de adicionar um serviço.");
+                return;
+            }
+
+            const container = document.createElement("div");
+            container.className = "servico";
+            container.innerHTML = `
+    <label>Frota</label><input type="text" class="frota" />
+    <label>Tipo</label>
+    <select class="tipo">
+      <option value="CORRETIVA">CORRETIVA</option>
+      <option value="CONDICIONAL">CONDICIONAL</option>
+      <option value="MELHORIA">MELHORIA</option>
+    </select>
+   <label>Atividade</label>
+<select class="atividade">
+  <optgroup label="Produtivas (P)">
+    <option value="P001">P001 - AFERIDO</option>
+    <option value="P002">P002 - AJUSTADO</option>
+    <option value="P003">P003 - ALINHADO</option>
+    <option value="P004">P004 - APERTADO</option>
+    <option value="P005">P005 - BALANCEADO</option>
+    <option value="P006">P006 - CALIBRADO</option>
+    <option value="P007">P007 - COMPLETADO</option>
+    <option value="P008">P008 - CONSERTADO COMPONENTE</option>
+    <option value="P009">P009 - DESAMASSADO</option>
+    <option value="P010">P010 - DESOBSTRUIDO</option>
+    <option value="P011">P011 - EMBUCHADO</option>
+    <option value="P012">P012 - FIXADO</option>
+    <option value="P013">P013 - FURADO</option>
+    <option value="P014">P014 - HIGIENIZADO</option>
+    <option value="P015">P015 - INSPECIONADO</option>
+    <option value="P016">P016 - INSTALADO</option>
+    <option value="P017">P017 - ISOLADO</option>
+    <option value="P018">P018 - LIMPO</option>
+    <option value="P019">P019 - LUBRIFICADO</option>
+    <option value="P020">P020 - MODIFICADO</option>
+    <option value="P021">P021 - REAPERTADO</option>
+    <option value="P022">P022 - RECARREGADO</option>
+    <option value="P023">P023 - RECUPERADO</option>
+    <option value="P024">P024 - REFORMADO</option>
+    <option value="P025">P025 - REGULADO</option>
+    <option value="P026">P026 - REMONTADO</option>
+    <option value="P027">P027 - REPROGRAMADO</option>
+    <option value="P028">P028 - RETIFICADO</option>
+    <option value="P029">P029 - SOLDADO</option>
+    <option value="P030">P030 - SUBSTITUIDO - TROCADO</option>
+    <option value="P031">P031 - USINADO</option>
+    <option value="P032">P032 - VEDADO</option>
+  </optgroup>
+  <optgroup label="Improdutivas (H)">
+    <option value="H01">H01 - Atraso de transporte</option>
+    <option value="H02">H02 - DDS</option>
+    <option value="H03">H03 - Refeição</option>
+    <option value="H04">H04 - Organização/Limpeza</option>
+    <option value="H05">H05 - Aguardando peça</option>
+    <option value="H06">H06 - Aguardando Ferramenta</option>
+    <option value="H07">H07 - Aguardando Serviço</option>
+    <option value="H08">H08 - Falta do colaborador</option>
+    <option value="H09">H09 - Reunião</option>
+    <option value="H10">H10 - Ambulatório</option>
+    <option value="H11">H11 - Treinamento</option>
+    <option value="H12">H12 - Outros</option>
+    <option value="H13">H13 - Deslocamento a terceiros</option>
+    <option value="H14">H14 - Carregamento de pneus pra conserto</option>
+    <option value="H15">H15 - Inventário</option>
+    <option value="H16">H16 - Apoio à Operação</option>
+  </optgroup>
+</select>
+
+    <label>Sistema</label>
+    <select class="sistema" onchange="atualizarSubsistema(this)">
+      <optgroup label="Tratores">
+        <option value="">Nenhum</option>
+        <option value="1">1 - Sistema Estrutura</option>
+        <option value="2">2 - Sistema Cabine</option>
+        <option value="3">3 - Sistema Motor Combustão</option>
+        <option value="4">4 - Sistema Elétrico</option>
+        <option value="5">5 - Sistema Trem de Força</option>
+        <option value="6">6 - Sistema Tração</option>
+        <option value="7">7 - Sistema Hidráulico</option>
+        <option value="8">8 - Sistema Direção</option>
+        <option value="9">9 - Sistema Freio</option>
+      </optgroup>
+      <optgroup label="Implementos">
+        <option value="10">10 - Sistema Estrutura</option>
+        <option value="11">11 - Sistema Tração</option>
+        <option value="12">12 - Sistema de Adubo</option>
+        <option value="13">13 - Sistema Hidráulico</option>
+        <option value="14">14 - Sistema Elétrico</option>
+        <option value="15">15 - Sistema V-SHEAR</option>
+      </optgroup>
+    </select>
+    <label>Subsistema</label>
+    <select class="subsistema"><option>Nenhum</option></select>
+    <label>Descrição</label><textarea class="descricao" rows="2" placeholder=" item 1\n item 2"></textarea>
+    <label>Hora Início</label><input type="time" class="inicio" />
+    <label>Hora Fim</label><input type="time" class="fim" />
+    <button onclick="this.parentElement.remove()">Remover</button>
+  `;
+            document.getElementById("servicos").appendChild(container);
+        }
+
+        function atualizarSubsistema(select) {
+            const val = select.value;
+            const subs = subsistemas[val] || [];
+            const dropdown = select.parentElement.querySelector(".subsistema");
+            dropdown.innerHTML = "<option>Nenhum</option>";
+            subs.forEach(item => {
+                const option = document.createElement("option");
+                option.textContent = item;
+                option.value = item.split(" - ")[0];
+                dropdown.appendChild(option);
+            });
+        }
+
+        function formatarDataBr(dataIso) {
+            const [ano, mes, dia] = dataIso.split("-");
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function gerarRelatorio() {
+            // Corrige a exibição da data para evitar erro de fuso horário
+            const dataInput = document.getElementById("data").value;
+            const partes = dataInput.split("-");
+            const data = `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+            const fazenda = document.getElementById("fazenda").value;
+            const frente = document.getElementById("frente").value;
+            const maquinas = parseInt(document.getElementById("maquinas").value) || 0;
+            const horaMaquinaInput = parseFloat(document.getElementById("horaMaquina").value);
+            const horaPorMaquina = !isNaN(horaMaquinaInput) && horaMaquinaInput > 0 ? horaMaquinaInput : 7.2;
+            const horasPlanejadas = maquinas * horaPorMaquina;
+
+            let horasParadas = 0;
+            const frotas = {};
+
+            document.querySelectorAll(".servico").forEach(div => {
+                const frota = div.querySelector(".frota").value || "Sem Frota";
+                const tipo = div.querySelector(".tipo").value;
+                const atividade = div.querySelector(".atividade").value;
+                const sistema = div.querySelector(".sistema").value;
+                const subsistema = div.querySelector(".subsistema").value;
+                const descricao = div.querySelector(".descricao").value.trim();
+                const h1 = div.querySelector(".inicio").value;
+                const h2 = div.querySelector(".fim").value;
+
+                const ini = h1 ? new Date(`2000-01-01T${h1}`) : null;
+                const fim = h2 ? new Date(`2000-01-01T${h2}`) : null;
+
+                if (!frotas[frota]) frotas[frota] = { servicos: [], intervalos: [] };
+                frotas[frota].servicos.push(`- ${descricao} (${atividade} - ${sistema} - ${subsistema})`);
+
+                if (tipo === "CORRETIVA" && atividade.startsWith("P") && ini && fim && fim > ini) {
+                    frotas[frota].intervalos.push([ini, fim]);
+                }
+            });
+
+            // Junta intervalos sobrepostos para cálculo justo da DM
+            function unirIntervalos(intervalos) {
+                if (!intervalos.length) return [];
+                intervalos.sort((a, b) => a[0] - b[0]);
+                const unificados = [intervalos[0]];
+                for (let i = 1; i < intervalos.length; i++) {
+                    const ult = unificados[unificados.length - 1];
+                    const atual = intervalos[i];
+                    if (atual[0] <= ult[1]) {
+                        ult[1] = new Date(Math.max(ult[1], atual[1]));
+                    } else {
+                        unificados.push(atual);
+                    }
+                }
+                return unificados;
+            }
+
+            // Formata horas como 00h00m
+            function formatarHoraHumana(horas) {
+                const totalMinutos = Math.round(horas * 60);
+                const h = Math.floor(totalMinutos / 60);
+                const m = totalMinutos % 60;
+                return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m`;
+            }
+
+            /*function formatarComoHorimetro(horas) {
+                const h = Math.floor(horas);
+                const m = Math.round((horas - h) * 100 * 0.6); // Cada 0.1h = 6 minutos
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            }*/
+
+            let texto = `*Data ${data}*\n*Fazenda:* ${fazenda}\n*Frente:* ${frente}\nMáquinas: ${maquinas}\nHoras Planejadas: ${formatarHoraHumana(horasPlanejadas)}\n`;
+
+            for (const frota in frotas) {
+                const blocos = unirIntervalos(frotas[frota].intervalos);
+                const totalHoras = blocos.reduce((s, [i, f]) => s + (f - i) / 3600000, 0);
+                horasParadas += totalHoras;
+
+                const dmFrota = ((horaPorMaquina - totalHoras) / horaPorMaquina) * 100;
+                texto += `\n*Frota ${frota}*\n${frotas[frota].servicos.join('\n')}\nparada por: ${formatarHoraHumana(totalHoras)}\n*DM ${dmFrota.toFixed(0)}%*\n`;
+            }
+
+            const dmTotal = ((horasPlanejadas - horasParadas) / horasPlanejadas) * 100;
+            texto += `\nTotal paradas: ${formatarHoraHumana(horasParadas)}\n*DM Geral: ${dmTotal.toFixed(1)}%*`;
+
+            document.getElementById("relatorio").textContent = texto;
+        }
+
+
+
+        function limparRelatorio() {
+            document.getElementById("relatorio").textContent = "";
+        }
+
+        function salvarComoTxt() {
+            const texto = document.getElementById("relatorio").textContent;
+            const blob = new Blob([texto], { type: "text/plain" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "Relatorio_DM.txt";
+            a.click();
+        }
+
+        function compartilharWhatsApp() {
+            const texto = document.getElementById("relatorio").textContent;
+            if (!texto.trim()) return alert("Gere o relatório primeiro.");
+            const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+            window.open(url, "_blank");
+        }
+    </script>
+</body>
+
+</html>
