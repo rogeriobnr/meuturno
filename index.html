@@ -42,7 +42,8 @@
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
 </head>
-<body><header><h1>Meu Turno</h1></header><nav>
+<body><header><h1>Meu Turno</h1></header><button id="btnInstall" style="display:none;">Instalar Meu Turno</button>
+  <nav>
   <button onclick="abrir('turno')" class="active">Turno</button>
   <button onclick="abrir('servicos')">Serviços</button>
   <button onclick="abrir('relatorio')">Relatório</button>
@@ -699,5 +700,29 @@ function restaurarBackupHistorico(event) {
       .catch(err => console.log('Erro no Service Worker', err));
   }
 </script>
+  <script>
+    let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  const btnInstall = document.getElementById('btnInstall');
+  btnInstall.style.display = 'block';
+
+  btnInstall.addEventListener('click', () => {
+    btnInstall.style.display = 'none';
+    deferredPrompt.prompt();
+
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('Usuário aceitou instalar o PWA');
+      } else {
+        console.log('Usuário recusou instalar o PWA');
+      }
+      deferredPrompt = null;
+    });
+  });
+});</script>
 </body>
 </html>
