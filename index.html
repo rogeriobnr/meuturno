@@ -42,13 +42,14 @@
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
 </head>
-<body><header><h1>Meu Turno</h1></header><button id="btnInstall" style="display:none;">Instalar Meu Turno</button>
+<body><header><h1>Meu Turno</h1></header>
   <nav>
   <button onclick="abrir('turno')" class="active">Turno</button>
   <button onclick="abrir('servicos')">Serviços</button>
   <button onclick="abrir('relatorio')">Relatório</button>
   <button onclick="abrir('historico')">Histórico</button>
 </nav><section id="turno" class="active">
+  <button id="btnInstall" style="display:none;">Instalar Meu Turno</button>
   <div class="grupo">
     <label>Data</label>
     <input id="dataTurno" type="date">
