@@ -2,8 +2,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#007acc">
   <title>Meu Turno</title>
-  <link rel="manifest" href="manifest.json">
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: sans-serif; background: #f3f3f3; }
@@ -42,14 +43,14 @@
     @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
 </head>
-<body><header><h1>Meu Turno</h1></header>
+<body>
+  <header><h1>Meu Turno</h1></header>
   <nav>
   <button onclick="abrir('turno')" class="active">Turno</button>
   <button onclick="abrir('servicos')">Serviços</button>
   <button onclick="abrir('relatorio')">Relatório</button>
   <button onclick="abrir('historico')">Histórico</button>
 </nav><section id="turno" class="active">
-  <button id="btnInstall" style="display:none;">Instalar Meu Turno</button>
   <div class="grupo">
     <label>Data</label>
     <input id="dataTurno" type="date">
@@ -63,6 +64,16 @@
       <option value="B">B</option>
       <option value="C">C</option>
     </select>
+    <div class="grupo">
+<label><b>Equipe</b></label>
+<div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
+  <input id="nomeEquipe" type="text" placeholder="Nome" style="flex: 1;">
+  <input id="matriculaEquipe" type="text" placeholder="Matrícula" style="flex: 1;">
+  <button onclick="adicionarEquipe()">Adicionar</button>
+</div>
+<div id="boxEquipe"></div>
+</div>
+
     <div class="grupo">
       <label>Frota</label>
       <input id="novaFrota" type="text" placeholder="Código da frota">
@@ -80,14 +91,18 @@
     
 </section>
   <section id="relatorio">
-  <div class="grupo">
-    <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
-  </div>
-  <h3>Visualização (markdown interpretado)</h3>
+ <div class="grupo">
+  <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
+   <button onclick="compartilharRelatorio()">Compartilhar</button>
+  <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
+   
+</div>
+    
+  <h3 style="text-align: center;">Visualização</h3>
   <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
-  <h3>Editar antes de compartilhar</h3>
+  <h3 style="text-align: center;">Edição</h3>
   <textarea id="relatorio_bruto" class="editavel"></textarea>
-  <button onclick="compartilharRelatorio()">Compartilhar</button>
+  
 </section><section id="historico">
   <div class="grupo">
     <button onclick="mostrarHistorico()">Atualizar Histórico</button>
@@ -100,7 +115,17 @@
   <button onclick="document.getElementById('fileBackup').click()">Restaurar Backup</button>
   <input type="file" id="fileBackup" accept=".json" style="display:none;" onchange="restaurarBackupHistorico(event)">
 </div>
-</section><div id="toast"></div>
+</section>
+  <div id="toast"></div>
+  <div style="display: flex; justify-content: center; gap: 10px; background: #ffffff; padding: 5px;">
+  <button onclick="gerarBackupCompleto()" style="background: white; color: #007acc; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+    🗄️ Backup
+  </button>
+  <button onclick="document.getElementById('fileBackupCompleto').click()" style="background: white; color: #007acc; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+    🔄 Restaurar
+  </button>
+  <input type="file" id="fileBackupCompleto" accept=".json" style="display: none;" onchange="restaurarBackupCompleto(event)">
+</div>
   <script>
 // Versão atualizada para suporte a módulos e evolução contínua
 // Próximos passos: API para exportar e importar JSON, integração com IndexedDB para grande volume de dados
@@ -113,6 +138,127 @@ function abrir(modulo) {
   document.getElementById(modulo).classList.add('active');
   document.querySelector(`nav button[onclick="abrir('${modulo}')"]`).classList.add('active');
 }
+</script>
+  <script>
+  function limparRelatorio() {
+  document.getElementById("relatorio_bruto").value = '';
+  document.getElementById("relatorio_formatado").innerHTML = '';
+  showToast("Relatório limpo! Clique em gerar para atualizar.");
+}
+  function compartilharRelatorio() {
+  const texto = document.getElementById("relatorio_bruto").value.trim();
+
+  if (!texto) {
+    showToast("O relatório está vazio.");
+    return;
+  }
+
+  const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+  window.open(url, "_blank");
+}
+  
+let equipe = JSON.parse(localStorage.getItem('equipe')) || [];
+
+// Adiciona novo membro na equipe
+function adicionarEquipe() {
+  const nome = document.getElementById('nomeEquipe').value.trim();
+  const matricula = document.getElementById('matriculaEquipe').value.trim();
+
+  if (nome && matricula) {
+    equipe.push({ nome, matricula });
+    salvarEquipe();
+    renderizarEquipe();
+    document.getElementById('nomeEquipe').value = '';
+    document.getElementById('matriculaEquipe').value = '';
+    showToast('Membro adicionado à equipe!');
+  } else {
+    showToast('Preencha nome e matrícula corretamente!');
+  }
+}
+
+// Limpa toda a equipe
+function removerEquipe() {
+  equipe = [];
+  salvarEquipe();
+  renderizarEquipe();
+  showToast('Equipe limpa!');
+}
+
+// Salva edições feitas nos inputs da lista
+function salvarEdicoesEquipe() {
+  const inputsNome = document.querySelectorAll('.input-nome');
+  const inputsMatricula = document.querySelectorAll('.input-matricula');
+
+  equipe = [];
+
+  for (let i = 0; i < inputsNome.length; i++) {
+    const nome = inputsNome[i].value.trim();
+    const matricula = inputsMatricula[i].value.trim();
+
+    if (nome && matricula) {
+      equipe.push({ nome, matricula });
+    }
+  }
+
+  salvarEquipe();
+  renderizarEquipe();
+  showToast('Alterações na equipe salvas!');
+}
+
+// Renderiza o card da equipe
+function renderizarEquipe() {
+  const box = document.getElementById('boxEquipe');
+
+  if (equipe.length === 0) {
+    box.innerHTML = '';
+    return;
+  }
+
+  let html = `
+    <div style="
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 5px 10px;
+      margin-top: 10px;
+    ">
+  `;
+
+  equipe.forEach((item) => {
+    html += `
+      <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+        <input class="input-nome" type="text" value="${item.nome}" style="flex:1;">
+        <input class="input-matricula" type="text" value="${item.matricula}" style="flex:1;">
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+
+  html += `
+    <div style="margin-top:5px; display:flex; gap:5px;">
+      <button onclick="salvarEdicoesEquipe()" style="background:#007bff; color:white;">Salvar Alterações</button>
+      <button onclick="removerEquipe()" style="background:#d9534f; color:white;">Limpar Equipe</button>
+    </div>
+  `;
+
+  box.innerHTML = html;
+}
+
+// Retorna a equipe no formato texto para relatório e histórico
+function obterEquipeTexto() {
+  return equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n');
+}
+
+// Salva no LocalStorage
+function salvarEquipe() {
+  localStorage.setItem('equipe', JSON.stringify(equipe));
+}
+
+// Carrega na abertura da página
+window.onload = () => {
+  renderizarEquipe();
+};
 </script>
 <script>
 let frotasTurno = [];
@@ -241,13 +387,17 @@ const subsistemas = {
 function adicionarServico() {
   salvarValoresServicos();
   const id = Date.now();
-  servicos.push({
+
+  const novoServico = {
     id, sistema: "", subsistema: "", frota: "", atividade: "", descricao: "", texto: "",
     tipo: "CORRETIVA", parada: "não", falha: "não", data: dataAtual(), inicio: "", fim: ""
-  });
+  };
+
+  servicos.push(novoServico);
   renderizarServicos();
   showToast("Serviço adicionado!");
 }
+
 
 // Renderiza todos os serviços
 function renderizarServicos() {
@@ -304,8 +454,9 @@ function renderizarServicos() {
         <div>
           <label>Máquina parada?</label>
           <select id="parada_${s.id}">
+          <option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option>
             <option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option>
-            <option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option>
+            
           </select>
         </div>
         <div>
@@ -333,7 +484,7 @@ function renderizarServicos() {
       </div>
 
       <div class="botoes">
-        <button onclick="gerarTextoOS(${s.id})">Gerar O.S</button>
+        <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">Gerar O.S</button>
         <button onclick="copiarTexto(${s.id})">Copiar</button>
         <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button>
         <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">Excluir</button>
@@ -344,94 +495,131 @@ function renderizarServicos() {
 <button onclick="toggleMarkdown(${s.id})" style="display:none; margin-top:5px;">📝 Mostrar Markdown</button>
     </div>
   `).join('');
+  
 }
+  function processarOS(id) {
+  const botao = document.getElementById(`botao_${id}`);
+
+  if (botao.innerText === "Gerar O.S") {
+    gerarTextoOS(id);
+    botao.innerText = "Regerar O.S";
+    showToast("O.S gerada! Clique em Regerar se desejar atualizar.");
+  } else {
+    if (confirm("Deseja realmente regerar esta O.S?")) {
+      gerarTextoOS(id);
+      showToast("O.S atualizada no histórico!");
+    } else {
+      showToast("Ação de regerar cancelada.");
+    }
+  }
+}
+  
 function toggleTexto(id) {
   const t = document.getElementById(`texto_${id}`);
   t.style.display = t.style.display === 'none' ? 'block' : 'none';
 }
+
 // Carrega subsistemas baseado no sistema selecionado
 function carregarSubsistema(id) {
   const sistema = document.getElementById(`sistema_${id}`).value;
   const subs = subsistemas[sistema] || [];
-  document.getElementById(`subsistema_${id}`).innerHTML = subs.map(s => `<option>${s}</option>`).join('');
+  const selectSub = document.getElementById(`subsistema_${id}`);
+  
+  selectSub.innerHTML = `<option value="">Nenhum</option>` + 
+    subs.map(sub => `<option>${sub}</option>`).join('');
 }
 
 // Gera o texto da O.S.
 function gerarTextoOS(id) {
-  
   const f = document.getElementById(`frota_${id}`).value || "Nenhum";
   const frente = document.getElementById("frente").value || "Nenhum";
-  const a = document.getElementById(`atividade_${id}`).value.split(" - ")[0] || "Nenhum";
-  const sys = document.getElementById(`sistema_${id}`).value || "Nenhum";
-  const sub = document.getElementById(`subsistema_${id}`).value || "Nenhum";
-  const d = document.getElementById(`descricao_${id}`).value || "-";
-  
-  const dtRaw = document.getElementById(`data_${id}`).value || dataAtual();
-  const [ano, mes, dia] = dtRaw.split('-');
-  const dt = `${dia}/${mes}/${ano}`;
+  const atividade = document.getElementById(`atividade_${id}`).value || "Nenhum";
+  const sistema = document.getElementById(`sistema_${id}`).value || "Nenhum";
+  const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
+  const descricao = document.getElementById(`descricao_${id}`).value || "-";
 
-  const ini = document.getElementById(`inicio_${id}`).value || "--:--";
+  const dataRaw = document.getElementById(`data_${id}`).value || dataAtual();
+  const [ano, mes, dia] = dataRaw.split('-');
+  const data = `${dia}/${mes}/${ano}`;
+
+  const inicio = document.getElementById(`inicio_${id}`).value || "--:--";
   const fim = document.getElementById(`fim_${id}`).value || "--:--";
-  const solicitante = "Rogerio - 37021600";
 
   const parada = document.getElementById(`parada_${id}`).value;
   const tipo = document.getElementById(`tipo_${id}`).value;
   const falha = document.getElementById(`falha_${id}`).value;
 
+  const solicitante = obterEquipeTexto() || "Equipe não informada";
+
+  const dadosOS = { f, frente, atividade, sistema, subsistema, descricao, data, inicio, fim, parada, tipo, falha, solicitante };
+
+   if (tipo === "CONDICIONAL" || tipo === "MELHORIA") {
+  abrirPopupOportunidade(function(oportunidade) {
+    gerarTextoOSFinal(oportunidade, dadosOS, id);
+  });
+} else {
+  gerarTextoOSFinal('', dadosOS, id);
+}
+}
+function gerarTextoOSFinal(oportunidade, dados, id) {
   const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
               `*Máquina está parada por manutenção:* \n` +
-              `*( ${parada === "sim" ? "❌" : " "} ) sim* *( ${parada === "não" ? "❌" : " "} ) não*\n` +
+              `*( ${dados.parada === "sim" ? "❌" : " "} ) sim* *( ${dados.parada === "não" ? "❌" : " "} ) não*\n` +
               `*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n` +
 
-              `•Frota afetada: ${f}\n` +
-              `•Local/frente: ${frente}\n\n` +
+              `•Frota afetada: ${dados.f}\n` +
+              `•Local/frente: ${dados.frente}\n\n` +
 
               `•Tipo de manutenção:\n` +
-              `(${tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
-              `(${tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
-              `(${tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
+              `(${dados.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
+              `(${dados.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
+              `(${dados.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
 
-              `•Descrição serviço\n${d}\n(${a} - ${sys} - ${sub})\n\n` +
+              `•Descrição serviço\n${dados.descricao}\n(${dados.atividade.split(" - ")[0]} - ${dados.sistema} - ${(dados.subsistema || "").split(" - ")[0]})\n` +
+              `${oportunidade ? `Oportunidade: ${oportunidade}\n\n` : '\n'}` +
 
               `•Foi falha operacional?\n` +
-              `(${falha === "sim" ? "❌" : " "}) Sim\n` +
-              `(${falha === "não" ? "❌" : " "}) Não\n\n` +
+              `(${dados.falha === "sim" ? "❌" : " "}) Sim\n` +
+              `(${dados.falha === "não" ? "❌" : " "}) Não\n\n` +
 
-              `Data inicial: ${dt}\n` +
-              `Hora inicial: ${ini}\n` +
-              `Hora fim: ${fim}\n\n` +
+              `Data inicial: ${dados.data}\n` +
+              `Hora inicial: ${dados.inicio}\n` +
+              `Hora fim: ${dados.fim}\n\n` +
 
-              `Solicitante:\n${solicitante}`;
+              `Solicitante:\n${dados.solicitante}`;
 
   document.getElementById(`texto_${id}`).value = txt;
-  
-  // Exibe O.S interpretada
-const interpretado = interpretarMarkdown(txt);
-const previewId = `preview_${id}`;
-let preview = document.getElementById(previewId);
 
-if (!preview) {
-  const textarea = document.getElementById(`texto_${id}`);
-  preview = document.createElement('div');
-  preview.id = previewId;
-  preview.className = 'grupo';
-  preview.style.marginTop = '10px';
-  textarea.parentNode.insertBefore(preview, textarea.nextSibling);
-}
+  const interpretado = interpretarMarkdown(txt);
+  const previewId = `preview_${id}`;
+  let preview = document.getElementById(previewId);
 
-preview.innerHTML = interpretado;
+  if (!preview) {
+    const textarea = document.getElementById(`texto_${id}`);
+    preview = document.createElement('div');
+    preview.id = previewId;
+    preview.className = 'grupo';
+    preview.style.marginTop = '10px';
+    textarea.parentNode.insertBefore(preview, textarea.nextSibling);
+  }
+
+  preview.innerHTML = interpretado;
 
   salvarOSnoHistorico(id);
   showToast("O.S gerada!");
-  setTimeout(() => {
-  const servicoElement = document.getElementById(`servico_${id}`);
-  if (servicoElement) {
-    servicoElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }
-}, 100);
-}
-  
 
+  const botao = document.getElementById(`botao_${id}`);
+  if (botao.innerText === "Gerar O.S") {
+    botao.innerText = "Regerar O.S";
+  }
+
+  setTimeout(() => {
+    const servicoElement = document.getElementById(`servico_${id}`);
+    if (servicoElement) {
+      servicoElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, 100);
+}
 // Copia o texto
 function copiarTexto(id) {
   const txt = document.getElementById(`texto_${id}`).value;
@@ -473,87 +661,264 @@ function removerServico(id) {
  <script>
 // Função para gerar relatório consolidado
 function gerarRelatorioFinal() {
-  const data = document.getElementById("dataTurno").value || dataAtual();
-  const fazenda = document.getElementById("fazenda").value;
-  const frente = document.getElementById("frente").value;
-  const turno = document.getElementById("turnoLetra").value;
+  salvarValoresServicos();
   
+  const data = document.getElementById("dataTurno").value || dataAtual();
+  const fazenda = document.getElementById("fazenda").value.trim();
+  const frente = document.getElementById("frente").value.trim();
+  const turno = document.getElementById("turnoLetra").value;
+  const equipeTexto = obterEquipeTexto() || "Nenhuma equipe informada.";
+
   const qtdMaquinas = frotasTurno.length;
+  const horasPorMaquina = frotasTurno.length > 0 ? frotasTurno[0].horas.toFixed(2) : "0";
   const horasTotais = frotasTurno.reduce((soma, f) => soma + f.horas, 0).toFixed(2);
 
-  const resumo = `*Data:* ${data}\n*Fazenda:* ${fazenda}\n*Frente:* ${frente}\n*Turno:* ${turno}\n` +
-                 `Qtde de máquinas: ${qtdMaquinas}\nHoras planejadas total: ${horasTotais}`;
+  const horasParadas = calcularHorasParadas();
+  const dm = calcularDM(horasTotais, horasParadas);
+  const frenteUpper = (frente || "FRENTE").toUpperCase();
 
-  document.getElementById("relatorio_bruto").value = resumo;
+  const [ano, mes, dia] = (data || dataAtual()).split("-");
+  const dataFormatada = `${dia}/${mes}/${ano}`;
 
-  document.getElementById("relatorio_formatado").innerHTML = resumo
+  let relatorio = `
+⚙ *MANUTENÇÃO ${frenteUpper} BRACELL*
+
+📅 *DATA:* ${dataFormatada}
+🌴 *FAZENDA:* ${fazenda}
+🚩 *FRENTE:* ${frente}
+⌛ *TURNO:* ${turno}
+🪪 *EQUIPE:*
+${equipeTexto}
+
+🛠️ *QTD DE MÁQUINAS:* ${qtdMaquinas}
+⏳ *HORAS PLANEJADAS POR MÁQUINA:* ${horasPorMaquina}
+🕗 *HORAS PLANEJADAS TOTAL:* ${horasTotais}
+🔧 *HORAS TOTAL PARADA:* ${horasParadas} (${formatarHoras(horasParadas)})
+🟢 * DM DO TURNO:* ${dm}%
+`;
+
+  frotasTurno.forEach(f => {
+  const paradaFrota = calcularHorasParadasPorFrota(f.nome);
+  relatorio += `
+
+🚜 *${f.nome}*  
+🕗 Planejada: ${f.horas}h  
+🔧 Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})  
+📖 *RELATÓRIO:*  
+`;
+
+  const servicosDaFrota = servicos.filter(s => s.frota === f.nome);
+
+  if (servicosDaFrota.length === 0) {
+    relatorio += `- Sem serviços registrados\n`;
+  } else {
+    servicosDaFrota.forEach(s => {
+      const codAtiv = (s.atividade || "").split(" - ")[0];
+      const codSub = (s.subsistema || "").split(" - ")[0];
+      const duracao = calcularDuracaoServico(s);
+
+      relatorio += `- ${s.descricao.trim()}\n` +
+                    `(${codAtiv} - ${s.sistema} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo}]\n` +
+                    `⏱️ ${duracao.horas}h (${duracao.texto})\n`;
+
+      if (s.tipo !== "CORRETIVA") {
+        relatorio += `Oportunidade: ${s.oportunidade || "Não informada"}\n\n`;
+      } else {
+        relatorio += `\n`;
+      }
+    });
+  }
+}); // <-- Aqui fecha corretamente o forEach das frotas.
+  document.getElementById("relatorio_bruto").value = relatorio;
+  document.getElementById("relatorio_formatado").innerHTML = relatorio
     .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br>");
 
+  salvarTudo();
   showToast("Relatório gerado!");
 }
+  function calcularDuracaoServico(servico) {
+  const [hIni, mIni] = (servico.inicio || "00:00").split(":").map(Number);
+  const [hFim, mFim] = (servico.fim || "00:00").split(":").map(Number);
+  const inicioMin = hIni * 60 + mIni;
+  const fimMin = hFim * 60 + mFim;
+  const diffMin = Math.max(fimMin - inicioMin, 0);
+  const horasDecimais = (diffMin / 60).toFixed(2);
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  const texto = h > 0 ? `${h}h` : "";
+  const textoMin = m > 0 ? `${m}min` : "";
+  const sep = (texto && textoMin) ? " " : "";
+  const textoCompleto = (texto || textoMin) ? `${texto}${sep}${textoMin}` : "0min";
+  return { horas: horasDecimais, texto: textoCompleto };
+}
+  
+function formatarHoras(horasDecimais) {
+  const horas = Math.floor(horasDecimais);
+  const minutos = Math.round((horasDecimais - horas) * 60);
+  if (horas > 0 && minutos > 0) {
+    return `${horas}h ${minutos}min`;
+  } else if (horas > 0) {
+    return `${horas}h`;
+  } else {
+    return `${minutos}min`;
+  }
+}
+// Função de emoji por tipo
+function emojiTipo(tipo) {
+  switch (tipo) {
+    case "CORRETIVA": return "🔧";
+    case "CONDICIONAL": return "⏳";
+    case "MELHORIA": return "✨";
+    default: return "";
+  }
+}
 
-// Compartilha relatório via WhatsApp
-function compartilharRelatorio() {
-  const txt = document.getElementById("relatorio_bruto").value;
-  const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
-  window.open(url, "_blank");
-  showToast("Relatório enviado!");
+// Funções auxiliares de cálculo
+function calcularHorasParadas() {
+  return servicos
+    .filter(s => s.tipo === "CORRETIVA")
+    .reduce((soma, s) => {
+      const ini = s.inicio || "00:00";
+      const fim = s.fim || "00:00";
+      const [hIni, mIni] = ini.split(":").map(Number);
+      const [hFim, mFim] = fim.split(":").map(Number);
+      const inicioMin = hIni * 60 + mIni;
+      const fimMin = hFim * 60 + mFim;
+      const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
+      return soma + diferenca;
+    }, 0).toFixed(2);
+}
+
+function calcularHorasParadasPorFrota(nomeFrota) {
+  const horas = servicos
+    .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
+    .reduce((soma, s) => {
+      const ini = s.inicio || "00:00";
+      const fim = s.fim || "00:00";
+      const [hIni, mIni] = ini.split(":").map(Number);
+      const [hFim, mFim] = fim.split(":").map(Number);
+      const inicioMin = hIni * 60 + mIni;
+      const fimMin = hFim * 60 + mFim;
+      const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
+      return soma + diferenca;
+    }, 0);
+  return horas.toFixed(2);
+}
+
+function calcularDM(horasTotais, horasParadas) {
+  const total = parseFloat(horasTotais);
+  const parada = parseFloat(horasParadas);
+  if (total === 0) return 0;
+  const dm = ((total - parada) / total) * 100;
+  return dm.toFixed(2);
 }
 </script>
   <script>
 // Salva O.S no histórico automaticamente
 function salvarOSnoHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+  const hoje = new Date();
+  const dataKey = hoje.toISOString().split('T')[0]; // ex.: 2025-05-23
+
+  if (!historico[dataKey]) historico[dataKey] = [];
 
   const texto = document.getElementById(`texto_${id}`).value;
   const frota = document.getElementById(`frota_${id}`).value || "Nenhum";
   const tipo = document.getElementById(`tipo_${id}`).value || "CORRETIVA";
-  const datahora = new Date().toLocaleString();
+  const datahora = hoje.toLocaleString();
 
-  historico.push({
-    id, frota, tipo, texto, status: "pendente", datahora, osNumero: ""
-  });
+  // Verifica se já existe este ID no histórico
+  const index = historico[dataKey].findIndex(s => s.id === id);
+
+  if (index >= 0) {
+    // Se já existe, atualiza o item
+    historico[dataKey][index] = {
+      ...historico[dataKey][index],
+      frota,
+      tipo,
+      texto,
+      datahora,
+    };
+  } else {
+    // Se não existe, cria novo
+    historico[dataKey].push({
+      id, frota, tipo, texto, status: "pendente", datahora, osNumero: ""
+    });
+  }
 
   localStorage.setItem("historicoOS", JSON.stringify(historico));
   showToast("O.S salva no histórico!");
-
-  mostrarHistorico();  // ← Aqui atualiza a tela imediatamente
+  mostrarHistorico();
 }
 // Mostrar histórico
-function mostrarHistorico() {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  const div = document.getElementById("historico_lista");
 
-  if (historico.length === 0) {
-    div.innerHTML = "<p>Nenhum serviço registrado ainda.</p>";
+  function mostrarHistorico() {
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+  
+  // Garante que não tenha erro se o histórico estiver mal formatado
+  Object.keys(historico).forEach(data => {
+    if (!Array.isArray(historico[data])) {
+      historico[data] = [];
+    }
+  });
+
+  const div = document.getElementById("historico_lista");
+  const datas = Object.keys(historico);
+
+  if (datas.length === 0) {
+    div.innerHTML = "<p>Nenhuma O.S registrada ainda.</p>";
     return;
   }
 
-  div.innerHTML = historico.map(s => `
-    <div class="grupo">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <strong>${s.datahora}</strong>
-        <button onclick="toggleCorpo(${s.id})" style="background:none; border:none; width:10%;font-size:20px; cursor:pointer;">👁️</button>
-      </div>
-      <div class="linha">
-        OS: <input id="os_input_${s.id}" style="width:20%;" value="${s.osNumero || ""}" ${s.status === "pendente" ? "" : "disabled"}>
-        FROTA: ${s.frota} STATUS: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}
-      </div>
-      <div id="corpo_${s.id}" style="display:none; margin-top:10px;">
-        <textarea class="editavel" id="htexto_${s.id}">${s.texto}</textarea>
-        <div class="botoes">
-          ${s.status === "pendente" 
-            ? `<button onclick="finalizarOS(${s.id})">Marcar como Finalizada</button>` 
-            : `<button id="editar_${s.id}" onclick="editarOS(${s.id})">Editar O.S</button>`
-          }
-          <button onclick="copiarHistorico(${s.id})">Copiar</button>
-          <button onclick="compartilharHistorico(${s.id})">Compartilhar</button>
-          <button onclick="excluirHistorico(${s.id})" style="background:#d9534f; color:white;">Excluir</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  let html = "";
+
+  datas.sort().reverse().forEach(data => {
+    html += `<div class="grupo">
+      <h3 style="margin:5px 0;">Data: ${data}</h3>`;
+
+    historico[data].forEach(s => {
+      html += `
+        <div class="grupo" style="background:#f9f9f9;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>${s.datahora}</strong>
+            <button onclick="toggleCorpo(${s.id})" style="background:none; border:none; width:10%;font-size:20px; cursor:pointer;">👁️</button>
+          </div>
+          <div class="linha">
+            OS: <input id="os_input_${s.id}" style="width:20%;" value="${s.osNumero || ""}" ${s.status === "pendente" ? "" : "disabled"}>
+            FROTA: ${s.frota} STATUS: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}
+          </div>
+          <div id="corpo_${s.id}" style="display:none; margin-top:10px;">
+            <textarea class="editavel" id="htexto_${s.id}">${s.texto}</textarea>
+            <div class="botoes">
+              ${s.status === "pendente" 
+                ? `<button onclick="finalizarOS(${s.id})">Marcar como Finalizada</button>` 
+                : `<button id="editar_${s.id}" onclick="editarOS(${s.id})">Editar O.S</button>`
+              }
+              <button onclick="copiarHistorico(${s.id})">Copiar</button>
+              <button onclick="compartilharHistorico(${s.id})">Compartilhar</button>
+              <button onclick="excluirHistorico(${s.id}, '${data}')" style="background:#d9534f; color:white;">Excluir</button>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  div.innerHTML = html;
+}
+  function toggleMarkdown(id) {
+  const interpretado = document.getElementById(`interpretado_${id}`);
+  const texto = document.getElementById(`texto_${id}`);
+
+  if (interpretado.style.display === 'none') {
+    interpretado.style.display = 'block';
+    texto.style.display = 'none';
+  } else {
+    interpretado.style.display = 'none';
+    texto.style.display = 'block';
+  }
 }
   //funcao do olho
   function toggleCorpo(id) {
@@ -562,15 +927,20 @@ function mostrarHistorico() {
 }
 // Finaliza O.S.
 function finalizarOS(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  const item = historico.find(s => s.id === id);
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
   const input = document.getElementById(`os_input_${id}`);
   const numero = input.value.trim();
 
   if (!numero) return showToast("Preencha o número da O.S antes de finalizar.");
 
-  item.status = "finalizada";
-  item.osNumero = numero;
+  for (const data in historico) {
+    const item = historico[data].find(s => s.id === id);
+    if (item) {
+      item.status = "finalizada";
+      item.osNumero = numero;
+      break;
+    }
+  }
 
   localStorage.setItem("historicoOS", JSON.stringify(historico));
   mostrarHistorico();
@@ -592,42 +962,66 @@ function editarOS(id) {
 }
 
 function confirmarEdicaoOS(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  const item = historico.find(s => s.id === id);
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
   const input = document.getElementById(`os_input_${id}`);
   const numero = input.value.trim();
 
   if (!numero) return showToast("O número da O.S não pode ficar vazio.");
 
-  item.osNumero = numero;
+  for (const data in historico) {
+    const item = historico[data].find(s => s.id === id);
+    if (item) {
+      item.osNumero = numero;
+      break;
+    }
+  }
+
   localStorage.setItem("historicoOS", JSON.stringify(historico));
   mostrarHistorico();
   showToast("O.S atualizada!");
 }
+
 // Copia
 function copiarHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  const item = historico.find(s => s.id === id);
-  navigator.clipboard.writeText(item.texto);
-  showToast("Histórico copiado!");
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+
+  for (const data in historico) {
+    const item = historico[data].find(s => s.id === id);
+    if (item) {
+      navigator.clipboard.writeText(item.texto);
+      showToast("Histórico copiado!");
+      return;
+    }
+  }
+
+  showToast("O.S não encontrada.");
 }
 
 // Compartilha
 function compartilharHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  const item = historico.find(s => s.id === id);
-  const url = `https://wa.me/?text=${encodeURIComponent(item.texto)}`;
-  window.open(url, "_blank");
-  showToast("Histórico enviado!");
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+
+  for (const data in historico) {
+    const item = historico[data].find(s => s.id === id);
+    if (item) {
+      const url = `https://wa.me/?text=${encodeURIComponent(item.texto)}`;
+      window.open(url, "_blank");
+      showToast("Histórico enviado!");
+      return;
+    }
+  }
+
+  showToast("O.S não encontrada.");
 }
 // Exclui
-function excluirHistorico(id) {
+function excluirHistorico(id, data) {
   if (!confirm('Tem certeza que deseja excluir esta O.S?')) return;
 
-  let historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  historico = historico.filter(s => s.id !== id);
-  localStorage.setItem("historicoOS", JSON.stringify(historico));
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+  historico[data] = historico[data].filter(s => s.id !== id);
+  if (historico[data].length === 0) delete historico[data];
 
+  localStorage.setItem("historicoOS", JSON.stringify(historico));
   mostrarHistorico();
   showToast("Histórico excluído!");
 }
@@ -644,9 +1038,9 @@ function excluirHistorico(id) {
   <script>
 // Função para gerar backup do histórico
 function baixarBackup() {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || [];
-  
-  if (historico.length === 0) {
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+
+  if (Object.keys(historico).length === 0) {
     showToast("Nenhum dado no histórico para backup.");
     return;
   }
@@ -664,9 +1058,8 @@ function baixarBackup() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  
-  URL.revokeObjectURL(url);
 
+  URL.revokeObjectURL(url);
   showToast(`Backup criado: ${nomeArquivo}`);
 }
 </script>
@@ -680,7 +1073,7 @@ function restaurarBackupHistorico(event) {
   reader.onload = function(e) {
     try {
       const dados = JSON.parse(e.target.result);
-      if (Array.isArray(dados)) {
+      if (typeof dados === 'object' && !Array.isArray(dados)) {
         localStorage.setItem("historicoOS", JSON.stringify(dados));
         mostrarHistorico();
         showToast("Backup restaurado com sucesso!");
@@ -695,35 +1088,150 @@ function restaurarBackupHistorico(event) {
 }
 </script>
   <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(() => console.log('Service Worker registrado!'))
-      .catch(err => console.log('Erro no Service Worker', err));
+  
+  function salvarTudo() {
+  localStorage.setItem("turno", JSON.stringify({
+    data: document.getElementById("dataTurno").value,
+    fazenda: document.getElementById("fazenda").value,
+    frente: document.getElementById("frente").value,
+    turno: document.getElementById("turnoLetra").value,
+    equipe: equipe,
+    frotas: frotasTurno,
+    servicos: servicos,
+    relatorio: document.getElementById("relatorio_bruto").value
+  }));
+}
+  function carregarTudo() {
+  const dados = JSON.parse(localStorage.getItem("turno"));
+  if (dados) {
+    document.getElementById("dataTurno").value = dados.data || dataAtual();
+    document.getElementById("fazenda").value = dados.fazenda || "";
+    document.getElementById("frente").value = dados.frente || "";
+    document.getElementById("turnoLetra").value = dados.turno || "A";
+    equipe = dados.equipe || [];
+    renderizarEquipe();
+    frotasTurno = dados.frotas || [];
+    renderizarFrotas();
+    servicos = dados.servicos || [];
+    renderizarServicos();
+    const r = dados.relatorio || "";
+    document.getElementById("relatorio_bruto").value = r;
+    document.getElementById("relatorio_formatado").innerHTML = r
+      .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+  } else {
+    document.getElementById("dataTurno").value = dataAtual();
   }
-</script>
+}
+  document.addEventListener("DOMContentLoaded", () => {
+  carregarTudo();
+  mostrarHistorico();
+});
+  </script>
+ 
   <script>
-    let deferredPrompt;
+  
+  function gerarBackupCompleto() {
+  const dados = {
+    turno: JSON.parse(localStorage.getItem("turno")) || {},
+    historicoOS: JSON.parse(localStorage.getItem("historicoOS")) || {}
+  };
 
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const agora = new Date();
+  const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const nomeArquivo = `backup_meuturno_${dataHora}.json`;
 
-  const btnInstall = document.getElementById('btnInstall');
-  btnInstall.style.display = 'block';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 
-  btnInstall.addEventListener('click', () => {
-    btnInstall.style.display = 'none';
-    deferredPrompt.prompt();
+  URL.revokeObjectURL(url);
+  showToast(`Backup criado: ${nomeArquivo}`);
+}
+  function restaurarBackupCompleto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('Usuário aceitou instalar o PWA');
-      } else {
-        console.log('Usuário recusou instalar o PWA');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const dados = JSON.parse(e.target.result);
+
+      if (dados.turno) {
+        localStorage.setItem("turno", JSON.stringify(dados.turno));
       }
-      deferredPrompt = null;
-    });
-  });
-});</script>
+      if (dados.historicoOS) {
+        localStorage.setItem("historicoOS", JSON.stringify(dados.historicoOS));
+      }
+
+      carregarTudo();
+      mostrarHistorico();
+      showToast("Backup restaurado com sucesso!");
+    } catch (err) {
+      showToast("Erro ao ler o arquivo de backup.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+let callbackOportunidade = null;
+
+// Abre o popup e define a função de retorno
+function abrirPopupOportunidade(callback) {
+  callbackOportunidade = callback;
+  document.getElementById('popupOportunidade').style.display = 'block';
+  document.getElementById('inputOportunidade').value = '';
+  document.getElementById('inputOportunidade').focus();
+}
+
+// Confirma a entrada da oportunidade e executa o callback
+function confirmarOportunidade() {
+  const valor = document.getElementById('inputOportunidade').value.trim();
+  if (callbackOportunidade) callbackOportunidade(valor);
+  fecharPopupOportunidade();
+}
+
+// Cancela sem preencher nada
+function cancelarOportunidade() {
+  if (callbackOportunidade) callbackOportunidade('');
+  fecharPopupOportunidade();
+}
+
+// Fecha o popup
+function fecharPopupOportunidade() {
+  document.getElementById('popupOportunidade').style.display = 'none';
+}
+  </script>
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(() => console.log('Service Worker registrado com sucesso!'))
+    .catch(err => console.log('Erro ao registrar Service Worker:', err));
+}
+</script>
+  <div id="popupOportunidade" style="
+  display:none;
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,0.5);
+  z-index:9999;
+">
+  <h3>Informar Oportunidade</h3>
+  <input type="text" id="inputOportunidade" placeholder="Ex.: Refeição, DDS..." style="width:100%; padding:10px; margin-top:10px;">
+  <div style="margin-top:10px; display:flex; gap:10px;">
+    <button onclick="confirmarOportunidade()" style="flex:1; background:#007acc; color:white; border:none; padding:8px; border-radius:5px;">Confirmar</button>
+    <button onclick="cancelarOportunidade()" style="flex:1; background:#d9534f; color:white; border:none; padding:8px; border-radius:5px;">Cancelar</button>
+  </div>
+</div>
 </body>
 </html>
