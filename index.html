@@ -126,7 +126,17 @@
   </button>
   <input type="file" id="fileBackupCompleto" accept=".json" style="display: none;" onchange="restaurarBackupCompleto(event)">
 </div>
+  <button onclick="limparStorage()" style="background:#d9534f; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">
+  🗑️ Limpar Dados
+</button>
   <script>
+  //limpar LocalStorage
+  function limparStorage() {
+  if (confirm('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
 // Versão atualizada para suporte a módulos e evolução contínua
 // Próximos passos: API para exportar e importar JSON, integração com IndexedDB para grande volume de dados
   </script>
@@ -270,7 +280,17 @@ function showToast(msg) {
   toast.className = "show";
   setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
 }
-
+  
+function carregarFrotas() {
+  const dados = JSON.parse(localStorage.getItem('frotasTurno'));
+  frotasTurno = dados || [];
+  renderizarFrotas();
+  atualizarSelectsDeFrotas(); // <-- ESSA LINHA FAZ TUDO FUNCIONAR CERTO
+}
+  function salvarFrotas() {
+  localStorage.setItem('frotasTurno', JSON.stringify(frotasTurno));
+}
+  
 // Função para adicionar uma nova frota
 function adicionarFrota() {
   const nome = document.getElementById('novaFrota').value.trim();
@@ -287,6 +307,8 @@ function adicionarFrota() {
   document.getElementById('novaFrota').value = '';
   document.getElementById('novaHoraFrota').value = '';
   showToast("Frota adicionada!");
+
+  salvarFrotas(); // <-- Aqui adiciona isso
 }
 function atualizarSelectsDeFrotas() {
   servicos.forEach(s => {
@@ -318,6 +340,7 @@ function removerFrota(index) {
     renderizarFrotas();
     atualizarSelectsDeFrotas();
     showToast("Frota removida!");
+    salvarFrotas(); // <-- Aqui
   }
 }
 
@@ -855,14 +878,6 @@ function salvarOSnoHistorico(id) {
 
   function mostrarHistorico() {
   const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  
-  // Garante que não tenha erro se o histórico estiver mal formatado
-  Object.keys(historico).forEach(data => {
-    if (!Array.isArray(historico[data])) {
-      historico[data] = [];
-    }
-  });
-
   const div = document.getElementById("historico_lista");
   const datas = Object.keys(historico);
 
@@ -1125,6 +1140,7 @@ function restaurarBackupHistorico(event) {
 }
   document.addEventListener("DOMContentLoaded", () => {
   carregarTudo();
+  carregarFrotas();
   mostrarHistorico();
 });
   </script>
