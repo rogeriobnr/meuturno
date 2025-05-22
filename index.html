@@ -6,50 +6,256 @@
 <meta name="theme-color" content="#007acc">
   <title>Meu Turno</title>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: sans-serif; background: #f3f3f3; }
-    header { background: #1a1a1a; color: white; padding: 10px; text-align: center; }
-    nav { display: flex; background: #333; justify-content: space-around; }
-    nav button { flex: 1; background: #444; color: white; border: none; padding: 12px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
-    nav button.active { background: #007acc; }
-    nav button:hover { background: #555; }
-    section { display: none; padding: 15px; }
-    section.active { display: block; }
-    input, select, textarea, button { width: 100%; margin: 6px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    textarea.editavel { font-family: monospace; height: 200px; }
-    .grupo { background: white; padding: 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  
-  .linha {
+ * {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f3f3f3;
+}
+
+/* HEADER */
+header {
+  background: #007acc;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  border-bottom: 3px solid #005f99;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+header img {
+  height: 35px;
+}
+
+/* NAVBAR AJUSTADO */
+nav {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 botões de tamanhos iguais */
+  background: #f4f4f4;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-bottom: 1px solid #ccc;
+}
+
+nav button {
+  background: transparent;
+  color: #333;
+  border: none;
+  padding: 10px 0; /* Menor espaço interno para caber tudo */
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px; /* Levemente menor */
+  transition: background 0.3s, color 0.3s;
+  border-right: 1px solid #ddd;
+}
+
+nav button:last-child {
+  border-right: none;
+}
+
+nav button:hover {
+  background: #eaeaea;
+}
+
+nav button.active {
+  background: #007acc;
+  color: white;
+}
+/* SECTIONS */
+section {
+  display: none;
+  padding: 15px;
+}
+
+section.active {
+  display: block;
+}
+
+/* GRUPOS */
+.grupo {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* CAMPOS */
+input, select, textarea, button {
+  width: 100%;
+  margin: 6px 0;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+textarea.editavel {
+  font-family: monospace;
+  height: 200px;
+}
+
+/* LINHAS FLEX */
+.linha {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .linha label {
   font-weight: bold;
 }
-  .preview {
-  background: #e6f7ff;
+
+/* PREVIEW */
+.preview {
+  background: #fafafa;
   padding: 10px;
   border-radius: 5px;
   margin-top: 10px;
+  border: 1px solid #ccc;
 }
-    .botoes { display: flex; gap: 10px; flex-wrap: wrap; }
-    .botoes button { flex: 1; cursor: pointer; transition: background 0.3s; }
-    .botoes button:hover { opacity: 0.9; }
-    #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 5px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); }
-    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+/* BOTÕES CENTRALIZADOS */
+.botoes {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button.confirmar {
+  background-color: #007acc;
+  color: white;
+}
+
+button.cancelar {
+  background-color: #ccc;
+  color: black;
+}
+
+button.perigo {
+  background-color: #d9534f;
+  color: white;
+}
+
+/* TOAST */
+#toast {
+  visibility: hidden;
+  min-width: 250px;
+  background: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 5px;
+  padding: 16px;
+  position: fixed;
+  z-index: 9999;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+}
+
+#toast.show {
+  visibility: visible;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+@keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+/* POPUP OVERLAY */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  z-index: 9998;
+}
+
+/* POPUP */
+.popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  z-index: 9999;
+  width: 90%;
+  max-width: 400px;
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.popup h3 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.popup input, .popup select {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.popup .botoes {
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
   </style>
 </head>
 <body>
-  <header><h1>Meu Turno</h1></header>
+  <header>
+  <div style="display: flex; align-items: center; gap: 5px; justify-content: center;">
+    <img src="logo.png" alt="Logo" style="height: 100px;">
+  </div>
+   <div class=linha>
+    <h1>Mecânica</h1>
+   </div>
+  </header>
   <nav>
   <button onclick="abrir('turno')" class="active">Turno</button>
   <button onclick="abrir('servicos')">Serviços</button>
   <button onclick="abrir('relatorio')">Relatório</button>
   <button onclick="abrir('historico')">Histórico</button>
+  <button onclick="abrir('config')">Configurar</button>
 </nav><section id="turno" class="active">
   <div class="grupo">
     <label>Data</label>
@@ -105,8 +311,10 @@
   
 </section><section id="historico">
   <div class="grupo">
-    <button onclick="mostrarHistorico()">Atualizar Histórico</button>
-  </div>
+  <button onclick="abrirPopupApagarPorData()" style="background:#d9534f; color:white;">
+    🗑️ Apagar Histórico por Data
+  </button>
+</div>
   <div id="historico_lista"></div>
   <div class="grupo">
   <button onclick="baixarBackup()">&#128190; Backup</button>
@@ -116,25 +324,50 @@
   <input type="file" id="fileBackup" accept=".json" style="display:none;" onchange="restaurarBackupHistorico(event)">
 </div>
 </section>
+  <section id="config">
+  <div class="grupo">
+    <h2>Backup e Dados</h2>
+    
+    <button onclick="gerarBackupCompleto()">
+      🗄️ Exportar Dados Completos
+    </button>
+    <p>Exporta tudo: turno, serviços, frotas, equipe e histórico.</p>
+
+    <button onclick="document.getElementById('fileBackupCompleto').click()">
+      🔄 Importar Dados Completos
+    </button>
+    <input type="file" id="fileBackupCompleto" accept=".json" style="display:none;" onchange="restaurarBackupCompleto(event)">
+    <p>Restaura um arquivo JSON com todos os dados.</p>
+
+    <hr>
+
+    <button onclick="baixarBackup()">
+      🗄️ Exportar Apenas Histórico
+    </button>
+    <p>Exporta apenas o histórico de O.S.</p>
+
+    <button onclick="document.getElementById('fileBackup').click()">
+      🔄 Importar Apenas Histórico
+    </button>
+    <input type="file" id="fileBackup" accept=".json" style="display:none;" onchange="restaurarBackupHistorico(event)">
+    <p>Restaura apenas o histórico de O.S.</p>
+
+    <hr>
+
+    <button onclick="limparStorage()" style="background:#d9534f; color:white;">
+      🗑️ Resetar Tudo (Apagar LocalStorage)
+    </button>
+    <p style="color:#d9534f;">Apaga todos os dados, reset total. (Confirmação necessária)</p>
+  </div>
+</section>
   <div id="toast"></div>
-  <div style="display: flex; justify-content: center; gap: 10px; background: #ffffff; padding: 5px;">
-  <button onclick="gerarBackupCompleto()" style="background: white; color: #007acc; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-    🗄️ Backup
-  </button>
-  <button onclick="document.getElementById('fileBackupCompleto').click()" style="background: white; color: #007acc; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-    🔄 Restaurar
-  </button>
-  <input type="file" id="fileBackupCompleto" accept=".json" style="display: none;" onchange="restaurarBackupCompleto(event)">
-</div>
-  <button onclick="limparStorage()" style="background:#d9534f; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">
-  🗑️ Limpar Dados
-</button>
   <script>
   //limpar LocalStorage
   function limparStorage() {
   if (confirm('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.')) {
     localStorage.clear();
     location.reload();
+    
   }
 }
 // Versão atualizada para suporte a módulos e evolução contínua
@@ -226,7 +459,7 @@ function renderizarEquipe() {
 
   let html = `
     <div style="
-      background: #f9f9f9;
+      background: #f5f5f5;
       border: 1px solid #ccc;
       border-radius: 6px;
       padding: 5px 10px;
@@ -474,15 +707,14 @@ function renderizarServicos() {
       </select>
 
       <div class="linha">
-        <div>
+        <div style="flex:1;">
           <label>Máquina parada?</label>
           <select id="parada_${s.id}">
-          <option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option>
+            <option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option>
             <option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option>
-            
           </select>
         </div>
-        <div>
+        <div style="flex:1;">
           <label>Falha operacional?</label>
           <select id="falha_${s.id}">
             <option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option>
@@ -492,33 +724,39 @@ function renderizarServicos() {
       </div>
 
       <div class="linha">
-        <div>
+        <div style="flex:1;">
           <label>Data inicial</label>
           <input type="date" id="data_${s.id}" value="${s.data}">
         </div>
-        <div>
+        <div style="flex:1;">
           <label>Hora inicial</label>
           <input type="time" id="inicio_${s.id}" value="${s.inicio}">
         </div>
-        <div>
+        <div style="flex:1;">
           <label>Hora final</label>
           <input type="time" id="fim_${s.id}" value="${s.fim}">
         </div>
       </div>
 
       <div class="botoes">
-        <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">Gerar O.S</button>
-        <button onclick="copiarTexto(${s.id})">Copiar</button>
-        <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button>
-        <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">Excluir</button>
+        <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
+          ${s.texto ? "Regerar O.S" : "Gerar O.S"}
+        </button>
+      </div>
+
+      <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
+        <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
+
+        <div class="botoes">
+          <button onclick="copiarTexto(${s.id})">Copiar</button>
+          <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button>
+          <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">Excluir</button>
+        </div>
       </div>
 
       <textarea class="editavel" id="texto_${s.id}" style="display:none;"></textarea>
-  <div id="interpretado_${s.id}" style="display:none; white-space: pre-line; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #fafafa; margin-top: 5px;"></div>
-<button onclick="toggleMarkdown(${s.id})" style="display:none; margin-top:5px;">📝 Mostrar Markdown</button>
     </div>
   `).join('');
-  
 }
   function processarOS(id) {
   const botao = document.getElementById(`botao_${id}`);
@@ -535,6 +773,7 @@ function renderizarServicos() {
       showToast("Ação de regerar cancelada.");
     }
   }
+    document.getElementById(`preview_${id}`).style.display = 'block';
 }
   
 function toggleTexto(id) {
@@ -626,7 +865,14 @@ function gerarTextoOSFinal(oportunidade, dados, id) {
     textarea.parentNode.insertBefore(preview, textarea.nextSibling);
   }
 
-  preview.innerHTML = interpretado;
+  preview.innerHTML = `
+  <div class="preview">${interpretado}</div>
+  <div class="botoes">
+    <button onclick="copiarTexto(${id})">Copiar</button>
+    <button onclick="compartilharWhatsApp(${id})">Compartilhar</button>
+    <button onclick="removerServico(${id})" style="background:#d9534f; color:white;">Excluir</button>
+  </div>
+`;
 
   salvarOSnoHistorico(id);
   showToast("O.S gerada!");
@@ -842,8 +1088,7 @@ function calcularDM(horasTotais, horasParadas) {
 function salvarOSnoHistorico(id) {
   const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
   const hoje = new Date();
-  const dataKey = hoje.toISOString().split('T')[0]; // ex.: 2025-05-23
-
+  const dataKey = dataHojeBR(); // dd/mm/yyyy
   if (!historico[dataKey]) historico[dataKey] = [];
 
   const texto = document.getElementById(`texto_${id}`).value;
@@ -1194,34 +1439,6 @@ function restaurarBackupHistorico(event) {
   };
   reader.readAsText(file);
 }
-
-let callbackOportunidade = null;
-
-// Abre o popup e define a função de retorno
-function abrirPopupOportunidade(callback) {
-  callbackOportunidade = callback;
-  document.getElementById('popupOportunidade').style.display = 'block';
-  document.getElementById('inputOportunidade').value = '';
-  document.getElementById('inputOportunidade').focus();
-}
-
-// Confirma a entrada da oportunidade e executa o callback
-function confirmarOportunidade() {
-  const valor = document.getElementById('inputOportunidade').value.trim();
-  if (callbackOportunidade) callbackOportunidade(valor);
-  fecharPopupOportunidade();
-}
-
-// Cancela sem preencher nada
-function cancelarOportunidade() {
-  if (callbackOportunidade) callbackOportunidade('');
-  fecharPopupOportunidade();
-}
-
-// Fecha o popup
-function fecharPopupOportunidade() {
-  document.getElementById('popupOportunidade').style.display = 'none';
-}
   </script>
   <script>
 if ('serviceWorker' in navigator) {
@@ -1229,24 +1446,102 @@ if ('serviceWorker' in navigator) {
     .then(() => console.log('Service Worker registrado com sucesso!'))
     .catch(err => console.log('Erro ao registrar Service Worker:', err));
 }
+  //popup botao apagar historico por data
+  
+function dataHojeBR() {
+  const hoje = new Date();
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const ano = hoje.getFullYear();
+  return `${dia}/${mes}/${ano}`;
+}
+function fecharPopupApagarPorData() {
+  document.getElementById('popupApagarData').style.display = 'none';
+}
+  // Popup Oportunidade
+function abrirPopupOportunidade(callback) {
+  callbackOportunidade = callback;
+  document.getElementById('popupOportunidade').style.display = 'block';
+  document.getElementById('overlayOportunidade').style.display = 'block';
+  document.getElementById('inputOportunidade').value = '';
+  document.getElementById('inputOportunidade').focus();
+}
+
+function fecharPopupOportunidade() {
+  document.getElementById('popupOportunidade').style.display = 'none';
+  document.getElementById('overlayOportunidade').style.display = 'none';
+}
+
+function confirmarOportunidade() {
+  const valor = document.getElementById('inputOportunidade').value.trim();
+  if (callbackOportunidade) callbackOportunidade(valor);
+  fecharPopupOportunidade();
+}
+
+function cancelarOportunidade() {
+  if (callbackOportunidade) callbackOportunidade('');
+  fecharPopupOportunidade();
+}
+
+// Popup Apagar por Data
+function abrirPopupApagarPorData() {
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+  const datas = Object.keys(historico);
+
+  if (datas.length === 0) {
+    showToast("Nenhum histórico para apagar.");
+    return;
+  }
+
+  const select = document.getElementById('selectDatas');
+  select.innerHTML = datas.map(d => `<option value="${d}">${d}</option>`).join('');
+
+  document.getElementById('popupApagarData').style.display = 'block';
+  document.getElementById('overlayApagarData').style.display = 'block';
+}
+
+function fecharPopupApagarPorData() {
+  document.getElementById('popupApagarData').style.display = 'none';
+  document.getElementById('overlayApagarData').style.display = 'none';
+}
+
+function confirmarApagarPorData() {
+  const dataSelecionada = document.getElementById('selectDatas').value;
+  if (!dataSelecionada) {
+    showToast("Selecione uma data.");
+    return;
+  }
+
+  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+
+  if (historico[dataSelecionada]) {
+    delete historico[dataSelecionada];
+    localStorage.setItem("historicoOS", JSON.stringify(historico));
+    showToast(`Histórico da data ${dataSelecionada} apagado!`);
+    fecharPopupApagarPorData();
+    mostrarHistorico();
+  }
+}
+  
 </script>
-  <div id="popupOportunidade" style="
-  display:none;
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  box-shadow:0 0 10px rgba(0,0,0,0.5);
-  z-index:9999;
-">
+  <!-- popup oportunidades -->
+  <div class="popup-overlay" id="overlayOportunidade"></div>
+<div class="popup" id="popupOportunidade">
   <h3>Informar Oportunidade</h3>
-  <input type="text" id="inputOportunidade" placeholder="Ex.: Refeição, DDS..." style="width:100%; padding:10px; margin-top:10px;">
-  <div style="margin-top:10px; display:flex; gap:10px;">
-    <button onclick="confirmarOportunidade()" style="flex:1; background:#007acc; color:white; border:none; padding:8px; border-radius:5px;">Confirmar</button>
-    <button onclick="cancelarOportunidade()" style="flex:1; background:#d9534f; color:white; border:none; padding:8px; border-radius:5px;">Cancelar</button>
+  <input type="text" id="inputOportunidade" placeholder="Ex.: Refeição, DDS..." style="width:100%; padding:10px;">
+  <div class="botoes">
+    <button class="confirmar" onclick="confirmarOportunidade()">Confirmar</button>
+    <button class="cancelar" onclick="cancelarOportunidade()">Cancelar</button>
+  </div>
+</div>
+  <!-- popup apagar por data -->
+  <div class="popup-overlay" id="overlayApagarData"></div>
+<div class="popup" id="popupApagarData">
+  <h3>Selecione a Data</h3>
+  <select id="selectDatas" style="width:100%; padding:10px;"></select>
+  <div class="botoes">
+    <button class="confirmar" onclick="confirmarApagarPorData()">Apagar</button>
+    <button class="cancelar" onclick="fecharPopupApagarPorData()">Cancelar</button>
   </div>
 </div>
 </body>
