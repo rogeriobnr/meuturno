@@ -1,463 +1,537 @@
-<!DOCTYPE html><html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-BR">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
- <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#007acc">
-  <title>Meu Turno</title>
-  <style>
- * {
-  box-sizing: border-box;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#007acc">
+    <title>Meu Turno</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-  margin: 0;
-  font-family: sans-serif;
-  background: #f3f3f3;
-}
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #f3f3f3;
+        }
 
-/* HEADER */
-header {
-  background: #007acc;
-  color: white;
-  padding: 15px;
-  text-align: center;
-  font-size: 22px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  border-bottom: 3px solid #005f99;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
+        /* HEADER */
+        header {
+            background: #007acc;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-bottom: 3px solid #005f99;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
 
-header img {
-  height: 35px;
-}
+        header img {
+            height: 35px;
+        }
 
-/* NAVBAR AJUSTADO */
-nav {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr); /* 5 botões de tamanhos iguais */
-  background: #f4f4f4;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #ccc;
-}
+        /* NAVBAR AJUSTADO */
+        nav {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            /* 5 botões de tamanhos iguais */
+            background: #f4f4f4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid #ccc;
+        }
 
-nav button {
-  background: transparent;
-  color: #333;
-  border: none;
-  padding: 10px 0; /* Menor espaço interno para caber tudo */
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px; /* Levemente menor */
-  transition: background 0.3s, color 0.3s;
-  border-right: 1px solid #ddd;
-}
+        nav button {
+            background: transparent;
+            color: #333;
+            border: none;
+            padding: 10px 0;
+            /* Menor espaço interno para caber tudo */
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            /* Levemente menor */
+            transition: background 0.3s, color 0.3s;
+            border-right: 1px solid #ddd;
+        }
 
-nav button:last-child {
-  border-right: none;
-}
+        nav button:last-child {
+            border-right: none;
+        }
 
-nav button:hover {
-  background: #eaeaea;
-}
+        nav button:hover {
+            background: #eaeaea;
+        }
 
-nav button.active {
-  background: #007acc;
-  color: white;
-}
-/* SECTIONS */
-section {
-  display: none;
-  padding: 15px;
-}
+        nav button.active {
+            background: #007acc;
+            color: white;
+        }
 
-section.active {
-  display: block;
-}
+        /* SECTIONS */
+        section {
+            display: none;
+            padding: 15px;
+        }
 
-/* GRUPOS */
-.grupo {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+        section.active {
+            display: block;
+        }
 
-/* CAMPOS */
-input, select, textarea, button {
-  width: 100%;
-  margin: 6px 0;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
+        /* GRUPOS */
+        .grupo {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-textarea.editavel {
-  font-family: monospace;
-  height: 200px;
-}
+        /* CAMPOS */
+        input,
+        select,
+        textarea,
+        button {
+            width: 100%;
+            margin: 6px 0;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
 
-/* LINHAS FLEX */
-.linha {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+        textarea.editavel {
+            font-family: monospace;
+            height: 200px;
+        }
 
-.linha label {
-  font-weight: bold;
-}
+        /* LINHAS FLEX */
+        .linha {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
 
-/* PREVIEW */
-.preview {
-  background: #fafafa;
-  padding: 10px;
-  border-radius: 5px;
-  margin-top: 10px;
-  border: 1px solid #ccc;
-}
+        .linha label {
+            font-weight: bold;
+        }
 
-/* BOTÕES CENTRALIZADOS */
-.botoes {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+        /* PREVIEW */
+        .preview {
+            background: #fafafa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+        }
 
-button {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.3s;
-}
+        /* BOTÕES CENTRALIZADOS */
+        .botoes {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
 
-button:hover {
-  opacity: 0.9;
-}
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
 
-button.confirmar {
-  background-color: #007acc;
-  color: white;
-}
+        button:hover {
+            opacity: 0.9;
+        }
 
-button.cancelar {
-  background-color: #ccc;
-  color: black;
-}
+        button.confirmar {
+            background-color: #007acc;
+            color: white;
+        }
 
-button.perigo {
-  background-color: #d9534f;
-  color: white;
-}
+        button.cancelar {
+            background-color: #ccc;
+            color: black;
+        }
 
-/* TOAST */
-#toast {
-  visibility: hidden;
-  min-width: 250px;
-  background: #333;
-  color: #fff;
-  text-align: center;
-  border-radius: 5px;
-  padding: 16px;
-  position: fixed;
-  z-index: 9999;
-  left: 50%;
-  bottom: 30px;
-  transform: translateX(-50%);
-}
+        button.perigo {
+            background-color: #d9534f;
+            color: white;
+        }
 
-#toast.show {
-  visibility: visible;
-  animation: fadein 0.5s, fadeout 0.5s 2.5s;
-}
+        /* TOAST */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+        }
 
-@keyframes fadein {
-  from {bottom: 0; opacity: 0;}
-  to {bottom: 30px; opacity: 1;}
-}
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
 
-@keyframes fadeout {
-  from {bottom: 30px; opacity: 1;}
-  to {bottom: 0; opacity: 0;}
-}
+        @keyframes fadein {
+            from {
+                bottom: 0;
+                opacity: 0;
+            }
 
-/* POPUP OVERLAY */
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: none;
-  z-index: 9998;
-}
+            to {
+                bottom: 30px;
+                opacity: 1;
+            }
+        }
 
-/* POPUP */
-.popup {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-  z-index: 9999;
-  width: 90%;
-  max-width: 400px;
-  display: none;
-  animation: fadeIn 0.3s ease;
-}
+        @keyframes fadeout {
+            from {
+                bottom: 30px;
+                opacity: 1;
+            }
 
-.popup h3 {
-  margin-top: 0;
-  text-align: center;
-}
+            to {
+                bottom: 0;
+                opacity: 0;
+            }
+        }
 
-.popup input, .popup select {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-}
+        /* POPUP OVERLAY */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 9998;
+        }
 
-.popup .botoes {
-  justify-content: center;
-}
+        /* POPUP */
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            width: 90%;
+            max-width: 400px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-  </style>
+        .popup h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .popup input,
+        .popup select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .popup .botoes {
+            justify-content: center;
+        }
+
+        .btn-adicionar {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            transition: background 0.3s;
+        }
+
+        .btn-adicionar:hover {
+            background-color: #218838;
+        }
+
+        .botoes button.btn-adicionar {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+        }
+
+        .botoes button.btn-adicionar:hover {
+            background-color: #218838;
+        }
+
+        .linha input[type="date"] {
+            min-width: 130px;
+        }
+
+        .linha input[type="time"] {
+            min-width: 100px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+    </style>
 </head>
+
 <body>
-  <header>
-  <div style="display: flex; align-items: center; gap: 5px; justify-content: center;">
-    <img src="logo.png" alt="Logo" style="height: 100px;">
-  </div>
-   <div class=linha>
-    <h1>Mecânica</h1>
-   </div>
-  </header>
-  <nav>
-  <button onclick="abrir('turno')" class="active">Turno</button>
-  <button onclick="abrir('servicos')">Serviços</button>
-  <button onclick="abrir('relatorio')">Relatório</button>
-  <button onclick="abrir('historico')">Histórico</button>
-  <button onclick="abrir('config')">Configurar</button>
-</nav><section id="turno" class="active">
-  <div class="grupo">
-    <label>Data</label>
-    <input id="dataTurno" type="date">
-    <label>Fazenda</label>
-    <input id="fazenda" type="text">
-    <label>Frente</label>
-    <input id="frente" type="text">
-    <label>Turno</label>
-    <select id="turnoLetra">
-      <option value="A">A</option>
-      <option value="B">B</option>
-      <option value="C">C</option>
-    </select>
-    <div class="grupo">
-<label><b>Equipe</b></label>
-<div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
-  <input id="nomeEquipe" type="text" placeholder="Nome" style="flex: 1;">
-  <input id="matriculaEquipe" type="text" placeholder="Matrícula" style="flex: 1;">
-  <button onclick="adicionarEquipe()">Adicionar</button>
-</div>
-<div id="boxEquipe"></div>
-</div>
+    <header>
+        <div style="display: flex; align-items: center; gap: 5px; justify-content: center;">
+            <img src="logo.png" alt="Logo" style="height: 100px;">
+        </div>
+        <div class=linha>
+            <h1>Mecânica</h1>
+        </div>
+    </header>
+    <nav>
+        <button onclick="abrir('turno')" class="active">Turno</button>
+        <button onclick="abrir('servicos')">Serviços</button>
+        <button onclick="abrir('relatorio')">Relatório</button>
+        <button onclick="abrir('historico')">Histórico</button>
+        <button onclick="abrir('config')">Configurar</button>
+    </nav>
+    <section id="turno" class="active">
+        <div class="grupo">
+            <label>Data</label>
+            <input id="dataTurno" type="date">
+            <label>Fazenda</label>
+            <input id="fazenda" type="text">
+            <label>Frente</label>
+            <input id="frente" type="text">
+            <label>Turno</label>
+            <select id="turnoLetra">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+            </select>
+            <div class="grupo">
+                <label><b>Equipe</b></label>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
+                    <input id="nomeEquipe" type="text" placeholder="Nome" style="flex: 1;">
+                    <input id="matriculaEquipe" type="text" placeholder="Matrícula" style="flex: 1;">
+                    <button onclick="adicionarEquipe()">Adicionar</button>
+                </div>
+                <div id="boxEquipe"></div>
+            </div>
 
-    <div class="grupo">
-      <label>Frota</label>
-      <input id="novaFrota" type="text" placeholder="Código da frota">
-      <label>Horas Planejadas</label>
-      <input id="novaHoraFrota" type="number" step="0.1" placeholder="Ex: 7.20">
-      <button onclick="adicionarFrota()">Adicionar Frota</button>
-    </div>
-    <div class="grupo" id="listaFrotas"></div>
-  </div>
-</section>
-  <section id="servicos">
-  <div id="servicosLista">
-  </div>
-  <button onclick="adicionarServico()">Adicionar Serviço</button>
-    
-</section>
-  <section id="relatorio">
- <div class="grupo">
-  <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
-   <button onclick="compartilharRelatorio()">Compartilhar</button>
-  <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
-   
-</div>
-    
-  <h3 style="text-align: center;">Visualização</h3>
-  <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
-  <h3 style="text-align: center;">Edição</h3>
-  <textarea id="relatorio_bruto" class="editavel"></textarea>
-  
-</section><section id="historico">
-  <div class="grupo">
-  <button onclick="abrirPopupApagarPorData()" style="background:#d9534f; color:white;">
-    🗑️ Apagar Histórico por Data
-  </button>
-</div>
-  <div id="historico_lista"></div>
-  <div class="grupo">
-  <button onclick="baixarBackup()">&#128190; Backup</button>
-</div>
-<div class="grupo">
-  <button onclick="document.getElementById('fileBackup').click()">Restaurar Backup</button>
-  <input type="file" id="fileBackup" accept=".json" style="display:none;" onchange="restaurarBackupHistorico(event)">
-</div>
-</section>
-  <section id="config">
-  <div class="grupo">
-    <h2>Backup e Dados</h2>
-    
-    <button onclick="gerarBackupCompleto()">
-      🗄️ Exportar Dados Completos
-    </button>
-    <p>Exporta tudo: turno, serviços, frotas, equipe e histórico.</p>
+            <div class="grupo">
+                <label>Frota</label>
+                <input id="novaFrota" type="text" placeholder="Código da frota">
+                <label>Horas Planejadas</label>
+                <input id="novaHoraFrota" type="number" step="0.1" placeholder="Ex: 7.20">
+                <button onclick="adicionarFrota()">Adicionar Frota</button>
+            </div>
+            <div class="grupo" id="listaFrotas"></div>
+        </div>
+    </section>
+    <section id="servicos">
+        <div id="servicosLista">
+        </div>
+        <button id="btnAddServico" onclick="adicionarServico()"
+            style="background-color: #28a745; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+            Adicionar Serviço
+        </button>
+    </section>
+    <section id="relatorio">
+        <div class="grupo">
+            <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
+            <button onclick="compartilharRelatorio()">Compartilhar</button>
+            <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
 
-    <button onclick="document.getElementById('fileBackupCompleto').click()">
-      🔄 Importar Dados Completos
-    </button>
-    <input type="file" id="fileBackupCompleto" accept=".json" style="display:none;" onchange="restaurarBackupCompleto(event)">
-    <p>Restaura um arquivo JSON com todos os dados.</p>
+        </div>
 
-    <hr>
+        <h3 style="text-align: center;">Visualização</h3>
+        <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
+        <h3 style="text-align: center;">Edição</h3>
+        <textarea id="relatorio_bruto" class="editavel"></textarea>
 
-    <button onclick="baixarBackup()">
-      🗄️ Exportar Apenas Histórico
-    </button>
-    <p>Exporta apenas o histórico de O.S.</p>
+    </section>
+    <section id="historico">
+        <div class="grupo">
+            <button onclick="abrirPopupApagarPorData()" style="background:#d9534f; color:white;">
+                🗑️ Apagar Histórico por Data
+            </button>
+        </div>
+        <div id="historico_lista"></div>
+        <div class="grupo">
+            <button onclick="baixarBackup()">&#128190; Backup</button>
+        </div>
+        <div class="grupo">
+            <button onclick="document.getElementById('fileBackup').click()">Restaurar Backup</button>
+            <input type="file" id="fileBackup" accept=".json" style="display:none;"
+                onchange="restaurarBackupHistorico(event)">
+        </div>
+    </section>
+    <section id="config">
+        <div class="grupo">
+            <h2>Backup e Dados</h2>
 
-    <button onclick="document.getElementById('fileBackup').click()">
-      🔄 Importar Apenas Histórico
-    </button>
-    <input type="file" id="fileBackup" accept=".json" style="display:none;" onchange="restaurarBackupHistorico(event)">
-    <p>Restaura apenas o histórico de O.S.</p>
+            <button onclick="gerarBackupCompleto()">
+                🗄️ Exportar Dados Completos
+            </button>
+            <p>Exporta tudo: turno, serviços, frotas, equipe e histórico.</p>
 
-    <hr>
+            <button onclick="document.getElementById('fileBackupCompleto').click()">
+                🔄 Importar Dados Completos
+            </button>
+            <input type="file" id="fileBackupCompleto" accept=".json" style="display:none;"
+                onchange="restaurarBackupCompleto(event)">
+            <p>Restaura um arquivo JSON com todos os dados.</p>
 
-    <button onclick="limparStorage()" style="background:#d9534f; color:white;">
-      🗑️ Resetar Tudo (Apagar LocalStorage)
-    </button>
-    <p style="color:#d9534f;">Apaga todos os dados, reset total. (Confirmação necessária)</p>
-  </div>
-</section>
-  <div id="toast"></div>
-  <script>
-  //limpar LocalStorage
-  function limparStorage() {
-  if (confirm('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.')) {
-    localStorage.clear();
-    location.reload();
-    
-  }
-}
-// Versão atualizada para suporte a módulos e evolução contínua
-// Próximos passos: API para exportar e importar JSON, integração com IndexedDB para grande volume de dados
-  </script>
-   <script>
-function abrir(modulo) {
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            <hr>
 
-  document.getElementById(modulo).classList.add('active');
-  document.querySelector(`nav button[onclick="abrir('${modulo}')"]`).classList.add('active');
-}
-</script>
-  <script>
-  function limparRelatorio() {
-  document.getElementById("relatorio_bruto").value = '';
-  document.getElementById("relatorio_formatado").innerHTML = '';
-  showToast("Relatório limpo! Clique em gerar para atualizar.");
-}
-  function compartilharRelatorio() {
-  const texto = document.getElementById("relatorio_bruto").value.trim();
+            <button onclick="baixarBackup()">
+                🗄️ Exportar Apenas Histórico
+            </button>
+            <p>Exporta apenas o histórico de O.S.</p>
 
-  if (!texto) {
-    showToast("O relatório está vazio.");
-    return;
-  }
+            <button onclick="document.getElementById('fileBackup').click()">
+                🔄 Importar Apenas Histórico
+            </button>
+            <input type="file" id="fileBackup" accept=".json" style="display:none;"
+                onchange="restaurarBackupHistorico(event)">
+            <p>Restaura apenas o histórico de O.S.</p>
 
-  const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-  window.open(url, "_blank");
-}
-  
-let equipe = JSON.parse(localStorage.getItem('equipe')) || [];
+            <hr>
 
-// Adiciona novo membro na equipe
-function adicionarEquipe() {
-  const nome = document.getElementById('nomeEquipe').value.trim();
-  const matricula = document.getElementById('matriculaEquipe').value.trim();
+            <button onclick="limparStorage()" style="background:#d9534f; color:white;">
+                🗑️ Resetar Tudo (Apagar LocalStorage)
+            </button>
+            <p style="color:#d9534f;">Apaga todos os dados, reset total. (Confirmação necessária)</p>
+        </div>
+    </section>
+    <div id="toast"></div>
+    <script>
+        //limpar LocalStorage
+        function limparStorage() {
+            if (confirm('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.')) {
+                localStorage.clear();
+                location.reload();
 
-  if (nome && matricula) {
-    equipe.push({ nome, matricula });
-    salvarEquipe();
-    renderizarEquipe();
-    document.getElementById('nomeEquipe').value = '';
-    document.getElementById('matriculaEquipe').value = '';
-    showToast('Membro adicionado à equipe!');
-  } else {
-    showToast('Preencha nome e matrícula corretamente!');
-  }
-}
+            }
+        }
+        // Versão atualizada para suporte a módulos e evolução contínua
+        // Próximos passos: API para exportar e importar JSON, integração com IndexedDB para grande volume de dados
+    </script>
+    <script>
+        function abrir(modulo) {
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
 
-// Limpa toda a equipe
-function removerEquipe() {
-  equipe = [];
-  salvarEquipe();
-  renderizarEquipe();
-  showToast('Equipe limpa!');
-}
+            document.getElementById(modulo).classList.add('active');
+            document.querySelector(`nav button[onclick="abrir('${modulo}')"]`).classList.add('active');
+        }
+    </script>
+    <script>
+        function limparRelatorio() {
+            document.getElementById("relatorio_bruto").value = '';
+            document.getElementById("relatorio_formatado").innerHTML = '';
+            showToast("Relatório limpo! Clique em gerar para atualizar.");
+        }
+        function compartilharRelatorio() {
+            const texto = document.getElementById("relatorio_bruto").value.trim();
 
-// Salva edições feitas nos inputs da lista
-function salvarEdicoesEquipe() {
-  const inputsNome = document.querySelectorAll('.input-nome');
-  const inputsMatricula = document.querySelectorAll('.input-matricula');
+            if (!texto) {
+                showToast("O relatório está vazio.");
+                return;
+            }
 
-  equipe = [];
+            const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+            window.open(url, "_blank");
+        }
 
-  for (let i = 0; i < inputsNome.length; i++) {
-    const nome = inputsNome[i].value.trim();
-    const matricula = inputsMatricula[i].value.trim();
+        let equipe = JSON.parse(localStorage.getItem('equipe')) || [];
 
-    if (nome && matricula) {
-      equipe.push({ nome, matricula });
-    }
-  }
+        // Adiciona novo membro na equipe
+        function adicionarEquipe() {
+            const nome = document.getElementById('nomeEquipe').value.trim();
+            const matricula = document.getElementById('matriculaEquipe').value.trim();
 
-  salvarEquipe();
-  renderizarEquipe();
-  showToast('Alterações na equipe salvas!');
-}
+            if (nome && matricula) {
+                equipe.push({ nome, matricula });
+                salvarEquipe();
+                renderizarEquipe();
+                document.getElementById('nomeEquipe').value = '';
+                document.getElementById('matriculaEquipe').value = '';
+                showToast('Membro adicionado à equipe!');
+            } else {
+                showToast('Preencha nome e matrícula corretamente!');
+            }
+        }
 
-// Renderiza o card da equipe
-function renderizarEquipe() {
-  const box = document.getElementById('boxEquipe');
+        // Limpa toda a equipe
+        function removerEquipe() {
+            equipe = [];
+            salvarEquipe();
+            renderizarEquipe();
+            showToast('Equipe limpa!');
+        }
 
-  if (equipe.length === 0) {
-    box.innerHTML = '';
-    return;
-  }
+        // Salva edições feitas nos inputs da lista
+        function salvarEdicoesEquipe() {
+            const inputsNome = document.querySelectorAll('.input-nome');
+            const inputsMatricula = document.querySelectorAll('.input-matricula');
 
-  let html = `
+            equipe = [];
+
+            for (let i = 0; i < inputsNome.length; i++) {
+                const nome = inputsNome[i].value.trim();
+                const matricula = inputsMatricula[i].value.trim();
+
+                if (nome && matricula) {
+                    equipe.push({ nome, matricula });
+                }
+            }
+
+            salvarEquipe();
+            renderizarEquipe();
+            showToast('Alterações na equipe salvas!');
+        }
+
+        // Renderiza o card da equipe
+        function renderizarEquipe() {
+            const box = document.getElementById('boxEquipe');
+
+            if (equipe.length === 0) {
+                box.innerHTML = '';
+                return;
+            }
+
+            let html = `
     <div style="
       background: #f5f5f5;
       border: 1px solid #ccc;
@@ -467,213 +541,207 @@ function renderizarEquipe() {
     ">
   `;
 
-  equipe.forEach((item) => {
-    html += `
+            equipe.forEach((item) => {
+                html += `
       <div style="display: flex; gap: 5px; margin-bottom: 5px;">
         <input class="input-nome" type="text" value="${item.nome}" style="flex:1;">
         <input class="input-matricula" type="text" value="${item.matricula}" style="flex:1;">
       </div>
     `;
-  });
+            });
 
-  html += `</div>`;
+            html += `</div>`;
 
-  html += `
+            html += `
     <div style="margin-top:5px; display:flex; gap:5px;">
       <button onclick="salvarEdicoesEquipe()" style="background:#007bff; color:white;">Salvar Alterações</button>
       <button onclick="removerEquipe()" style="background:#d9534f; color:white;">Limpar Equipe</button>
     </div>
   `;
 
-  box.innerHTML = html;
-}
+            box.innerHTML = html;
+        }
 
-// Retorna a equipe no formato texto para relatório e histórico
-function obterEquipeTexto() {
-  return equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n');
-}
+        // Retorna a equipe no formato texto para relatório e histórico
+        function obterEquipeTexto() {
+            return equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n');
+        }
 
-// Salva no LocalStorage
-function salvarEquipe() {
-  localStorage.setItem('equipe', JSON.stringify(equipe));
-}
+        // Salva no LocalStorage
+        function salvarEquipe() {
+            localStorage.setItem('equipe', JSON.stringify(equipe));
+        }
 
-// Carrega na abertura da página
-window.onload = () => {
-  renderizarEquipe();
-};
-</script>
-<script>
-let frotasTurno = [];
+        // Carrega na abertura da página
+        window.onload = () => {
+            renderizarEquipe();
+        };
+    </script>
+    <script>
+        let frotasTurno = [];
 
-// Função para mostrar toast
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  toast.innerText = msg;
-  toast.className = "show";
-  setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
-}
-  
-function carregarFrotas() {
-  const dados = JSON.parse(localStorage.getItem('frotasTurno'));
-  frotasTurno = dados || [];
-  renderizarFrotas();
-  atualizarSelectsDeFrotas(); // <-- ESSA LINHA FAZ TUDO FUNCIONAR CERTO
-}
-  function salvarFrotas() {
-  localStorage.setItem('frotasTurno', JSON.stringify(frotasTurno));
-}
-  
-// Função para adicionar uma nova frota
-function adicionarFrota() {
-  const nome = document.getElementById('novaFrota').value.trim();
-  const horas = parseFloat(document.getElementById('novaHoraFrota').value);
+        // Função para mostrar toast
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
+        }
+        // Função para adicionar uma nova frota
+        function adicionarFrota() {
+            const nome = document.getElementById('novaFrota').value.trim();
+            const horas = parseFloat(document.getElementById('novaHoraFrota').value);
 
-  if (!nome || isNaN(horas) || horas <= 0) {
-    showToast("Preencha corretamente a frota e as horas!");
-    return;
-  }
+            if (!nome || isNaN(horas) || horas <= 0) {
+                showToast("Preencha corretamente a frota e as horas!");
+                return;
+            }
 
-  frotasTurno.push({ nome, horas });
-  renderizarFrotas();
-  atualizarSelectsDeFrotas();
-  document.getElementById('novaFrota').value = '';
-  document.getElementById('novaHoraFrota').value = '';
-  showToast("Frota adicionada!");
+            frotasTurno.push({ nome, horas });
+            renderizarFrotas();
+            atualizarSelectsDeFrotas();
+            document.getElementById('novaFrota').value = '';
+            document.getElementById('novaHoraFrota').value = '';
+            showToast("Frota adicionada!");
 
-  salvarFrotas(); // <-- Aqui adiciona isso
-}
-function atualizarSelectsDeFrotas() {
-  servicos.forEach(s => {
-    const select = document.getElementById(`frota_${s.id}`);
-    if (select) {
-      select.innerHTML = frotasTurno.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
-    }
-  });
-}
-// Função para renderizar as frotas cadastradas
-function renderizarFrotas() {
-  const div = document.getElementById('listaFrotas');
-  if (frotasTurno.length === 0) {
-    div.innerHTML = "<p>Nenhuma frota adicionada.</p>";
-    return;
-  }
-  div.innerHTML = frotasTurno.map((f, i) => `
+            salvarTudo(); // <-- Aqui adiciona isso
+        }
+        function atualizarSelectsDeFrotas() {
+            servicos.forEach(s => {
+                const select = document.getElementById(`frota_${s.id}`);
+                if (select) {
+                    const valorSelecionado = s.frota || select.value;
+                    select.innerHTML = frotasTurno.map(f =>
+                        `<option value="${f.nome}" ${f.nome === valorSelecionado ? 'selected' : ''}>${f.nome}</option>`
+                    ).join('');
+                }
+            });
+        }
+        // Função para renderizar as frotas cadastradas
+        function renderizarFrotas() {
+            const div = document.getElementById('listaFrotas');
+            if (frotasTurno.length === 0) {
+                div.innerHTML = "<p>Nenhuma frota adicionada.</p>";
+                return;
+            }
+            div.innerHTML = frotasTurno.map((f, i) => `
     <div>
       Frota: <strong>${f.nome}</strong> - ${f.horas}h
       <button onclick="removerFrota(${i})" style="background:#d9534f; color:white;">Remover</button>
     </div>
   `).join('');
-}
+        }
 
-// Função para remover uma frota
-function removerFrota(index) {
-  if (confirm('Deseja realmente remover esta frota?')) {
-    frotasTurno.splice(index, 1);
-    renderizarFrotas();
-    atualizarSelectsDeFrotas();
-    showToast("Frota removida!");
-    salvarFrotas(); // <-- Aqui
-  }
-}
+        // Função para remover uma frota
+        function removerFrota(index) {
+            if (confirm('Deseja realmente remover esta frota?')) {
+                frotasTurno.splice(index, 1);
+                renderizarFrotas();
+                atualizarSelectsDeFrotas();
+                showToast("Frota removida!");
+                salvarTudo(); // <-- Aqui
+            }
+        }
 
-// Função para setar automaticamente a data atual no campo Data
-function dataAtual() {
-  const hoje = new Date();
-  const ano = hoje.getFullYear();
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoje.getDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
-}
+        // Função para setar automaticamente a data atual no campo Data
+        function dataAtual() {
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("dataTurno").value = dataAtual();
-});
-</script>
-  <script>
-let servicos = [];
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("dataTurno").value = dataAtual();
+        });
+    </script>
+    <script>
+        let servicos = [];
 
-const atividades = [
-  "P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO",
-  "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE",
-  "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO",
-  "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO",
-  "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO",
-  "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO",
-  "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO",
-  "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO",
-  "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza",
-  "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço",
-  "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento",
-  "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto",
-  "H15 - Inventario", "H16 - Apoio a Operação"
-];
+        const atividades = [
+            "P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO",
+            "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE",
+            "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO",
+            "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO",
+            "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO",
+            "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO",
+            "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO",
+            "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO",
+            "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza",
+            "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço",
+            "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento",
+            "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto",
+            "H15 - Inventario", "H16 - Apoio a Operação"
+        ];
 
-const sistemas = {
-  "Tratores": [
-    { cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" },
-    { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" },
-    { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio2" }
-  ],
-  "Implementos": [
-    { cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" },
-    { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }
-  ]
-};
+        const sistemas = {
+            "Tratores": [
+                { cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" },
+                { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" },
+                { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio2" }
+            ],
+            "Implementos": [
+                { cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" },
+                { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }
+            ]
+        };
 
-const subsistemas = {
-  "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"],
-  "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"],
-  "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"],
-  "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"],
-  "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"],
-  "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"],
-  "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"],
-  "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"],
-  "9": ["9.1 - Freio", "9.2 - Acumulador"],
-  "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"],
-  "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"],
-  "12": ["12.1 - Caixa de Adubo"],
-  "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"],
-  "14": ["14.1 - Sensores", "14.2 - Chicote"],
-  "15": ["15.1 - Lamina", "15.2 - Ball"]
-};
+        const subsistemas = {
+            "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"],
+            "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"],
+            "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"],
+            "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"],
+            "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"],
+            "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"],
+            "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"],
+            "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"],
+            "9": ["9.1 - Freio", "9.2 - Acumulador"],
+            "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"],
+            "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"],
+            "12": ["12.1 - Caixa de Adubo"],
+            "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"],
+            "14": ["14.1 - Sensores", "14.2 - Chicote"],
+            "15": ["15.1 - Lamina", "15.2 - Ball"]
+        };
 
-// Função para adicionar um novo serviço
-function adicionarServico() {
-  salvarValoresServicos();
-  const id = Date.now();
+        // Função para adicionar um novo serviço
+        function adicionarServico() {
+            salvarValoresServicos();
+            const id = Date.now();
 
-  const novoServico = {
-    id, sistema: "", subsistema: "", frota: "", atividade: "", descricao: "", texto: "",
-    tipo: "CORRETIVA", parada: "não", falha: "não", data: dataAtual(), inicio: "", fim: ""
-  };
+            const novoServico = {
+                id, sistema: "", subsistema: "", frota: "", atividade: "", descricao: "", texto: "",
+                tipo: "CORRETIVA", parada: "sim", falha: "não", data: dataAtual(), inicio: "", fim: ""
+            };
 
-  servicos.push(novoServico);
-  renderizarServicos();
-  showToast("Serviço adicionado!");
-}
+            servicos.push(novoServico);
+            renderizarServicos();
+            showToast("Serviço adicionado!");
 
-
-// Renderiza todos os serviços
-function renderizarServicos() {
-  const div = document.getElementById("servicosLista");
-  div.innerHTML = servicos.map(s => `
+            setTimeout(() => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }, 100);
+        }
+        // Renderiza todos os serviços
+        function renderizarServicos() {
+            const div = document.getElementById("servicosLista");
+            div.innerHTML = servicos.map(s => `
     <div class="grupo" id="servico_${s.id}">
       <label>Frota</label>
       <select id="frota_${s.id}">
         <option value="">Nenhum</option>
-        ${frotasTurno.map(f => 
-          `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
-        ).join('')}
+        ${frotasTurno.map(f =>
+                `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
+            ).join('')}
       </select>
 
       <label>Atividade</label>
       <select id="atividade_${s.id}">
         <option value="">Nenhum</option>
-        ${atividades.map(a => 
-          `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
-        ).join('')}
+        ${atividades.map(a =>
+                `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
+            ).join('')}
       </select>
 
       <label>Sistema</label>
@@ -681,8 +749,8 @@ function renderizarServicos() {
         <option value="">Nenhum</option>
         ${Object.entries(sistemas).map(([g, lst]) => `
           <optgroup label="${g}">
-            ${lst.map(sys => 
-              `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`
+            ${lst.map(sys =>
+                `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`
             ).join('')}
           </optgroup>
         `).join('')}
@@ -691,9 +759,9 @@ function renderizarServicos() {
       <label>Subsistema</label>
       <select id="subsistema_${s.id}">
         <option value="">Nenhum</option>
-        ${(subsistemas[s.sistema] || []).map(sub => 
-          `<option ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
-        ).join('')}
+        ${(subsistemas[s.sistema] || []).map(sub =>
+                `<option ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
+            ).join('')}
       </select>
 
       <label>Descrição</label>
@@ -710,14 +778,14 @@ function renderizarServicos() {
         <div style="flex:1;">
           <label>Máquina parada?</label>
           <select id="parada_${s.id}">
-            <option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option>
+            <option value="sim" ${!s.parada || s.parada === "sim" ? 'selected' : ''}>Sim</option>
             <option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option>
           </select>
         </div>
         <div style="flex:1;">
           <label>Falha operacional?</label>
           <select id="falha_${s.id}">
-            <option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option>
+            <option value="não" ${!s.falha || s.falha === "não" ? 'selected' : ''}>Não</option>
             <option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option>
           </select>
         </div>
@@ -746,399 +814,462 @@ function renderizarServicos() {
 
       <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
         <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
-
         <div class="botoes">
           <button onclick="copiarTexto(${s.id})">Copiar</button>
-          <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button>
-          <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">Excluir</button>
+          <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button> 
+          <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">❌ Excluir</button>
         </div>
       </div>
 
-      <textarea class="editavel" id="texto_${s.id}" style="display:none;"></textarea>
+      <textarea class="editavel" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
     </div>
   `).join('');
-}
-  function processarOS(id) {
-  const botao = document.getElementById(`botao_${id}`);
 
-  if (botao.innerText === "Gerar O.S") {
-    gerarTextoOS(id);
-    botao.innerText = "Regerar O.S";
-    showToast("O.S gerada! Clique em Regerar se desejar atualizar.");
-  } else {
-    if (confirm("Deseja realmente regerar esta O.S?")) {
-      gerarTextoOS(id);
-      showToast("O.S atualizada no histórico!");
-    } else {
-      showToast("Ação de regerar cancelada.");
-    }
-  }
-    document.getElementById(`preview_${id}`).style.display = 'block';
-}
-  
-function toggleTexto(id) {
-  const t = document.getElementById(`texto_${id}`);
-  t.style.display = t.style.display === 'none' ? 'block' : 'none';
-}
+            // Controle do botão global
+            const btnGlobal = document.getElementById("btnAddServico");
+            if (servicos.length > 0) {
+                btnGlobal.style.display = "none";
+            } else {
+                btnGlobal.style.display = "block";
+            }
 
-// Carrega subsistemas baseado no sistema selecionado
-function carregarSubsistema(id) {
-  const sistema = document.getElementById(`sistema_${id}`).value;
-  const subs = subsistemas[sistema] || [];
-  const selectSub = document.getElementById(`subsistema_${id}`);
-  
-  selectSub.innerHTML = `<option value="">Nenhum</option>` + 
-    subs.map(sub => `<option>${sub}</option>`).join('');
-}
+            // Scroll suave para o último serviço renderizado
+            setTimeout(() => {
+                const lista = document.getElementById("servicosLista");
+                const ultimo = lista.lastElementChild;
+                if (ultimo) {
+                    ultimo.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 100);
+        }
 
-// Gera o texto da O.S.
-function gerarTextoOS(id) {
-  const f = document.getElementById(`frota_${id}`).value || "Nenhum";
-  const frente = document.getElementById("frente").value || "Nenhum";
-  const atividade = document.getElementById(`atividade_${id}`).value || "Nenhum";
-  const sistema = document.getElementById(`sistema_${id}`).value || "Nenhum";
-  const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
-  const descricao = document.getElementById(`descricao_${id}`).value || "-";
+        function processarOS(id) {
+            salvarValoresServicos();
 
-  const dataRaw = document.getElementById(`data_${id}`).value || dataAtual();
-  const [ano, mes, dia] = dataRaw.split('-');
-  const data = `${dia}/${mes}/${ano}`;
+            const botao = document.getElementById(`botao_${id}`);
 
-  const inicio = document.getElementById(`inicio_${id}`).value || "--:--";
-  const fim = document.getElementById(`fim_${id}`).value || "--:--";
+            if (botao.innerText === "Gerar O.S") {
+                gerarTextoOS(id);
+                botao.innerText = "Regerar O.S";
+                showToast("O.S gerada!");
+            } else {
+                if (confirm("Deseja realmente regerar esta O.S?")) {
+                    gerarTextoOS(id);
+                    showToast("O.S atualizada no histórico!");
+                } else {
+                    showToast("Ação de regerar cancelada.");
+                }
+            }
 
-  const parada = document.getElementById(`parada_${id}`).value;
-  const tipo = document.getElementById(`tipo_${id}`).value;
-  const falha = document.getElementById(`falha_${id}`).value;
+            document.getElementById(`preview_${id}`).style.display = 'block';
+        }
 
-  const solicitante = obterEquipeTexto() || "Equipe não informada";
+        function toggleTexto(id) {
+            const t = document.getElementById(`texto_${id}`);
+            t.style.display = t.style.display === 'none' ? 'block' : 'none';
+        }
 
-  const dadosOS = { f, frente, atividade, sistema, subsistema, descricao, data, inicio, fim, parada, tipo, falha, solicitante };
+        // Carrega subsistemas baseado no sistema selecionado
+        function carregarSubsistema(id) {
+            const sistema = document.getElementById(`sistema_${id}`).value;
+            const subs = subsistemas[sistema] || [];
+            const selectSub = document.getElementById(`subsistema_${id}`);
 
-   if (tipo === "CONDICIONAL" || tipo === "MELHORIA") {
-  abrirPopupOportunidade(function(oportunidade) {
-    gerarTextoOSFinal(oportunidade, dadosOS, id);
-  });
-} else {
-  gerarTextoOSFinal('', dadosOS, id);
-}
-}
-function gerarTextoOSFinal(oportunidade, dados, id) {
-  const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
-              `*Máquina está parada por manutenção:* \n` +
-              `*( ${dados.parada === "sim" ? "❌" : " "} ) sim* *( ${dados.parada === "não" ? "❌" : " "} ) não*\n` +
-              `*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n` +
+            selectSub.innerHTML = `<option value="">Nenhum</option>` +
+                subs.map(sub => `<option>${sub}</option>`).join('');
+        }
 
-              `•Frota afetada: ${dados.f}\n` +
-              `•Local/frente: ${dados.frente}\n\n` +
+        // Gera o texto da O.S.
+        function gerarTextoOS(id) {
+            const f = document.getElementById(`frota_${id}`).value || "Nenhum";
+            const frente = document.getElementById("frente").value || "Nenhum";
+            const atividade = document.getElementById(`atividade_${id}`).value || "Nenhum";
+            const sistema = document.getElementById(`sistema_${id}`).value || "Nenhum";
+            const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
+            const descricao = document.getElementById(`descricao_${id}`).value || "-";
 
-              `•Tipo de manutenção:\n` +
-              `(${dados.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
-              `(${dados.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
-              `(${dados.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
+            const dataRaw = document.getElementById(`data_${id}`).value || dataAtual();
+            const [ano, mes, dia] = dataRaw.split('-');
+            const data = `${dia}/${mes}/${ano}`;
 
-              `•Descrição serviço\n${dados.descricao}\n(${dados.atividade.split(" - ")[0]} - ${dados.sistema} - ${(dados.subsistema || "").split(" - ")[0]})\n` +
-              `${oportunidade ? `Oportunidade: ${oportunidade}\n\n` : '\n'}` +
+            const inicio = document.getElementById(`inicio_${id}`).value || "--:--";
+            const fim = document.getElementById(`fim_${id}`).value || "--:--";
 
-              `•Foi falha operacional?\n` +
-              `(${dados.falha === "sim" ? "❌" : " "}) Sim\n` +
-              `(${dados.falha === "não" ? "❌" : " "}) Não\n\n` +
+            const parada = document.getElementById(`parada_${id}`).value;
+            const tipo = document.getElementById(`tipo_${id}`).value;
+            const falha = document.getElementById(`falha_${id}`).value;
 
-              `Data inicial: ${dados.data}\n` +
-              `Hora inicial: ${dados.inicio}\n` +
-              `Hora fim: ${dados.fim}\n\n` +
+            const solicitante = obterEquipeTexto() || "Equipe não informada";
 
-              `Solicitante:\n${dados.solicitante}`;
+            const dadosOS = { f, frente, atividade, sistema, subsistema, descricao, data, inicio, fim, parada, tipo, falha, solicitante };
 
-  document.getElementById(`texto_${id}`).value = txt;
+            if (tipo === "CONDICIONAL" || tipo === "MELHORIA") {
+                abrirPopupOportunidade(function (oportunidade) {
+                    gerarTextoOSFinal(oportunidade, dadosOS, id);
+                });
+            } else {
+                gerarTextoOSFinal('', dadosOS, id);
+            }
+        }
+        function gerarTextoOSFinal(oportunidade, dados, id) {
+            const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
+                `*Máquina está parada por manutenção:* \n` +
+                `*( ${dados.parada === "sim" ? "❌" : " "} ) sim* *( ${dados.parada === "não" ? "❌" : " "} ) não*\n` +
+                `*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n` +
 
-  const interpretado = interpretarMarkdown(txt);
-  const previewId = `preview_${id}`;
-  let preview = document.getElementById(previewId);
+                `•Frota afetada: ${dados.f}\n` +
+                `•Local/frente: ${dados.frente}\n\n` +
 
-  if (!preview) {
-    const textarea = document.getElementById(`texto_${id}`);
-    preview = document.createElement('div');
-    preview.id = previewId;
-    preview.className = 'grupo';
-    preview.style.marginTop = '10px';
-    textarea.parentNode.insertBefore(preview, textarea.nextSibling);
-  }
+                `•Tipo de manutenção:\n` +
+                `(${dados.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
+                `(${dados.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
+                `(${dados.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
 
-  preview.innerHTML = `
+                `•Descrição serviço\n${dados.descricao}\n(${dados.atividade.split(" - ")[0]} - ${dados.sistema} - ${(dados.subsistema || "").split(" - ")[0]})\n` +
+                `${oportunidade ? `Oportunidade: ${oportunidade}\n\n` : '\n'}` +
+
+                `•Foi falha operacional?\n` +
+                `(${dados.falha === "sim" ? "❌" : " "}) Sim\n` +
+                `(${dados.falha === "não" ? "❌" : " "}) Não\n\n` +
+
+                `Data inicial: ${dados.data}\n` +
+                `Hora inicial: ${dados.inicio}\n` +
+                `Hora fim: ${dados.fim}\n\n` +
+
+                `Solicitante:\n${dados.solicitante}`;
+
+            document.getElementById(`texto_${id}`).value = txt;
+
+            const interpretado = interpretarMarkdown(txt);
+            const previewId = `preview_${id}`;
+            let preview = document.getElementById(previewId);
+
+            if (!preview) {
+                const textarea = document.getElementById(`texto_${id}`);
+                preview = document.createElement('div');
+                preview.id = previewId;
+                preview.className = 'grupo';
+                preview.style.marginTop = '10px';
+                textarea.parentNode.insertBefore(preview, textarea.nextSibling);
+            }
+
+            preview.innerHTML = `
   <div class="preview">${interpretado}</div>
   <div class="botoes">
     <button onclick="copiarTexto(${id})">Copiar</button>
     <button onclick="compartilharWhatsApp(${id})">Compartilhar</button>
+    <button onclick="adicionarServicoDepois(${id})" style="background:#28a745; color:white;">Adicionar Serviço</button>
     <button onclick="removerServico(${id})" style="background:#d9534f; color:white;">Excluir</button>
+    
   </div>
 `;
 
-  salvarOSnoHistorico(id);
-  showToast("O.S gerada!");
+            salvarOSnoHistorico(id);
+            showToast("O.S gerada!");
 
-  const botao = document.getElementById(`botao_${id}`);
-  if (botao.innerText === "Gerar O.S") {
-    botao.innerText = "Regerar O.S";
-  }
+            const botao = document.getElementById(`botao_${id}`);
+            if (botao.innerText === "Gerar O.S") {
+                botao.innerText = "Regerar O.S";
+            }
 
-  setTimeout(() => {
-    const servicoElement = document.getElementById(`servico_${id}`);
-    if (servicoElement) {
-      servicoElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, 100);
-}
-// Copia o texto
-function copiarTexto(id) {
-  const txt = document.getElementById(`texto_${id}`).value;
-  navigator.clipboard.writeText(txt);
-  showToast("Texto copiado!");
-}
+            setTimeout(() => {
+                const servicoElement = document.getElementById(`servico_${id}`);
+                if (servicoElement) {
+                    servicoElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }, 100);
+        }
+        // Copia o texto
+        function copiarTexto(id) {
+            const txt = document.getElementById(`texto_${id}`).value;
+            navigator.clipboard.writeText(txt);
+            showToast("Texto copiado!");
+        }
 
-// Compartilha no WhatsApp
-function compartilharWhatsApp(id) {
-  const txt = document.getElementById(`texto_${id}`).value;
-  window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
-}
+        // Compartilha no WhatsApp
+        function compartilharWhatsApp(id) {
+            const txt = document.getElementById(`texto_${id}`).value;
+            window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
+        }
 
-// Remove serviço
-function removerServico(id) {
-  if (confirm('Remover este serviço?')) {
-    servicos = servicos.filter(s => s.id !== id);
-    renderizarServicos();
-    showToast("Serviço removido!");
-  }
-}
-  function salvarValoresServicos() {
-  servicos.forEach(s => {
-    s.frota = document.getElementById(`frota_${s.id}`)?.value || "";
-    s.atividade = document.getElementById(`atividade_${s.id}`)?.value || "";
-    s.sistema = document.getElementById(`sistema_${s.id}`)?.value || "";
-    s.subsistema = document.getElementById(`subsistema_${s.id}`)?.value || "";
-    s.descricao = document.getElementById(`descricao_${s.id}`)?.value || "";
-    s.tipo = document.getElementById(`tipo_${s.id}`)?.value || "CORRETIVA";
-    s.parada = document.getElementById(`parada_${s.id}`)?.value || "não";
-    s.falha = document.getElementById(`falha_${s.id}`)?.value || "não";
-    s.data = document.getElementById(`data_${s.id}`)?.value || dataAtual();
-    s.inicio = document.getElementById(`inicio_${s.id}`)?.value || "";
-    s.fim = document.getElementById(`fim_${s.id}`)?.value || "";
-    s.texto = document.getElementById(`texto_${s.id}`)?.value || "";
-  });
-}
-</script>
- <script>
-// Função para gerar relatório consolidado
-function gerarRelatorioFinal() {
-  salvarValoresServicos();
-  
-  const data = document.getElementById("dataTurno").value || dataAtual();
-  const fazenda = document.getElementById("fazenda").value.trim();
-  const frente = document.getElementById("frente").value.trim();
-  const turno = document.getElementById("turnoLetra").value;
-  const equipeTexto = obterEquipeTexto() || "Nenhuma equipe informada.";
+        // Remove serviço
+        function removerServico(id) {
+            const index = servicos.findIndex(s => s.id === id);
 
-  const qtdMaquinas = frotasTurno.length;
-  const horasPorMaquina = frotasTurno.length > 0 ? frotasTurno[0].horas.toFixed(2) : "0";
-  const horasTotais = frotasTurno.reduce((soma, f) => soma + f.horas, 0).toFixed(2);
+            if (confirm('Remover este serviço?')) {
+                servicos = servicos.filter(s => s.id !== id);
+                renderizarServicos();
+                showToast("Serviço removido!");
 
-  const horasParadas = calcularHorasParadas();
-  const dm = calcularDM(horasTotais, horasParadas);
-  const frenteUpper = (frente || "FRENTE").toUpperCase();
+                setTimeout(() => {
+                    const cards = document.querySelectorAll('#servicosLista .grupo');
 
-  const [ano, mes, dia] = (data || dataAtual()).split("-");
-  const dataFormatada = `${dia}/${mes}/${ano}`;
+                    if (cards.length > 0) {
+                        const targetIndex = Math.min(index, cards.length - 1);
+                        cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 200);
+            }
+        }
+        function adicionarServicoDepois(idReferencia) {
+            salvarValoresServicos(); // Salva o que já existe antes
 
-  let relatorio = `
-⚙ *MANUTENÇÃO ${frenteUpper} BRACELL*
+            const index = servicos.findIndex(s => s.id === idReferencia);
+            const id = Date.now(); // Novo ID único para o serviço
+
+            const refServico = servicos[index];
+
+            const novoServico = {
+                id,
+                sistema: refServico.sistema,      // Copia o sistema
+                subsistema: refServico.subsistema, // Copia o subsistema
+                frota: refServico.frota,           // Copia a frota
+                atividade: "",
+                descricao: "",
+                texto: "",
+                tipo: "CORRETIVA",
+                parada: "sim",
+                falha: "não",
+                data: dataAtual(),
+                inicio: "",
+                fim: ""
+            };
+
+            // Insere logo abaixo do serviço referenciado
+            servicos.splice(index + 1, 0, novoServico);
+
+            renderizarServicos();
+            showToast("Novo serviço adicionado abaixo.");
+        }
+        function salvarValoresServicos() {
+            servicos.forEach(s => {
+                s.frota = document.getElementById(`frota_${s.id}`)?.value || "";
+                s.atividade = document.getElementById(`atividade_${s.id}`)?.value || "";
+                s.sistema = document.getElementById(`sistema_${s.id}`)?.value || "";
+                s.subsistema = document.getElementById(`subsistema_${s.id}`)?.value || "";
+                s.descricao = document.getElementById(`descricao_${s.id}`)?.value || "";
+                s.tipo = document.getElementById(`tipo_${s.id}`)?.value || "CORRETIVA";
+                s.parada = document.getElementById(`parada_${s.id}`)?.value || "não";
+                s.falha = document.getElementById(`falha_${s.id}`)?.value || "não";
+                s.data = document.getElementById(`data_${s.id}`)?.value || dataAtual();
+                s.inicio = document.getElementById(`inicio_${s.id}`)?.value || "";
+                s.fim = document.getElementById(`fim_${s.id}`)?.value || "";
+                s.texto = document.getElementById(`texto_${s.id}`)?.value || "";
+            });
+        }
+    </script>
+    <script>
+        // Função para gerar relatório consolidado
+        function gerarRelatorioFinal() {
+            salvarValoresServicos();
+
+            const data = document.getElementById("dataTurno").value || dataAtual();
+            const fazenda = document.getElementById("fazenda").value.trim();
+            const frente = document.getElementById("frente").value.trim();
+            const turno = document.getElementById("turnoLetra").value;
+            const equipeTexto = obterEquipeTexto() || "Nenhuma equipe informada.";
+
+            const qtdMaquinas = frotasTurno.length;
+            const horasPorMaquina = frotasTurno.length > 0 ? frotasTurno[0].horas.toFixed(2) : "0";
+            const horasTotais = frotasTurno.reduce((soma, f) => soma + f.horas, 0).toFixed(2);
+
+            const horasParadas = calcularHorasParadas();
+            const dm = calcularDM(horasTotais, horasParadas);
+            const frenteUpper = (frente || "FRENTE").toUpperCase();
+
+            const [ano, mes, dia] = (data || dataAtual()).split("-");
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+
+            let relatorio = `
+*MANUTENÇÃO ${frenteUpper} BRACELL*
 
 📅 *DATA:* ${dataFormatada}
-🌴 *FAZENDA:* ${fazenda}
-🚩 *FRENTE:* ${frente}
-⌛ *TURNO:* ${turno}
-🪪 *EQUIPE:*
+*FAZENDA:* ${fazenda}
+*FRENTE:* ${frente}
+*TURNO:* ${turno}
+*EQUIPE:*
 ${equipeTexto}
 
-🛠️ *QTD DE MÁQUINAS:* ${qtdMaquinas}
-⏳ *HORAS PLANEJADAS POR MÁQUINA:* ${horasPorMaquina}
-🕗 *HORAS PLANEJADAS TOTAL:* ${horasTotais}
-🔧 *HORAS TOTAL PARADA:* ${horasParadas} (${formatarHoras(horasParadas)})
-🟢 * DM DO TURNO:* ${dm}%
+*QTD DE MÁQUINAS:* ${qtdMaquinas}
+*HORAS PLANEJADAS POR MÁQUINA:* ${horasPorMaquina}
+*HORAS PLANEJADAS TOTAL:* ${horasTotais}
+*HORAS TOTAL PARADA:* ${horasParadas} (${formatarHoras(horasParadas)})
+🟢 *DM DO TURNO:* ${dm}%
 `;
 
-  frotasTurno.forEach(f => {
-  const paradaFrota = calcularHorasParadasPorFrota(f.nome);
-  relatorio += `
+            frotasTurno.forEach(f => {
+                const paradaFrota = calcularHorasParadasPorFrota(f.nome);
+                relatorio += `
 
 🚜 *${f.nome}*  
-🕗 Planejada: ${f.horas}h  
-🔧 Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})  
-📖 *RELATÓRIO:*  
+Horas Planejada: ${f.horas}h  
+Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})  
+*RELATÓRIO:*  
 `;
 
-  const servicosDaFrota = servicos.filter(s => s.frota === f.nome);
+                const servicosDaFrota = servicos.filter(s => s.frota === f.nome);
 
-  if (servicosDaFrota.length === 0) {
-    relatorio += `- Sem serviços registrados\n`;
-  } else {
-    servicosDaFrota.forEach(s => {
-      const codAtiv = (s.atividade || "").split(" - ")[0];
-      const codSub = (s.subsistema || "").split(" - ")[0];
-      const duracao = calcularDuracaoServico(s);
+                if (servicosDaFrota.length === 0) {
+                    relatorio += `- Sem serviços registrados\n`;
+                } else {
+                    servicosDaFrota.forEach(s => {
+                        const codAtiv = (s.atividade || "").split(" - ")[0];
+                        const codSub = (s.subsistema || "").split(" - ")[0];
+                        const duracao = calcularDuracaoServico(s);
 
-      relatorio += `- ${s.descricao.trim()}\n` +
-                    `(${codAtiv} - ${s.sistema} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo}]\n` +
-                    `⏱️ ${duracao.horas}h (${duracao.texto})\n`;
+                        relatorio += `- ${s.descricao.trim()}\n` +
+                            `(${codAtiv} - ${s.sistema} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo}]\n` +
+                            `⏱️ ${duracao.horas}h (${duracao.texto})\n`;
 
-      if (s.tipo !== "CORRETIVA") {
-        relatorio += `Oportunidade: ${s.oportunidade || "Não informada"}\n\n`;
-      } else {
-        relatorio += `\n`;
-      }
-    });
-  }
-}); // <-- Aqui fecha corretamente o forEach das frotas.
-  document.getElementById("relatorio_bruto").value = relatorio;
-  document.getElementById("relatorio_formatado").innerHTML = relatorio
-    .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br>");
+                        if (s.tipo !== "CORRETIVA") {
+                            relatorio += `Oportunidade: ${s.oportunidade || "Não informada"}\n\n`;
+                        } else {
+                            relatorio += `\n`;
+                        }
+                    });
+                }
+            }); // <-- Aqui fecha corretamente o forEach das frotas.
+            document.getElementById("relatorio_bruto").value = relatorio;
+            document.getElementById("relatorio_formatado").innerHTML = relatorio
+                .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
+                .replace(/\n/g, "<br>");
 
-  salvarTudo();
-  showToast("Relatório gerado!");
-}
-  function calcularDuracaoServico(servico) {
-  const [hIni, mIni] = (servico.inicio || "00:00").split(":").map(Number);
-  const [hFim, mFim] = (servico.fim || "00:00").split(":").map(Number);
-  const inicioMin = hIni * 60 + mIni;
-  const fimMin = hFim * 60 + mFim;
-  const diffMin = Math.max(fimMin - inicioMin, 0);
-  const horasDecimais = (diffMin / 60).toFixed(2);
-  const h = Math.floor(diffMin / 60);
-  const m = diffMin % 60;
-  const texto = h > 0 ? `${h}h` : "";
-  const textoMin = m > 0 ? `${m}min` : "";
-  const sep = (texto && textoMin) ? " " : "";
-  const textoCompleto = (texto || textoMin) ? `${texto}${sep}${textoMin}` : "0min";
-  return { horas: horasDecimais, texto: textoCompleto };
-}
-  
-function formatarHoras(horasDecimais) {
-  const horas = Math.floor(horasDecimais);
-  const minutos = Math.round((horasDecimais - horas) * 60);
-  if (horas > 0 && minutos > 0) {
-    return `${horas}h ${minutos}min`;
-  } else if (horas > 0) {
-    return `${horas}h`;
-  } else {
-    return `${minutos}min`;
-  }
-}
-// Função de emoji por tipo
-function emojiTipo(tipo) {
-  switch (tipo) {
-    case "CORRETIVA": return "🔧";
-    case "CONDICIONAL": return "⏳";
-    case "MELHORIA": return "✨";
-    default: return "";
-  }
-}
+            salvarTudo();
+            showToast("Relatório gerado!");
+        }
+        function calcularDuracaoServico(servico) {
+            const [hIni, mIni] = (servico.inicio || "00:00").split(":").map(Number);
+            const [hFim, mFim] = (servico.fim || "00:00").split(":").map(Number);
+            const inicioMin = hIni * 60 + mIni;
+            const fimMin = hFim * 60 + mFim;
+            const diffMin = Math.max(fimMin - inicioMin, 0);
+            const horasDecimais = (diffMin / 60).toFixed(2);
+            const h = Math.floor(diffMin / 60);
+            const m = diffMin % 60;
+            const texto = h > 0 ? `${h}h` : "";
+            const textoMin = m > 0 ? `${m}min` : "";
+            const sep = (texto && textoMin) ? " " : "";
+            const textoCompleto = (texto || textoMin) ? `${texto}${sep}${textoMin}` : "0min";
+            return { horas: horasDecimais, texto: textoCompleto };
+        }
 
-// Funções auxiliares de cálculo
-function calcularHorasParadas() {
-  return servicos
-    .filter(s => s.tipo === "CORRETIVA")
-    .reduce((soma, s) => {
-      const ini = s.inicio || "00:00";
-      const fim = s.fim || "00:00";
-      const [hIni, mIni] = ini.split(":").map(Number);
-      const [hFim, mFim] = fim.split(":").map(Number);
-      const inicioMin = hIni * 60 + mIni;
-      const fimMin = hFim * 60 + mFim;
-      const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
-      return soma + diferenca;
-    }, 0).toFixed(2);
-}
+        function formatarHoras(horasDecimais) {
+            const horas = Math.floor(horasDecimais);
+            const minutos = Math.round((horasDecimais - horas) * 60);
+            if (horas > 0 && minutos > 0) {
+                return `${horas}h ${minutos}min`;
+            } else if (horas > 0) {
+                return `${horas}h`;
+            } else {
+                return `${minutos}min`;
+            }
+        }
+        // Função de emoji por tipo
+        function emojiTipo(tipo) {
+            switch (tipo) {
+                case "CORRETIVA": return "🔧";
+                case "CONDICIONAL": return "⏳";
+                case "MELHORIA": return "✨";
+                default: return "";
+            }
+        }
 
-function calcularHorasParadasPorFrota(nomeFrota) {
-  const horas = servicos
-    .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
-    .reduce((soma, s) => {
-      const ini = s.inicio || "00:00";
-      const fim = s.fim || "00:00";
-      const [hIni, mIni] = ini.split(":").map(Number);
-      const [hFim, mFim] = fim.split(":").map(Number);
-      const inicioMin = hIni * 60 + mIni;
-      const fimMin = hFim * 60 + mFim;
-      const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
-      return soma + diferenca;
-    }, 0);
-  return horas.toFixed(2);
-}
+        // Funções auxiliares de cálculo
+        function calcularHorasParadas() {
+            return servicos
+                .filter(s => s.tipo === "CORRETIVA")
+                .reduce((soma, s) => {
+                    const ini = s.inicio || "00:00";
+                    const fim = s.fim || "00:00";
+                    const [hIni, mIni] = ini.split(":").map(Number);
+                    const [hFim, mFim] = fim.split(":").map(Number);
+                    const inicioMin = hIni * 60 + mIni;
+                    const fimMin = hFim * 60 + mFim;
+                    const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
+                    return soma + diferenca;
+                }, 0).toFixed(2);
+        }
 
-function calcularDM(horasTotais, horasParadas) {
-  const total = parseFloat(horasTotais);
-  const parada = parseFloat(horasParadas);
-  if (total === 0) return 0;
-  const dm = ((total - parada) / total) * 100;
-  return dm.toFixed(2);
-}
-</script>
-  <script>
-// Salva O.S no histórico automaticamente
-function salvarOSnoHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  const hoje = new Date();
-  const dataKey = dataHojeBR(); // dd/mm/yyyy
-  if (!historico[dataKey]) historico[dataKey] = [];
+        function calcularHorasParadasPorFrota(nomeFrota) {
+            const horas = servicos
+                .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
+                .reduce((soma, s) => {
+                    const ini = s.inicio || "00:00";
+                    const fim = s.fim || "00:00";
+                    const [hIni, mIni] = ini.split(":").map(Number);
+                    const [hFim, mFim] = fim.split(":").map(Number);
+                    const inicioMin = hIni * 60 + mIni;
+                    const fimMin = hFim * 60 + mFim;
+                    const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
+                    return soma + diferenca;
+                }, 0);
+            return horas.toFixed(2);
+        }
 
-  const texto = document.getElementById(`texto_${id}`).value;
-  const frota = document.getElementById(`frota_${id}`).value || "Nenhum";
-  const tipo = document.getElementById(`tipo_${id}`).value || "CORRETIVA";
-  const datahora = hoje.toLocaleString();
+        function calcularDM(horasTotais, horasParadas) {
+            const total = parseFloat(horasTotais);
+            const parada = parseFloat(horasParadas);
+            if (total === 0) return 0;
+            const dm = ((total - parada) / total) * 100;
+            return dm.toFixed(2);
+        }
+    </script>
+    <script>
+        // Salva O.S no histórico automaticamente
+        function salvarOSnoHistorico(id) {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            const hoje = new Date();
+            const dataKey = dataHojeBR(); // dd/mm/yyyy
+            if (!historico[dataKey]) historico[dataKey] = [];
 
-  // Verifica se já existe este ID no histórico
-  const index = historico[dataKey].findIndex(s => s.id === id);
+            const texto = document.getElementById(`texto_${id}`).value;
+            const frota = document.getElementById(`frota_${id}`).value || "Nenhum";
+            const tipo = document.getElementById(`tipo_${id}`).value || "CORRETIVA";
+            const datahora = hoje.toLocaleString();
 
-  if (index >= 0) {
-    // Se já existe, atualiza o item
-    historico[dataKey][index] = {
-      ...historico[dataKey][index],
-      frota,
-      tipo,
-      texto,
-      datahora,
-    };
-  } else {
-    // Se não existe, cria novo
-    historico[dataKey].push({
-      id, frota, tipo, texto, status: "pendente", datahora, osNumero: ""
-    });
-  }
+            // Verifica se já existe este ID no histórico
+            const index = historico[dataKey].findIndex(s => s.id === id);
 
-  localStorage.setItem("historicoOS", JSON.stringify(historico));
-  showToast("O.S salva no histórico!");
-  mostrarHistorico();
-}
-// Mostrar histórico
+            if (index >= 0) {
+                // Se já existe, atualiza o item
+                historico[dataKey][index] = {
+                    ...historico[dataKey][index],
+                    frota,
+                    tipo,
+                    texto,
+                    datahora,
+                };
+            } else {
+                // Se não existe, cria novo
+                historico[dataKey].push({
+                    id, frota, tipo, texto, status: "pendente", datahora, osNumero: ""
+                });
+            }
 
-  function mostrarHistorico() {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  const div = document.getElementById("historico_lista");
-  const datas = Object.keys(historico);
+            localStorage.setItem("historicoOS", JSON.stringify(historico));
+            showToast("O.S salva no histórico!");
+            mostrarHistorico();
+        }
+        // Mostrar histórico
 
-  if (datas.length === 0) {
-    div.innerHTML = "<p>Nenhuma O.S registrada ainda.</p>";
-    return;
-  }
+        function mostrarHistorico() {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            const div = document.getElementById("historico_lista");
+            const datas = Object.keys(historico);
 
-  let html = "";
+            if (datas.length === 0) {
+                div.innerHTML = "<p>Nenhuma O.S registrada ainda.</p>";
+                return;
+            }
 
-  datas.sort().reverse().forEach(data => {
-    html += `<div class="grupo">
+            let html = "";
+
+            datas.sort().reverse().forEach(data => {
+                html += `<div class="grupo">
       <h3 style="margin:5px 0;">Data: ${data}</h3>`;
 
-    historico[data].forEach(s => {
-      html += `
+                historico[data].forEach(s => {
+                    html += `
         <div class="grupo" style="background:#f9f9f9;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong>${s.datahora}</strong>
@@ -1151,398 +1282,406 @@ function salvarOSnoHistorico(id) {
           <div id="corpo_${s.id}" style="display:none; margin-top:10px;">
             <textarea class="editavel" id="htexto_${s.id}">${s.texto}</textarea>
             <div class="botoes">
-              ${s.status === "pendente" 
-                ? `<button onclick="finalizarOS(${s.id})">Marcar como Finalizada</button>` 
-                : `<button id="editar_${s.id}" onclick="editarOS(${s.id})">Editar O.S</button>`
-              }
+              ${s.status === "pendente"
+                            ? `<button onclick="finalizarOS(${s.id})">Marcar como Finalizada</button>`
+                            : `<button id="editar_${s.id}" onclick="editarOS(${s.id})">Editar O.S</button>`
+                        }
               <button onclick="copiarHistorico(${s.id})">Copiar</button>
               <button onclick="compartilharHistorico(${s.id})">Compartilhar</button>
               <button onclick="excluirHistorico(${s.id}, '${data}')" style="background:#d9534f; color:white;">Excluir</button>
             </div>
           </div>
         </div>`;
-    });
+                });
 
-    html += `</div>`;
-  });
+                html += `</div>`;
+            });
 
-  div.innerHTML = html;
-}
-  function toggleMarkdown(id) {
-  const interpretado = document.getElementById(`interpretado_${id}`);
-  const texto = document.getElementById(`texto_${id}`);
+            div.innerHTML = html;
+        }
+        function toggleMarkdown(id) {
+            const interpretado = document.getElementById(`interpretado_${id}`);
+            const texto = document.getElementById(`texto_${id}`);
 
-  if (interpretado.style.display === 'none') {
-    interpretado.style.display = 'block';
-    texto.style.display = 'none';
-  } else {
-    interpretado.style.display = 'none';
-    texto.style.display = 'block';
-  }
-}
-  //funcao do olho
-  function toggleCorpo(id) {
-  const corpo = document.getElementById(`corpo_${id}`);
-  corpo.style.display = corpo.style.display === 'none' ? 'block' : 'none';
-}
-// Finaliza O.S.
-function finalizarOS(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  const input = document.getElementById(`os_input_${id}`);
-  const numero = input.value.trim();
+            if (interpretado.style.display === 'none') {
+                interpretado.style.display = 'block';
+                texto.style.display = 'none';
+            } else {
+                interpretado.style.display = 'none';
+                texto.style.display = 'block';
+            }
+        }
+        //funcao do olho
+        function toggleCorpo(id) {
+            const corpo = document.getElementById(`corpo_${id}`);
+            corpo.style.display = corpo.style.display === 'none' ? 'block' : 'none';
+        }
+        // Finaliza O.S.
+        function finalizarOS(id) {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            const input = document.getElementById(`os_input_${id}`);
+            const numero = input.value.trim();
 
-  if (!numero) return showToast("Preencha o número da O.S antes de finalizar.");
+            if (!numero) return showToast("Preencha o número da O.S antes de finalizar.");
 
-  for (const data in historico) {
-    const item = historico[data].find(s => s.id === id);
-    if (item) {
-      item.status = "finalizada";
-      item.osNumero = numero;
-      break;
-    }
-  }
+            for (const data in historico) {
+                const item = historico[data].find(s => s.id === id);
+                if (item) {
+                    item.status = "finalizada";
+                    item.osNumero = numero;
+                    break;
+                }
+            }
 
-  localStorage.setItem("historicoOS", JSON.stringify(historico));
-  mostrarHistorico();
-  showToast("O.S finalizada!");
-}
+            localStorage.setItem("historicoOS", JSON.stringify(historico));
+            mostrarHistorico();
+            showToast("O.S finalizada!");
+        }
 
-// Edita número da O.S.
-function editarOS(id) {
-  const input = document.getElementById(`os_input_${id}`);
-  const btn = document.getElementById(`editar_${id}`);
+        // Edita número da O.S.
+        function editarOS(id) {
+            const input = document.getElementById(`os_input_${id}`);
+            const btn = document.getElementById(`editar_${id}`);
 
-  if (btn.innerText === "Editar O.S") {
-    input.disabled = false;
-    btn.innerText = "Confirmar";
-    btn.style.background = "#28a745";
-    btn.style.color = "white";
-    btn.onclick = () => confirmarEdicaoOS(id);
-  }
-}
+            if (btn.innerText === "Editar O.S") {
+                input.disabled = false;
+                btn.innerText = "Confirmar";
+                btn.style.background = "#28a745";
+                btn.style.color = "white";
+                btn.onclick = () => confirmarEdicaoOS(id);
+            }
+        }
 
-function confirmarEdicaoOS(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  const input = document.getElementById(`os_input_${id}`);
-  const numero = input.value.trim();
+        function confirmarEdicaoOS(id) {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            const input = document.getElementById(`os_input_${id}`);
+            const numero = input.value.trim();
 
-  if (!numero) return showToast("O número da O.S não pode ficar vazio.");
+            if (!numero) return showToast("O número da O.S não pode ficar vazio.");
 
-  for (const data in historico) {
-    const item = historico[data].find(s => s.id === id);
-    if (item) {
-      item.osNumero = numero;
-      break;
-    }
-  }
+            for (const data in historico) {
+                const item = historico[data].find(s => s.id === id);
+                if (item) {
+                    item.osNumero = numero;
+                    break;
+                }
+            }
 
-  localStorage.setItem("historicoOS", JSON.stringify(historico));
-  mostrarHistorico();
-  showToast("O.S atualizada!");
-}
+            localStorage.setItem("historicoOS", JSON.stringify(historico));
+            mostrarHistorico();
+            showToast("O.S atualizada!");
+        }
 
-// Copia
-function copiarHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+        // Copia
+        function copiarHistorico(id) {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
 
-  for (const data in historico) {
-    const item = historico[data].find(s => s.id === id);
-    if (item) {
-      navigator.clipboard.writeText(item.texto);
-      showToast("Histórico copiado!");
-      return;
-    }
-  }
+            for (const data in historico) {
+                const item = historico[data].find(s => s.id === id);
+                if (item) {
+                    navigator.clipboard.writeText(item.texto);
+                    showToast("Histórico copiado!");
+                    return;
+                }
+            }
 
-  showToast("O.S não encontrada.");
-}
+            showToast("O.S não encontrada.");
+        }
 
-// Compartilha
-function compartilharHistorico(id) {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+        // Compartilha
+        function compartilharHistorico(id) {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
 
-  for (const data in historico) {
-    const item = historico[data].find(s => s.id === id);
-    if (item) {
-      const url = `https://wa.me/?text=${encodeURIComponent(item.texto)}`;
-      window.open(url, "_blank");
-      showToast("Histórico enviado!");
-      return;
-    }
-  }
+            for (const data in historico) {
+                const item = historico[data].find(s => s.id === id);
+                if (item) {
+                    const url = `https://wa.me/?text=${encodeURIComponent(item.texto)}`;
+                    window.open(url, "_blank");
+                    showToast("Histórico enviado!");
+                    return;
+                }
+            }
 
-  showToast("O.S não encontrada.");
-}
-// Exclui
-function excluirHistorico(id, data) {
-  if (!confirm('Tem certeza que deseja excluir esta O.S?')) return;
+            showToast("O.S não encontrada.");
+        }
+        // Exclui
+        function excluirHistorico(id, data) {
+            if (!confirm('Tem certeza que deseja excluir esta O.S?')) return;
 
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  historico[data] = historico[data].filter(s => s.id !== id);
-  if (historico[data].length === 0) delete historico[data];
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            historico[data] = historico[data].filter(s => s.id !== id);
+            if (historico[data].length === 0) delete historico[data];
 
-  localStorage.setItem("historicoOS", JSON.stringify(historico));
-  mostrarHistorico();
-  showToast("Histórico excluído!");
-}
-</script>
-  <script>
-  function interpretarMarkdown(texto) {
-  return texto
-    .replace(/\*(.*?)\*/g, '<strong>$1</strong>')  // Negrito
-    .replace(/_(.*?)_/g, '<em>$1</em>')            // Itálico
-    .replace(/~(.*?)~/g, '<del>$1</del>')          // Tachado
-    .replace(/\n/g, '<br>');                       // Quebra de linha
-}
-  </script>
-  <script>
-// Função para gerar backup do histórico
-function baixarBackup() {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            localStorage.setItem("historicoOS", JSON.stringify(historico));
+            mostrarHistorico();
+            showToast("Histórico excluído!");
+        }
+    </script>
+    <script>
+        function interpretarMarkdown(texto) {
+            return texto
+                .replace(/\*(.*?)\*/g, '<strong>$1</strong>')  // Negrito
+                .replace(/_(.*?)_/g, '<em>$1</em>')            // Itálico
+                .replace(/~(.*?)~/g, '<del>$1</del>')          // Tachado
+                .replace(/\n/g, '<br>');                       // Quebra de linha
+        }
+    </script>
+    <script>
+        // Função para gerar backup do histórico
+        function baixarBackup() {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
 
-  if (Object.keys(historico).length === 0) {
-    showToast("Nenhum dado no histórico para backup.");
-    return;
-  }
+            if (Object.keys(historico).length === 0) {
+                showToast("Nenhum dado no histórico para backup.");
+                return;
+            }
 
-  const blob = new Blob([JSON.stringify(historico, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+            const blob = new Blob([JSON.stringify(historico, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
 
-  const agora = new Date();
-  const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  const nomeArquivo = `backup_meuturno_${dataHora}.json`;
+            const agora = new Date();
+            const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+            const nomeArquivo = `backup_meuturno_${dataHora}.json`;
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nomeArquivo;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
 
-  URL.revokeObjectURL(url);
-  showToast(`Backup criado: ${nomeArquivo}`);
-}
-</script>
-  <script>
-// Função para restaurar backup do histórico
-function restaurarBackupHistorico(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+            URL.revokeObjectURL(url);
+            showToast(`Backup criado: ${nomeArquivo}`);
+        }
+    </script>
+    <script>
+        // Função para restaurar backup do histórico
+        function restaurarBackupHistorico(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const dados = JSON.parse(e.target.result);
-      if (typeof dados === 'object' && !Array.isArray(dados)) {
-        localStorage.setItem("historicoOS", JSON.stringify(dados));
-        mostrarHistorico();
-        showToast("Backup restaurado com sucesso!");
-      } else {
-        showToast("Arquivo inválido.");
-      }
-    } catch (err) {
-      showToast("Erro ao ler o arquivo.");
-    }
-  };
-  reader.readAsText(file);
-}
-</script>
-  <script>
-  
-  function salvarTudo() {
-  localStorage.setItem("turno", JSON.stringify({
-    data: document.getElementById("dataTurno").value,
-    fazenda: document.getElementById("fazenda").value,
-    frente: document.getElementById("frente").value,
-    turno: document.getElementById("turnoLetra").value,
-    equipe: equipe,
-    frotas: frotasTurno,
-    servicos: servicos,
-    relatorio: document.getElementById("relatorio_bruto").value
-  }));
-}
-  function carregarTudo() {
-  const dados = JSON.parse(localStorage.getItem("turno"));
-  if (dados) {
-    document.getElementById("dataTurno").value = dados.data || dataAtual();
-    document.getElementById("fazenda").value = dados.fazenda || "";
-    document.getElementById("frente").value = dados.frente || "";
-    document.getElementById("turnoLetra").value = dados.turno || "A";
-    equipe = dados.equipe || [];
-    renderizarEquipe();
-    frotasTurno = dados.frotas || [];
-    renderizarFrotas();
-    servicos = dados.servicos || [];
-    renderizarServicos();
-    const r = dados.relatorio || "";
-    document.getElementById("relatorio_bruto").value = r;
-    document.getElementById("relatorio_formatado").innerHTML = r
-      .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
-  } else {
-    document.getElementById("dataTurno").value = dataAtual();
-  }
-}
-  document.addEventListener("DOMContentLoaded", () => {
-  carregarTudo();
-  carregarFrotas();
-  mostrarHistorico();
-});
-  </script>
- 
-  <script>
-  
-  function gerarBackupCompleto() {
-  const dados = {
-    turno: JSON.parse(localStorage.getItem("turno")) || {},
-    historicoOS: JSON.parse(localStorage.getItem("historicoOS")) || {}
-  };
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const dados = JSON.parse(e.target.result);
+                    if (typeof dados === 'object' && !Array.isArray(dados)) {
+                        localStorage.setItem("historicoOS", JSON.stringify(dados));
+                        mostrarHistorico();
+                        showToast("Backup restaurado com sucesso!");
+                    } else {
+                        showToast("Arquivo inválido.");
+                    }
+                } catch (err) {
+                    showToast("Erro ao ler o arquivo.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+    <script>
 
-  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const agora = new Date();
-  const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  const nomeArquivo = `backup_meuturno_${dataHora}.json`;
+        function salvarTudo() {
+            localStorage.setItem("turno", JSON.stringify({
+                data: document.getElementById("dataTurno").value,
+                fazenda: document.getElementById("fazenda").value,
+                frente: document.getElementById("frente").value,
+                turno: document.getElementById("turnoLetra").value,
+                equipe: equipe,
+                frotas: frotasTurno,
+                servicos: servicos,
+                relatorio: document.getElementById("relatorio_bruto").value
+            }));
+        }
+        function carregarTudo() {
+            const dados = JSON.parse(localStorage.getItem("turno"));
+            if (dados) {
+                document.getElementById("dataTurno").value = dados.data || dataAtual();
+                document.getElementById("fazenda").value = dados.fazenda || "";
+                document.getElementById("frente").value = dados.frente || "";
+                document.getElementById("turnoLetra").value = dados.turno || "A";
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nomeArquivo;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+                equipe = dados.equipe || [];
+                renderizarEquipe();
 
-  URL.revokeObjectURL(url);
-  showToast(`Backup criado: ${nomeArquivo}`);
-}
-  function restaurarBackupCompleto(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+                frotasTurno = dados.frotas || [];
+                renderizarFrotas();
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const dados = JSON.parse(e.target.result);
+                servicos = dados.servicos || [];
+                renderizarServicos();
 
-      if (dados.turno) {
-        localStorage.setItem("turno", JSON.stringify(dados.turno));
-      }
-      if (dados.historicoOS) {
-        localStorage.setItem("historicoOS", JSON.stringify(dados.historicoOS));
-      }
+                const r = dados.relatorio || "";
+                document.getElementById("relatorio_bruto").value = r;
+                document.getElementById("relatorio_formatado").innerHTML = r
+                    .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
+                    .replace(/\n/g, "<br>");
 
-      carregarTudo();
-      mostrarHistorico();
-      showToast("Backup restaurado com sucesso!");
-    } catch (err) {
-      showToast("Erro ao ler o arquivo de backup.");
-    }
-  };
-  reader.readAsText(file);
-}
-  </script>
-  <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js')
-    .then(() => console.log('Service Worker registrado com sucesso!'))
-    .catch(err => console.log('Erro ao registrar Service Worker:', err));
-}
-  //popup botao apagar historico por data
-  
-function dataHojeBR() {
-  const hoje = new Date();
-  const dia = String(hoje.getDate()).padStart(2, '0');
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-  const ano = hoje.getFullYear();
-  return `${dia}/${mes}/${ano}`;
-}
-function fecharPopupApagarPorData() {
-  document.getElementById('popupApagarData').style.display = 'none';
-}
-  // Popup Oportunidade
-function abrirPopupOportunidade(callback) {
-  callbackOportunidade = callback;
-  document.getElementById('popupOportunidade').style.display = 'block';
-  document.getElementById('overlayOportunidade').style.display = 'block';
-  document.getElementById('inputOportunidade').value = '';
-  document.getElementById('inputOportunidade').focus();
-}
+                // Linha obrigatória para corrigir os selects:
+                atualizarSelectsDeFrotas();
 
-function fecharPopupOportunidade() {
-  document.getElementById('popupOportunidade').style.display = 'none';
-  document.getElementById('overlayOportunidade').style.display = 'none';
-}
+            } else {
+                document.getElementById("dataTurno").value = dataAtual();
+            }
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            carregarTudo();
+            mostrarHistorico();
+        });
+    </script>
 
-function confirmarOportunidade() {
-  const valor = document.getElementById('inputOportunidade').value.trim();
-  if (callbackOportunidade) callbackOportunidade(valor);
-  fecharPopupOportunidade();
-}
+    <script>
 
-function cancelarOportunidade() {
-  if (callbackOportunidade) callbackOportunidade('');
-  fecharPopupOportunidade();
-}
+        function gerarBackupCompleto() {
+            const dados = {
+                turno: JSON.parse(localStorage.getItem("turno")) || {},
+                historicoOS: JSON.parse(localStorage.getItem("historicoOS")) || {}
+            };
 
-// Popup Apagar por Data
-function abrirPopupApagarPorData() {
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-  const datas = Object.keys(historico);
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const agora = new Date();
+            const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+            const nomeArquivo = `backup_meuturno_${dataHora}.json`;
 
-  if (datas.length === 0) {
-    showToast("Nenhum histórico para apagar.");
-    return;
-  }
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
 
-  const select = document.getElementById('selectDatas');
-  select.innerHTML = datas.map(d => `<option value="${d}">${d}</option>`).join('');
+            URL.revokeObjectURL(url);
+            showToast(`Backup criado: ${nomeArquivo}`);
+        }
+        function restaurarBackupCompleto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-  document.getElementById('popupApagarData').style.display = 'block';
-  document.getElementById('overlayApagarData').style.display = 'block';
-}
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const dados = JSON.parse(e.target.result);
 
-function fecharPopupApagarPorData() {
-  document.getElementById('popupApagarData').style.display = 'none';
-  document.getElementById('overlayApagarData').style.display = 'none';
-}
+                    if (dados.turno) {
+                        localStorage.setItem("turno", JSON.stringify(dados.turno));
+                    }
+                    if (dados.historicoOS) {
+                        localStorage.setItem("historicoOS", JSON.stringify(dados.historicoOS));
+                    }
 
-function confirmarApagarPorData() {
-  const dataSelecionada = document.getElementById('selectDatas').value;
-  if (!dataSelecionada) {
-    showToast("Selecione uma data.");
-    return;
-  }
+                    carregarTudo();
+                    mostrarHistorico();
+                    showToast("Backup restaurado com sucesso!");
+                } catch (err) {
+                    showToast("Erro ao ler o arquivo de backup.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(() => console.log('Service Worker registrado com sucesso!'))
+                .catch(err => console.log('Erro ao registrar Service Worker:', err));
+        }
+        //popup botao apagar historico por data
 
-  const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+        function dataHojeBR() {
+            const hoje = new Date();
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const ano = hoje.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+        function fecharPopupApagarPorData() {
+            document.getElementById('popupApagarData').style.display = 'none';
+        }
+        // Popup Oportunidade
+        function abrirPopupOportunidade(callback) {
+            callbackOportunidade = callback;
+            document.getElementById('popupOportunidade').style.display = 'block';
+            document.getElementById('overlayOportunidade').style.display = 'block';
+            document.getElementById('inputOportunidade').value = '';
+            document.getElementById('inputOportunidade').focus();
+        }
 
-  if (historico[dataSelecionada]) {
-    delete historico[dataSelecionada];
-    localStorage.setItem("historicoOS", JSON.stringify(historico));
-    showToast(`Histórico da data ${dataSelecionada} apagado!`);
-    fecharPopupApagarPorData();
-    mostrarHistorico();
-  }
-}
-  
-</script>
-  <!-- popup oportunidades -->
-  <div class="popup-overlay" id="overlayOportunidade"></div>
-<div class="popup" id="popupOportunidade">
-  <h3>Informar Oportunidade</h3>
-  <input type="text" id="inputOportunidade" placeholder="Ex.: Refeição, DDS..." style="width:100%; padding:10px;">
-  <div class="botoes">
-    <button class="confirmar" onclick="confirmarOportunidade()">Confirmar</button>
-    <button class="cancelar" onclick="cancelarOportunidade()">Cancelar</button>
-  </div>
-</div>
-  <!-- popup apagar por data -->
-  <div class="popup-overlay" id="overlayApagarData"></div>
-<div class="popup" id="popupApagarData">
-  <h3>Selecione a Data</h3>
-  <select id="selectDatas" style="width:100%; padding:10px;"></select>
-  <div class="botoes">
-    <button class="confirmar" onclick="confirmarApagarPorData()">Apagar</button>
-    <button class="cancelar" onclick="fecharPopupApagarPorData()">Cancelar</button>
-  </div>
-</div>
+        function fecharPopupOportunidade() {
+            document.getElementById('popupOportunidade').style.display = 'none';
+            document.getElementById('overlayOportunidade').style.display = 'none';
+        }
+
+        function confirmarOportunidade() {
+            const valor = document.getElementById('inputOportunidade').value.trim();
+            if (callbackOportunidade) callbackOportunidade(valor);
+            fecharPopupOportunidade();
+        }
+
+        function cancelarOportunidade() {
+            if (callbackOportunidade) callbackOportunidade('');
+            fecharPopupOportunidade();
+        }
+
+        // Popup Apagar por Data
+        function abrirPopupApagarPorData() {
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+            const datas = Object.keys(historico);
+
+            if (datas.length === 0) {
+                showToast("Nenhum histórico para apagar.");
+                return;
+            }
+
+            const select = document.getElementById('selectDatas');
+            select.innerHTML = datas.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            document.getElementById('popupApagarData').style.display = 'block';
+            document.getElementById('overlayApagarData').style.display = 'block';
+        }
+
+        function fecharPopupApagarPorData() {
+            document.getElementById('popupApagarData').style.display = 'none';
+            document.getElementById('overlayApagarData').style.display = 'none';
+        }
+
+        function confirmarApagarPorData() {
+            const dataSelecionada = document.getElementById('selectDatas').value;
+            if (!dataSelecionada) {
+                showToast("Selecione uma data.");
+                return;
+            }
+
+            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+
+            if (historico[dataSelecionada]) {
+                delete historico[dataSelecionada];
+                localStorage.setItem("historicoOS", JSON.stringify(historico));
+                showToast(`Histórico da data ${dataSelecionada} apagado!`);
+                fecharPopupApagarPorData();
+                mostrarHistorico();
+            }
+        }
+
+    </script>
+    <!-- popup oportunidades -->
+    <div class="popup-overlay" id="overlayOportunidade"></div>
+    <div class="popup" id="popupOportunidade">
+        <h3>Informar Oportunidade</h3>
+        <input type="text" id="inputOportunidade" placeholder="Ex.: Refeição, DDS..." style="width:100%; padding:10px;">
+        <div class="botoes">
+            <button class="confirmar" onclick="confirmarOportunidade()">Confirmar</button>
+            <button class="cancelar" onclick="cancelarOportunidade()">Cancelar</button>
+        </div>
+    </div>
+    <!-- popup apagar por data -->
+    <div class="popup-overlay" id="overlayApagarData"></div>
+    <div class="popup" id="popupApagarData">
+        <h3>Selecione a Data</h3>
+        <select id="selectDatas" style="width:100%; padding:10px;"></select>
+        <div class="botoes">
+            <button class="confirmar" onclick="confirmarApagarPorData()">Apagar</button>
+            <button class="cancelar" onclick="fecharPopupApagarPorData()">Cancelar</button>
+        </div>
+    </div>
 </body>
+
 </html>
