@@ -305,6 +305,7 @@
                 transform: translate(-50%, -50%) scale(1);
             }
         }
+    
     </style>
 </head>
 
@@ -314,7 +315,7 @@
             <img src="logo.png" alt="Logo" style="height: 100px;">
         </div>
         <div class=linha>
-            <h1>Meu Turno</h1>
+            <h1>Mecânica</h1>
         </div>
     </header>
     <nav>
@@ -365,6 +366,25 @@
             style="background-color: #28a745; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
             Adicionar Serviço
         </button>
+        <button id="fabAddServico" onclick="verificarServicosPendentes()"
+    style="
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      font-size: 32px;
+      cursor: pointer;
+      z-index: 9999;
+      display: none; /* Começa escondido */
+    ">
+    +
+</button>
     </section>
     <section id="relatorio">
         <div class="grupo">
@@ -583,10 +603,13 @@
         // Função para mostrar toast
         function showToast(msg) {
             const toast = document.getElementById("toast");
+            if (!toast) return console.log("Toast não encontrado.");
             toast.innerText = msg;
             toast.className = "show";
             setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
+   
         }
+    
         // Função para adicionar uma nova frota
         function adicionarFrota() {
             const nome = document.getElementById('novaFrota').value.trim();
@@ -644,7 +667,7 @@
         }
 
         // Função para setar automaticamente a data atual no campo Data
-        function dataAtual() {
+        function dataHojeInput() {
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const mes = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -653,10 +676,11 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("dataTurno").value = dataAtual();
+            document.getElementById("dataTurno").value = dataHojeInput();
         });
     </script>
     <script>
+        let callbackOportunidade = null;
         let servicos = [];
 
         const atividades = [
@@ -712,7 +736,7 @@
 
             const novoServico = {
                 id, sistema: "", subsistema: "", frota: "", atividade: "", descricao: "", texto: "",
-                tipo: "CORRETIVA", parada: "sim", falha: "não", data: dataAtual(), inicio: "", fim: ""
+                tipo: "CORRETIVA", parada: "sim", falha: "não", data: dataHojeInput(), inicio: "", fim: ""
             };
 
             servicos.push(novoServico);
@@ -877,6 +901,7 @@
 
             selectSub.innerHTML = `<option value="">Nenhum</option>` +
                 subs.map(sub => `<option>${sub}</option>`).join('');
+            selectSub.value = "";
         }
 
         // Gera o texto da O.S.
@@ -888,7 +913,7 @@
             const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
             const descricao = document.getElementById(`descricao_${id}`).value || "-";
 
-            const dataRaw = document.getElementById(`data_${id}`).value || dataAtual();
+            const dataRaw = document.getElementById(`data_${id}`).value || dataHojeInput();
             const [ano, mes, dia] = dataRaw.split('-');
             const data = `${dia}/${mes}/${ano}`;
 
@@ -1030,7 +1055,7 @@
                 tipo: "CORRETIVA",
                 parada: "sim",
                 falha: "não",
-                data: dataAtual(),
+                data: dataHojeInput(),
                 inicio: "",
                 fim: ""
             };
@@ -1051,7 +1076,7 @@
                 s.tipo = document.getElementById(`tipo_${s.id}`)?.value || "CORRETIVA";
                 s.parada = document.getElementById(`parada_${s.id}`)?.value || "não";
                 s.falha = document.getElementById(`falha_${s.id}`)?.value || "não";
-                s.data = document.getElementById(`data_${s.id}`)?.value || dataAtual();
+                s.data = document.getElementById(`data_${s.id}`)?.value || dataHojeInput();
                 s.inicio = document.getElementById(`inicio_${s.id}`)?.value || "";
                 s.fim = document.getElementById(`fim_${s.id}`)?.value || "";
                 s.texto = document.getElementById(`texto_${s.id}`)?.value || "";
@@ -1063,7 +1088,7 @@
         function gerarRelatorioFinal() {
             salvarValoresServicos();
 
-            const data = document.getElementById("dataTurno").value || dataAtual();
+            const data = document.getElementById("dataTurno").value || dataHojeInput();
             const fazenda = document.getElementById("fazenda").value.trim();
             const frente = document.getElementById("frente").value.trim();
             const turno = document.getElementById("turnoLetra").value;
@@ -1073,11 +1098,11 @@
             const horasPorMaquina = frotasTurno.length > 0 ? frotasTurno[0].horas.toFixed(2) : "0";
             const horasTotais = frotasTurno.reduce((soma, f) => soma + f.horas, 0).toFixed(2);
 
-            const horasParadas = calcularHorasParadas();
+            const horasParadas = calcularHorasParadasSemSobreposicao();
             const dm = calcularDM(horasTotais, horasParadas);
             const frenteUpper = (frente || "FRENTE").toUpperCase();
 
-            const [ano, mes, dia] = (data || dataAtual()).split("-");
+            const [ano, mes, dia] = (data || dataHojeInput()).split("-");
             const dataFormatada = `${dia}/${mes}/${ano}`;
 
             let relatorio = `
@@ -1098,7 +1123,7 @@ ${equipeTexto}
 `;
 
             frotasTurno.forEach(f => {
-                const paradaFrota = calcularHorasParadasPorFrota(f.nome);
+                const paradaFrota = calcularHorasParadasPorFrotaSemSobreposicao(f.nome);
                 relatorio += `
 
 🚜 *${f.nome}*  
@@ -1189,6 +1214,37 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                     return soma + diferenca;
                 }, 0).toFixed(2);
         }
+    
+    function calcularHorasParadasSemSobreposicao() {
+    const intervalos = servicos
+        .filter(s => s.tipo === "CORRETIVA")
+        .map(s => {
+            const ini = (s.inicio || "00:00").split(":").map(Number);
+            const fim = (s.fim || "00:00").split(":").map(Number);
+            return [ini[0] * 60 + ini[1], fim[0] * 60 + fim[1]];
+        })
+        .filter(([ini, fim]) => fim > ini);
+
+    if (intervalos.length === 0) return 0;
+
+    intervalos.sort((a, b) => a[0] - b[0]);
+
+    const juntado = [intervalos[0]];
+
+    for (let i = 1; i < intervalos.length; i++) {
+        const ultimo = juntado[juntado.length - 1];
+        const atual = intervalos[i];
+
+        if (atual[0] <= ultimo[1]) {
+            ultimo[1] = Math.max(ultimo[1], atual[1]);
+        } else {
+            juntado.push(atual);
+        }
+    }
+
+    const totalMinutos = juntado.reduce((soma, [ini, fim]) => soma + (fim - ini), 0);
+    return (totalMinutos / 60).toFixed(2);
+}
 
         function calcularHorasParadasPorFrota(nomeFrota) {
             const horas = servicos
@@ -1205,6 +1261,36 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                 }, 0);
             return horas.toFixed(2);
         }
+    function calcularHorasParadasPorFrotaSemSobreposicao(nomeFrota) {
+    const intervalos = servicos
+        .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
+        .map(s => {
+            const ini = (s.inicio || "00:00").split(":").map(Number);
+            const fim = (s.fim || "00:00").split(":").map(Number);
+            return [ini[0] * 60 + ini[1], fim[0] * 60 + fim[1]];
+        })
+        .filter(([ini, fim]) => fim > ini);
+
+    if (intervalos.length === 0) return 0;
+
+    intervalos.sort((a, b) => a[0] - b[0]);
+
+    const juntado = [intervalos[0]];
+
+    for (let i = 1; i < intervalos.length; i++) {
+        const ultimo = juntado[juntado.length - 1];
+        const atual = intervalos[i];
+
+        if (atual[0] <= ultimo[1]) {
+            ultimo[1] = Math.max(ultimo[1], atual[1]);
+        } else {
+            juntado.push(atual);
+        }
+    }
+
+    const totalMinutos = juntado.reduce((soma, [ini, fim]) => soma + (fim - ini), 0);
+    return (totalMinutos / 60).toFixed(2);
+}
 
         function calcularDM(horasTotais, horasParadas) {
             const total = parseFloat(horasTotais);
@@ -1519,7 +1605,7 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                 atualizarSelectsDeFrotas();
 
             } else {
-                document.getElementById("dataTurno").value = dataAtual();
+                document.getElementById("dataTurno").value = dataHojeInput();
             }
         }
         document.addEventListener("DOMContentLoaded", () => {
@@ -1587,12 +1673,12 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
         //popup botao apagar historico por data
 
         function dataHojeBR() {
-            const hoje = new Date();
-            const dia = String(hoje.getDate()).padStart(2, '0');
-            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            const ano = hoje.getFullYear();
-            return `${dia}/${mes}/${ano}`;
-        }
+    return new Date().toLocaleDateString('pt-BR');
+}
+
+function dataHojeInput() {
+    return new Date().toISOString().split('T')[0];
+}
         function fecharPopupApagarPorData() {
             document.getElementById('popupApagarData').style.display = 'none';
         }
@@ -1660,6 +1746,59 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                 mostrarHistorico();
             }
         }
+    
+    function verificarServicosPendentes() {
+    salvarValoresServicos();
+
+    const pendentes = servicos.filter(s => !s.texto || s.texto.trim() === "");
+
+    if (pendentes.length > 0) {
+        const mensagens = pendentes.map(s => {
+            const frota = s.frota || "Sem Frota";
+            const atividade = (s.atividade || "").split(" - ")[0];
+            const sistema = s.sistema || "-";
+            const subsistema = (s.subsistema || "").split(" - ")[0];
+            const inicio = s.inicio || "--:--";
+            const fim = s.fim || "--:--";
+
+            return `
+FROTA: ${frota} (${atividade}-${sistema}-${subsistema})
+Início: ${inicio} - Fim: ${fim}
+❌ O.S NÃO FOI GERADA. FAVOR CONFERIR!
+--------------------------
+`;
+        }).join("\n");
+
+        alert(`ATENÇÃO!\n${mensagens}`);
+
+        // Scroll até o primeiro pendente
+        const primeiro = pendentes[0];
+        const elemento = document.getElementById(`servico_${primeiro.id}`);
+        if (elemento) {
+            elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+            showToast("Existem serviços sem O.S gerada!");
+        }
+    } else {
+        adicionarServico();
+    }
+}
+    
+    //visibilidadr do fab
+    const fab = document.getElementById('fabAddServico');
+
+window.addEventListener('scroll', () => {
+    const rodape = document.querySelector('footer') || document.body;
+    const rodapePos = rodape.getBoundingClientRect().bottom;
+    const windowHeight = window.innerHeight;
+
+    if (rodapePos < windowHeight + 100) {
+        fab.style.display = 'none';
+    } else {
+        fab.style.display = 'block';
+    }
+});
+    
+    
 
     </script>
     <!-- popup oportunidades -->
@@ -1682,6 +1821,7 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
             <button class="cancelar" onclick="fecharPopupApagarPorData()">Cancelar</button>
         </div>
     </div>
+        
+</button>
 </body>
-
 </html>
