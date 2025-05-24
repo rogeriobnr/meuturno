@@ -1,29 +1,44 @@
 const CACHE_NAME = 'meuturno-cache-v1';
-const URLS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/style.css',
-  '/meuturno.js',
-  '/icon-192.png',
-  '/icon-512.png'
+const urlsToCache = [
+  './',
+  './index.html',
+  './manifest.json',
+  './service-worker.js',
+  './logo.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
-// Instalando
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(URLS_TO_CACHE))
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        return cache.addAll(urlsToCache);
+      })
+  );
+  console.log('[ServiceWorker] Installed');
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        return response || fetch(event.request);
+      })
   );
 });
 
-// Ativando
 self.addEventListener('activate', event => {
-  event.waitUntil(clients.claim());
-});
-
-// Interceptando requests
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (!cacheWhitelist.includes(cacheName)) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
 });
