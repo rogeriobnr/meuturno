@@ -1,10 +1,11 @@
 {
   "name": "Meu Turno",
   "short_name": "Turno",
-  "start_url": ".",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f3f3f3",
+  "background_color": "#007acc",
   "theme_color": "#007acc",
+  "description": "App de Relatório de Manutenção",
   "icons": [
     {
       "src": "icon-192.png",
