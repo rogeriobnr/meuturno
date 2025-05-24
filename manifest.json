@@ -1,6 +1,6 @@
 {
   "name": "Meu Turno",
-  "short_name": "Turno",
+  "short_name": "MeuTurno",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#007acc",
