@@ -213,51 +213,51 @@
                 opacity: 0;
             }
         }
+     /* POPUP GENÉRICO */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    display: none;
+}
 
-        /* POPUP OVERLAY */
-        .popup-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            z-index: 9998;
-        }
+.popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    width: 90%;
+    max-width: 400px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
 
-        /* POPUP */
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            z-index: 9999;
-            width: 90%;
-            max-width: 400px;
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
+.popup h3 {
+    margin-top: 0;
+    text-align: center;
+}
 
-        .popup h3 {
-            margin-top: 0;
-            text-align: center;
-        }
+.popup p {
+    margin: 10px 0;
+    text-align: center;
+}
 
-        .popup input,
-        .popup select {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-        }
+.popup .botoes {
+    justify-content: center;
+    display: flex;
+    gap: 10px;
+}
 
-        .popup .botoes {
-            justify-content: center;
-        }
+        
 
         .btn-adicionar {
             background-color: #28a745;
@@ -273,16 +273,6 @@
         }
 
         .btn-adicionar:hover {
-            background-color: #218838;
-        }
-
-        .botoes button.btn-adicionar {
-            background-color: #28a745;
-            color: white;
-            font-weight: bold;
-        }
-
-        .botoes button.btn-adicionar:hover {
             background-color: #218838;
         }
 
@@ -366,7 +356,28 @@
             style="background-color: #28a745; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
             Adicionar Serviço
         </button>
-        <button id="fabAddServico" onclick="verificarServicosPendentes()"
+    <button id="fabAddFrota" onclick="abrirPopupFrota()"
+    style="
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+      background: #007acc;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      font-size: 30px;
+      cursor: pointer;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+    🚜
+</button>
+       <button id="fabAddServicos" onclick="verificarServicosPendentes()"
     style="
       position: fixed;
       bottom: 20px;
@@ -381,24 +392,23 @@
       font-size: 32px;
       cursor: pointer;
       z-index: 9999;
-      display: none; /* Começa escondido */
+      display: flex;
+      align-items: center;
+      justify-content: center;
     ">
     +
 </button>
     </section>
     <section id="relatorio">
+        <h3 style="text-align: center;">Visualização</h3>
+        <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
+        <textarea id="relatorio_bruto" class="editavel" style="display:none;"></textarea>
         <div class="grupo">
             <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
             <button onclick="compartilharRelatorio()">Compartilhar</button>
+            <button onclick="toggleEdicaoRelatorio()">Editar Relatório</button>
             <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
-
         </div>
-
-        <h3 style="text-align: center;">Visualização</h3>
-        <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
-        <h3 style="text-align: center;">Edição</h3>
-        <textarea id="relatorio_bruto" class="editavel"></textarea>
-
     </section>
     <section id="historico">
         <div class="grupo">
@@ -457,12 +467,11 @@
     <div id="toast"></div>
     <script>
         //limpar LocalStorage
-        function limparStorage() {
-            if (confirm('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.')) {
-                localStorage.clear();
-                location.reload();
-
-            }
+            function limparStorage() {
+             abrirPopupConfirmar('Tem certeza que deseja apagar TODOS os dados salvos? Isso não pode ser desfeito.', () => {
+              localStorage.clear();
+              location.reload();
+          });
         }
         // Versão atualizada para suporte a módulos e evolução contínua
         // Próximos passos: API para exportar e importar JSON, integração com IndexedDB para grande volume de dados
@@ -477,6 +486,19 @@
         }
     </script>
     <script>
+    function toggleEdicaoRelatorio() {
+    const textarea = document.getElementById("relatorio_bruto");
+    const botao = document.querySelector('button[onclick="toggleEdicaoRelatorio()"]');
+
+    if (textarea.style.display === 'none' || textarea.style.display === '') {
+        textarea.style.display = 'block';
+        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        botao.innerText = 'Ocultar Edição';
+    } else {
+        textarea.style.display = 'none';
+        botao.innerText = 'Editar Relatório';
+    }
+}
         function limparRelatorio() {
             document.getElementById("relatorio_bruto").value = '';
             document.getElementById("relatorio_formatado").innerHTML = '';
@@ -657,24 +679,14 @@
 
         // Função para remover uma frota
         function removerFrota(index) {
-            if (confirm('Deseja realmente remover esta frota?')) {
-                frotasTurno.splice(index, 1);
-                renderizarFrotas();
-                atualizarSelectsDeFrotas();
-                showToast("Frota removida!");
-                salvarTudo(); // <-- Aqui
-            }
-        }
-
-        // Função para setar automaticamente a data atual no campo Data
-        function dataHojeInput() {
-            const hoje = new Date();
-            const ano = hoje.getFullYear();
-            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            const dia = String(hoje.getDate()).padStart(2, '0');
-            return `${ano}-${mes}-${dia}`;
-        }
-
+    abrirPopupConfirmar('Deseja realmente remover esta frota?', () => {
+        frotasTurno.splice(index, 1);
+        renderizarFrotas();
+        atualizarSelectsDeFrotas();
+        showToast("Frota removida!");
+        salvarTudo();
+    });
+}
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("dataTurno").value = dataHojeInput();
         });
@@ -815,20 +827,27 @@
         </div>
       </div>
 
-      <div class="linha">
-        <div style="flex:1;">
-          <label>Data inicial</label>
-          <input type="date" id="data_${s.id}" value="${s.data}">
-        </div>
-        <div style="flex:1;">
-          <label>Hora inicial</label>
-          <input type="time" id="inicio_${s.id}" value="${s.inicio}">
-        </div>
-        <div style="flex:1;">
-          <label>Hora final</label>
-          <input type="time" id="fim_${s.id}" value="${s.fim}">
-        </div>
-      </div>
+    <div class="linha">
+  <div style="flex:1;">
+    <label>Data inicial</label>
+    <input type="date" id="data_${s.id}" value="${s.data || dataHojeInput()}">
+  </div>
+  <div style="flex:1;">
+    <label>Hora inicial</label>
+    <input type="time" id="inicio_${s.id}" value="${s.inicio || ''}">
+  </div>
+</div>
+
+<div class="linha">
+  <div style="flex:1;">
+    <label>Data final</label>
+    <input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInput()}">
+  </div>
+  <div style="flex:1;">
+    <label>Hora final</label>
+    <input type="time" id="fim_${s.id}" value="${s.fim || ''}">
+  </div>
+</div>
 
       <div class="botoes">
         <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
@@ -848,7 +867,7 @@
       <textarea class="editavel" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
     </div>
   `).join('');
-
+            
             // Controle do botão global
             const btnGlobal = document.getElementById("btnAddServico");
             if (servicos.length > 0) {
@@ -870,19 +889,20 @@
         function processarOS(id) {
             salvarValoresServicos();
 
+            const servico = servicos.find(s => s.id === id);
+            verificarDataCruzaMeiaNoite(servico);
             const botao = document.getElementById(`botao_${id}`);
-
+            
+            
             if (botao.innerText === "Gerar O.S") {
                 gerarTextoOS(id);
                 botao.innerText = "Regerar O.S";
                 showToast("O.S gerada!");
             } else {
-                if (confirm("Deseja realmente regerar esta O.S?")) {
-                    gerarTextoOS(id);
-                    showToast("O.S atualizada no histórico!");
-                } else {
-                    showToast("Ação de regerar cancelada.");
-                }
+                abrirPopupConfirmar('Deseja realmente regerar esta O.S?', () => {
+    gerarTextoOS(id);
+    showToast("O.S atualizada no histórico!");
+});
             }
 
             document.getElementById(`preview_${id}`).style.display = 'block';
@@ -894,15 +914,16 @@
         }
 
         // Carrega subsistemas baseado no sistema selecionado
-        function carregarSubsistema(id) {
-            const sistema = document.getElementById(`sistema_${id}`).value;
-            const subs = subsistemas[sistema] || [];
-            const selectSub = document.getElementById(`subsistema_${id}`);
+       function carregarSubsistema(id) {
+    const sistema = document.getElementById(`sistema_${id}`).value;
+    const subs = subsistemas[sistema] || [];
+    const selectSub = document.getElementById(`subsistema_${id}`);
 
-            selectSub.innerHTML = `<option value="">Nenhum</option>` +
-                subs.map(sub => `<option>${sub}</option>`).join('');
-            selectSub.value = "";
-        }
+    selectSub.innerHTML = `<option value="">Nenhum</option>` +
+        subs.map(sub => `<option>${sub}</option>`).join('');
+
+    selectSub.value = ""; // <-- ESSA LINHA GARANTE RESET
+}
 
         // Gera o texto da O.S.
         function gerarTextoOS(id) {
@@ -1019,23 +1040,24 @@
 
         // Remove serviço
         function removerServico(id) {
-            const index = servicos.findIndex(s => s.id === id);
+    abrirPopupConfirmar('Deseja realmente remover este serviço?', () => {
+        const index = servicos.findIndex(s => s.id === id);
 
-            if (confirm('Remover este serviço?')) {
-                servicos = servicos.filter(s => s.id !== id);
-                renderizarServicos();
-                showToast("Serviço removido!");
+        servicos = servicos.filter(s => s.id !== id);
+        renderizarServicos();
+        showToast("Serviço removido!");
 
-                setTimeout(() => {
-                    const cards = document.querySelectorAll('#servicosLista .grupo');
-
-                    if (cards.length > 0) {
-                        const targetIndex = Math.min(index, cards.length - 1);
-                        cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 200);
-            }
-        }
+        setTimeout(() => {
+    const cards = document.querySelectorAll('#servicosLista .grupo');
+    if (cards.length > 0) {
+        const targetIndex = Math.min(index, cards.length - 1);
+        requestAnimationFrame(() => {
+            cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
+}, 400);
+    });
+}
         function adicionarServicoDepois(idReferencia) {
             salvarValoresServicos(); // Salva o que já existe antes
 
@@ -1067,21 +1089,50 @@
             showToast("Novo serviço adicionado abaixo.");
         }
         function salvarValoresServicos() {
-            servicos.forEach(s => {
-                s.frota = document.getElementById(`frota_${s.id}`)?.value || "";
-                s.atividade = document.getElementById(`atividade_${s.id}`)?.value || "";
-                s.sistema = document.getElementById(`sistema_${s.id}`)?.value || "";
-                s.subsistema = document.getElementById(`subsistema_${s.id}`)?.value || "";
-                s.descricao = document.getElementById(`descricao_${s.id}`)?.value || "";
-                s.tipo = document.getElementById(`tipo_${s.id}`)?.value || "CORRETIVA";
-                s.parada = document.getElementById(`parada_${s.id}`)?.value || "não";
-                s.falha = document.getElementById(`falha_${s.id}`)?.value || "não";
-                s.data = document.getElementById(`data_${s.id}`)?.value || dataHojeInput();
-                s.inicio = document.getElementById(`inicio_${s.id}`)?.value || "";
-                s.fim = document.getElementById(`fim_${s.id}`)?.value || "";
-                s.texto = document.getElementById(`texto_${s.id}`)?.value || "";
-            });
-        }
+    servicos.forEach(s => {
+        s.frota = document.getElementById(`frota_${s.id}`)?.value || "";
+        s.atividade = document.getElementById(`atividade_${s.id}`)?.value || "";
+        s.sistema = document.getElementById(`sistema_${s.id}`)?.value || "";
+        s.subsistema = document.getElementById(`subsistema_${s.id}`)?.value || "";
+        s.descricao = document.getElementById(`descricao_${s.id}`)?.value || "";
+        s.tipo = document.getElementById(`tipo_${s.id}`)?.value || "CORRETIVA";
+        s.parada = document.getElementById(`parada_${s.id}`)?.value || "não";
+        s.falha = document.getElementById(`falha_${s.id}`)?.value || "não";
+        s.data = document.getElementById(`data_${s.id}`)?.value || dataHojeInput();
+        s.dataFinal = document.getElementById(`dataFinal_${s.id}`)?.value || s.data;
+        s.inicio = document.getElementById(`inicio_${s.id}`)?.value || "";
+        s.fim = document.getElementById(`fim_${s.id}`)?.value || "";
+        s.texto = document.getElementById(`texto_${s.id}`)?.value || "";
+    });
+}
+    function verificarDataCruzaMeiaNoite(servico) {
+    const dataIni = document.getElementById(`data_${servico.id}`).value;
+    const horaIni = document.getElementById(`inicio_${servico.id}`).value;
+    const dataFimInput = document.getElementById(`dataFinal_${servico.id}`);
+    const horaFim = document.getElementById(`fim_${servico.id}`).value;
+
+    const [hIni, mIni] = horaIni.split(':').map(Number);
+    const [hFim, mFim] = horaFim.split(':').map(Number);
+
+    const dataFinal = dataFimInput.value;
+
+    const ini = new Date(`${dataIni}T${horaIni}:00`);
+    const fim = new Date(`${dataFinal}T${horaFim}:00`);
+
+    if (dataIni === dataFinal && (hFim < hIni || (hFim === hIni && mFim < mIni))) {
+        abrirPopupConfirmar(
+  `O horário final é menor que o inicial na mesma data. Deseja ajustar a Data Final para o dia seguinte?`,
+  () => {
+    const novaData = new Date(dataFinal);
+    novaData.setDate(novaData.getDate() + 1);
+    const novaDataFormatada = novaData.toISOString().split('T')[0];
+    dataFimInput.value = novaDataFormatada;
+    servico.dataFinal = novaDataFormatada;
+    showToast(`Data final ajustada para ${novaDataFormatada}`);
+     }
+      );
+    }
+}
     </script>
     <script>
         // Função para gerar relatório consolidado
@@ -1098,8 +1149,8 @@
             const horasPorMaquina = frotasTurno.length > 0 ? frotasTurno[0].horas.toFixed(2) : "0";
             const horasTotais = frotasTurno.reduce((soma, f) => soma + f.horas, 0).toFixed(2);
 
-            const horasParadas = calcularHorasParadasSemSobreposicao();
-            const dm = calcularDM(horasTotais, horasParadas);
+            const horasParadas = calcularHorasParadasTurno();
+            const dm = calcularDMGeral();
             const frenteUpper = (frente || "FRENTE").toUpperCase();
 
             const [ano, mes, dia] = (data || dataHojeInput()).split("-");
@@ -1123,12 +1174,13 @@ ${equipeTexto}
 `;
 
             frotasTurno.forEach(f => {
-                const paradaFrota = calcularHorasParadasPorFrotaSemSobreposicao(f.nome);
+               const paradaFrota = calcularHorasParadasPorFrota(f.nome);
+               const dmFrota = calcularDMFrota(f.nome);
                 relatorio += `
-
 🚜 *${f.nome}*  
 Horas Planejada: ${f.horas}h  
 Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})  
+*DM:* ${dmFrota}%
 *RELATÓRIO:*  
 `;
 
@@ -1163,20 +1215,34 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
             showToast("Relatório gerado!");
         }
         function calcularDuracaoServico(servico) {
-            const [hIni, mIni] = (servico.inicio || "00:00").split(":").map(Number);
-            const [hFim, mFim] = (servico.fim || "00:00").split(":").map(Number);
-            const inicioMin = hIni * 60 + mIni;
-            const fimMin = hFim * 60 + mFim;
-            const diffMin = Math.max(fimMin - inicioMin, 0);
-            const horasDecimais = (diffMin / 60).toFixed(2);
-            const h = Math.floor(diffMin / 60);
-            const m = diffMin % 60;
-            const texto = h > 0 ? `${h}h` : "";
-            const textoMin = m > 0 ? `${m}min` : "";
-            const sep = (texto && textoMin) ? " " : "";
-            const textoCompleto = (texto || textoMin) ? `${texto}${sep}${textoMin}` : "0min";
-            return { horas: horasDecimais, texto: textoCompleto };
-        }
+    const [hIni, mIni] = (servico.inicio || "00:00").split(":").map(Number);
+    const [hFim, mFim] = (servico.fim || "00:00").split(":").map(Number);
+
+    const dataInicial = (servico.data || dataHojeInput());
+    const dataFinal = (servico.dataFinal || servico.data || dataHojeInput());
+
+    const dataIni = new Date(`${dataInicial}T${servico.inicio || "00:00"}:00`);
+    const dataFim = new Date(`${dataFinal}T${servico.fim || "00:00"}:00`);
+
+    if (dataFim < dataIni) {
+        // Segurança extra: se mesmo assim o fim for menor, adiciona 1 dia
+        dataFim.setDate(dataFim.getDate() + 1);
+    }
+
+    const diffMs = dataFim - dataIni;
+    const diffMin = Math.max(Math.floor(diffMs / 60000), 0);
+
+    const horasDecimais = (diffMin / 60).toFixed(2);
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+
+    const texto = h > 0 ? `${h}h` : "";
+    const textoMin = m > 0 ? `${m}min` : "";
+    const sep = (texto && textoMin) ? " " : "";
+    const textoCompleto = (texto || textoMin) ? `${texto}${sep}${textoMin}` : "0min";
+
+    return { horas: horasDecimais, texto: textoCompleto };
+}
 
         function formatarHoras(horasDecimais) {
             const horas = Math.floor(horasDecimais);
@@ -1198,76 +1264,15 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                 default: return "";
             }
         }
-
-        // Funções auxiliares de cálculo
-        function calcularHorasParadas() {
-            return servicos
-                .filter(s => s.tipo === "CORRETIVA")
-                .reduce((soma, s) => {
-                    const ini = s.inicio || "00:00";
-                    const fim = s.fim || "00:00";
-                    const [hIni, mIni] = ini.split(":").map(Number);
-                    const [hFim, mFim] = fim.split(":").map(Number);
-                    const inicioMin = hIni * 60 + mIni;
-                    const fimMin = hFim * 60 + mFim;
-                    const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
-                    return soma + diferenca;
-                }, 0).toFixed(2);
-        }
     
-    function calcularHorasParadasSemSobreposicao() {
-    const intervalos = servicos
-        .filter(s => s.tipo === "CORRETIVA")
-        .map(s => {
-            const ini = (s.inicio || "00:00").split(":").map(Number);
-            const fim = (s.fim || "00:00").split(":").map(Number);
-            return [ini[0] * 60 + ini[1], fim[0] * 60 + fim[1]];
-        })
-        .filter(([ini, fim]) => fim > ini);
-
-    if (intervalos.length === 0) return 0;
-
-    intervalos.sort((a, b) => a[0] - b[0]);
-
-    const juntado = [intervalos[0]];
-
-    for (let i = 1; i < intervalos.length; i++) {
-        const ultimo = juntado[juntado.length - 1];
-        const atual = intervalos[i];
-
-        if (atual[0] <= ultimo[1]) {
-            ultimo[1] = Math.max(ultimo[1], atual[1]);
-        } else {
-            juntado.push(atual);
-        }
-    }
-
-    const totalMinutos = juntado.reduce((soma, [ini, fim]) => soma + (fim - ini), 0);
-    return (totalMinutos / 60).toFixed(2);
-}
-
-        function calcularHorasParadasPorFrota(nomeFrota) {
-            const horas = servicos
-                .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
-                .reduce((soma, s) => {
-                    const ini = s.inicio || "00:00";
-                    const fim = s.fim || "00:00";
-                    const [hIni, mIni] = ini.split(":").map(Number);
-                    const [hFim, mFim] = fim.split(":").map(Number);
-                    const inicioMin = hIni * 60 + mIni;
-                    const fimMin = hFim * 60 + mFim;
-                    const diferenca = Math.max(fimMin - inicioMin, 0) / 60;
-                    return soma + diferenca;
-                }, 0);
-            return horas.toFixed(2);
-        }
-    function calcularHorasParadasPorFrotaSemSobreposicao(nomeFrota) {
+    // Cálculo correto das horas paradas por frota (considera sobreposição)
+function calcularHorasParadasPorFrota(nomeFrota) {
     const intervalos = servicos
         .filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA")
         .map(s => {
-            const ini = (s.inicio || "00:00").split(":").map(Number);
-            const fim = (s.fim || "00:00").split(":").map(Number);
-            return [ini[0] * 60 + ini[1], fim[0] * 60 + fim[1]];
+            const [hIni, mIni] = (s.inicio || "00:00").split(":").map(Number);
+            const [hFim, mFim] = (s.fim || "00:00").split(":").map(Number);
+            return [hIni * 60 + mIni, hFim * 60 + mFim];
         })
         .filter(([ini, fim]) => fim > ini);
 
@@ -1292,13 +1297,36 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
     return (totalMinutos / 60).toFixed(2);
 }
 
-        function calcularDM(horasTotais, horasParadas) {
-            const total = parseFloat(horasTotais);
-            const parada = parseFloat(horasParadas);
-            if (total === 0) return 0;
-            const dm = ((total - parada) / total) * 100;
-            return dm.toFixed(2);
-        }
+// DM por frota
+function calcularDMFrota(nomeFrota) {
+    const frotaInfo = frotasTurno.find(f => f.nome === nomeFrota);
+    if (!frotaInfo) return 100.00;
+
+    const horasPlanejada = parseFloat(frotaInfo.horas) || 0;
+    if (horasPlanejada === 0) return 100.00;
+
+    const horasParada = parseFloat(calcularHorasParadasPorFrota(nomeFrota));
+    const dm = ((horasPlanejada - horasParada) / horasPlanejada) * 100;
+    return dm < 0 ? 0 : dm.toFixed(2);
+}
+
+// Total turno
+function calcularHorasParadasTurno() {
+    return frotasTurno.reduce((total, f) => {
+        return total + Number(calcularHorasParadasPorFrota(f.nome));
+    }, 0).toFixed(2);
+}
+
+// DM geral turno
+function calcularDMGeral() {
+    const horasPlanejadas = frotasTurno.reduce((soma, f) => soma + (parseFloat(f.horas) || 0), 0);
+    if (horasPlanejadas === 0) return 100.00;
+
+    const horasParadas = parseFloat(calcularHorasParadasTurno());
+    const dm = ((horasPlanejadas - horasParadas) / horasPlanejadas) * 100;
+    return dm < 0 ? 0 : dm.toFixed(2);
+}
+     
     </script>
     <script>
         // Salva O.S no histórico automaticamente
@@ -1362,7 +1390,12 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
             <button onclick="toggleCorpo(${s.id})" style="background:none; border:none; width:10%;font-size:20px; cursor:pointer;">👁️</button>
           </div>
           <div class="linha">
-            OS: <input id="os_input_${s.id}" style="width:20%;" value="${s.osNumero || ""}" ${s.status === "pendente" ? "" : "disabled"}>
+            OS: <input 
+ id="os_input_${s.id}" 
+ style="width:20%;" 
+ value="${s.osNumero || ""}" 
+ oninput="validarOS(${s.id})"
+ ${s.status === "pendente" ? "" : "disabled"}>
             FROTA: ${s.frota} STATUS: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}
           </div>
           <div id="corpo_${s.id}" style="display:none; margin-top:10px;">
@@ -1385,6 +1418,14 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
 
             div.innerHTML = html;
         }
+    function validarOS(id) {
+    const input = document.getElementById(`os_input_${id}`);
+    const btnFinalizar = document.querySelector(`#corpo_${id} button`);
+
+    if (input && btnFinalizar) {
+        btnFinalizar.disabled = input.value.trim() === "";
+    }
+}
         function toggleMarkdown(id) {
             const interpretado = document.getElementById(`interpretado_${id}`);
             const texto = document.getElementById(`texto_${id}`);
@@ -1404,25 +1445,29 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
         }
         // Finaliza O.S.
         function finalizarOS(id) {
-            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-            const input = document.getElementById(`os_input_${id}`);
-            const numero = input.value.trim();
+    const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+    const input = document.getElementById(`os_input_${id}`);
+    const numero = input.value.trim();
 
-            if (!numero) return showToast("Preencha o número da O.S antes de finalizar.");
+    if (!numero) {
+        showToast("Preencha o número da O.S antes de finalizar.");
+        input.focus();
+        return;
+    }
 
-            for (const data in historico) {
-                const item = historico[data].find(s => s.id === id);
-                if (item) {
-                    item.status = "finalizada";
-                    item.osNumero = numero;
-                    break;
-                }
-            }
-
-            localStorage.setItem("historicoOS", JSON.stringify(historico));
-            mostrarHistorico();
-            showToast("O.S finalizada!");
+    for (const data in historico) {
+        const item = historico[data].find(s => s.id === id);
+        if (item) {
+            item.status = "finalizada";
+            item.osNumero = numero;
+            break;
         }
+    }
+
+    localStorage.setItem("historicoOS", JSON.stringify(historico));
+    mostrarHistorico();
+    showToast("O.S finalizada!");
+}
 
         // Edita número da O.S.
         function editarOS(id) {
@@ -1492,16 +1537,17 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
         }
         // Exclui
         function excluirHistorico(id, data) {
-            if (!confirm('Tem certeza que deseja excluir esta O.S?')) return;
+    abrirPopupConfirmar('Tem certeza que deseja excluir esta O.S?', () => {
+        const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
+        historico[data] = historico[data].filter(s => s.id !== id);
+        if (historico[data].length === 0) delete historico[data];
 
-            const historico = JSON.parse(localStorage.getItem("historicoOS")) || {};
-            historico[data] = historico[data].filter(s => s.id !== id);
-            if (historico[data].length === 0) delete historico[data];
+        localStorage.setItem("historicoOS", JSON.stringify(historico));
+        mostrarHistorico();
+        showToast("Histórico excluído!");
+    });
+}
 
-            localStorage.setItem("historicoOS", JSON.stringify(historico));
-            mostrarHistorico();
-            showToast("Histórico excluído!");
-        }
     </script>
     <script>
         function interpretarMarkdown(texto) {
@@ -1543,6 +1589,8 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
     <script>
         // Função para restaurar backup do histórico
         function restaurarBackupHistorico(event) {
+            abrirPopupConfirmar('Tem certeza que deseja importar este backup? Isso irá substituir os dados atuais.', () => {
+    // aqui vai o código de leitura do arquivo, que já está dentro da função.
             const file = event.target.files[0];
             if (!file) return;
 
@@ -1562,6 +1610,7 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
                 }
             };
             reader.readAsText(file);
+            });
         }
     </script>
     <script>
@@ -1639,30 +1688,25 @@ Horas Parada Total: ${paradaFrota}h (${formatarHoras(paradaFrota)})
             showToast(`Backup criado: ${nomeArquivo}`);
         }
         function restaurarBackupCompleto(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const dados = JSON.parse(e.target.result);
-
-                    if (dados.turno) {
-                        localStorage.setItem("turno", JSON.stringify(dados.turno));
-                    }
-                    if (dados.historicoOS) {
-                        localStorage.setItem("historicoOS", JSON.stringify(dados.historicoOS));
-                    }
-
-                    carregarTudo();
-                    mostrarHistorico();
-                    showToast("Backup restaurado com sucesso!");
-                } catch (err) {
-                    showToast("Erro ao ler o arquivo de backup.");
-                }
-            };
-            reader.readAsText(file);
-        }
+    abrirPopupConfirmar('Tem certeza que deseja importar este backup? Isso irá substituir os dados atuais.', () => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const dados = JSON.parse(e.target.result);
+                if (dados.turno) localStorage.setItem("turno", JSON.stringify(dados.turno));
+                if (dados.historicoOS) localStorage.setItem("historicoOS", JSON.stringify(dados.historicoOS));
+                carregarTudo();
+                mostrarHistorico();
+                showToast("Backup restaurado com sucesso!");
+            } catch (err) {
+                showToast("Erro ao ler o arquivo de backup.");
+            }
+        };
+        reader.readAsText(file);
+    });
+}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -1680,8 +1724,9 @@ function dataHojeInput() {
     return new Date().toISOString().split('T')[0];
 }
         function fecharPopupApagarPorData() {
-            document.getElementById('popupApagarData').style.display = 'none';
-        }
+    document.getElementById('popupApagarData').style.display = 'none';
+    document.getElementById('overlayApagarData').style.display = 'none';
+}
         // Popup Oportunidade
         function abrirPopupOportunidade(callback) {
             callbackOportunidade = callback;
@@ -1689,6 +1734,7 @@ function dataHojeInput() {
             document.getElementById('overlayOportunidade').style.display = 'block';
             document.getElementById('inputOportunidade').value = '';
             document.getElementById('inputOportunidade').focus();
+            fecharTeclado();
         }
 
         function fecharPopupOportunidade() {
@@ -1715,6 +1761,7 @@ function dataHojeInput() {
             if (datas.length === 0) {
                 showToast("Nenhum histórico para apagar.");
                 return;
+                fecharTeclado();
             }
 
             const select = document.getElementById('selectDatas');
@@ -1722,11 +1769,6 @@ function dataHojeInput() {
 
             document.getElementById('popupApagarData').style.display = 'block';
             document.getElementById('overlayApagarData').style.display = 'block';
-        }
-
-        function fecharPopupApagarPorData() {
-            document.getElementById('popupApagarData').style.display = 'none';
-            document.getElementById('overlayApagarData').style.display = 'none';
         }
 
         function confirmarApagarPorData() {
@@ -1769,7 +1811,9 @@ Início: ${inicio} - Fim: ${fim}
 `;
         }).join("\n");
 
-        alert(`ATENÇÃO!\n${mensagens}`);
+        abrirPopup('Atenção!', mensagens, [
+    { texto: 'OK', classe: 'confirmar' }
+]);
 
         // Scroll até o primeiro pendente
         const primeiro = pendentes[0];
@@ -1783,24 +1827,74 @@ Início: ${inicio} - Fim: ${fim}
     }
 }
     
-    //visibilidadr do fab
-    const fab = document.getElementById('fabAddServico');
+    // botão fab frota
+    function abrirPopupFrota() {
+    document.getElementById('popupFrota').style.display = 'block';
+    document.getElementById('overlayFrota').style.display = 'block';
+    document.getElementById('inputFrota').value = '';
+    document.getElementById('inputHoraFrota').value = '';
+        fecharTeclado();
+}
+
+function fecharPopupFrota() {
+    document.getElementById('popupFrota').style.display = 'none';
+    document.getElementById('overlayFrota').style.display = 'none';
+}
+
+function confirmarFrota() {
+    const nome = document.getElementById('inputFrota').value.trim();
+    const horas = parseFloat(document.getElementById('inputHoraFrota').value);
+
+    if (!nome || isNaN(horas) || horas <= 0) {
+        showToast("Preencha corretamente a frota e as horas!");
+        return;
+    }
+
+    frotasTurno.push({ nome, horas });
+    renderizarFrotas();
+    atualizarSelectsDeFrotas();
+    fecharPopupFrota();
+    showToast("Frota adicionada!");
+    salvarTudo();
+}
+    const fabServico = document.getElementById('fabAddServicos');
+const fabFrota = document.getElementById('fabAddFrota');
 
 window.addEventListener('scroll', () => {
     const rodape = document.querySelector('footer') || document.body;
     const rodapePos = rodape.getBoundingClientRect().bottom;
     const windowHeight = window.innerHeight;
+    const abaServicos = document.getElementById('servicos');
 
-    if (rodapePos < windowHeight + 100) {
-        fab.style.display = 'none';
+    if (!fabServico || !fabFrota) return; // <-- segurança máxima contra erros
+
+    if (abaServicos.classList.contains('active')) {
+        if (rodapePos < windowHeight + 100) {
+            fabServico.style.display = 'none';
+            fabFrota.style.display = 'none';
+        } else {
+            fabServico.style.display = 'flex';
+            fabFrota.style.display = 'flex';
+        }
     } else {
-        fab.style.display = 'block';
+        fabServico.style.display = 'none';
+        fabFrota.style.display = 'none';
     }
 });
-    
-    
 
     </script>
+    <div class="popup-overlay" id="overlayFrota"></div>
+<div class="popup" id="popupFrota">
+    <h3>Adicionar Frota</h3>
+    <label>Frota</label>
+    <input type="text" id="inputFrota" placeholder="Ex.: JD6115J">
+    <label>Horas Planejadas</label>
+    <input type="number" step="0.1" id="inputHoraFrota" placeholder="Ex.: 7.20">
+    <div class="botoes">
+        <button class="confirmar" onclick="confirmarFrota()">Adicionar</button>
+        <button class="cancelar" onclick="fecharPopupFrota()">Cancelar</button>
+    </div>
+</div>
     <!-- popup oportunidades -->
     <div class="popup-overlay" id="overlayOportunidade"></div>
     <div class="popup" id="popupOportunidade">
@@ -1821,7 +1915,70 @@ window.addEventListener('scroll', () => {
             <button class="cancelar" onclick="fecharPopupApagarPorData()">Cancelar</button>
         </div>
     </div>
-        
-</button>
+        <div class="popup-overlay" id="overlayConfirmar"></div>
+<div class="popup" id="popupConfirmar">
+    <h3>Confirmação</h3>
+    <p id="popupConfirmarMensagem">Mensagem aqui...</p>
+    <div class="botoes">
+        <button class="confirmar" onclick="confirmarPopupAcao()">Confirmar</button>
+        <button class="cancelar" onclick="fecharPopupConfirmar()">Cancelar</button>
+    </div>
+</div>
+    <script>
+    function abrirPopup(titulo, mensagem, botoes = []) {
+    document.getElementById('popupTitulo').innerText = titulo;
+    document.getElementById('popupMensagem').innerText = mensagem;
+
+    const divBotoes = document.getElementById('popupBotoes');
+    divBotoes.innerHTML = '';
+
+    botoes.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = b.classe || 'confirmar';
+        btn.innerText = b.texto;
+        btn.onclick = () => {
+            fecharPopup();
+            if (b.acao) b.acao();
+        };
+        divBotoes.appendChild(btn);
+    });
+
+    document.getElementById('popupGenerico').style.display = 'block';
+    document.getElementById('overlayPopup').style.display = 'block';
+}
+
+function fecharPopup() {
+    document.getElementById('popupGenerico').style.display = 'none';
+    document.getElementById('overlayPopup').style.display = 'none';
+}
+    let callbackConfirmar = null;
+
+function abrirPopupConfirmar(mensagem, acao) {
+    document.getElementById('popupConfirmarMensagem').innerText = mensagem;
+    document.getElementById('overlayConfirmar').style.display = 'block';
+    document.getElementById('popupConfirmar').style.display = 'block';
+    callbackConfirmar = acao;
+    fecharTeclado();
+}
+
+function confirmarPopupAcao() {
+    if (callbackConfirmar) callbackConfirmar();
+    fecharPopupConfirmar();
+}
+
+function fecharPopupConfirmar() {
+    document.getElementById('overlayConfirmar').style.display = 'none';
+    document.getElementById('popupConfirmar').style.display = 'none';
+}
+    function fecharTeclado() {
+    document.activeElement.blur();
+}
+    </script>
+    <div class="popup-overlay" id="overlayPopup"></div>
+<div class="popup" id="popupGenerico">
+    <h3 id="popupTitulo"></h3>
+    <p id="popupMensagem"></p>
+    <div class="botoes" id="popupBotoes"></div>
+</div>
 </body>
 </html>
