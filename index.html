@@ -549,6 +549,12 @@
             <p>Restaura apenas o histórico de O.S.</p>
 
             <hr>
+            
+            <button onclick="limparTodosServicos()" style="background:#d9534f; color:white;" class="botao-vermelho">
+                🗑️ Limpar todos os serviços</button>
+            <p style="color:#d9534f;">Apaga todos os serviços criados. (Confirmação necessária)</p>
+       
+            <hr>
 
             <button onclick="limparStorage()" style="background:#d9534f; color:white;">
                 🗑️ Resetar Tudo (Apagar LocalStorage)
@@ -597,6 +603,15 @@
         botao.innerText = 'Editar Relatório';
     }
 }
+    function limparTodosServicos() {
+  abrirPopupConfirmar("Tem certeza que deseja apagar todos os serviços?", () => {
+    servicos = [];
+    localStorage.removeItem("servicos");
+    localStorage.removeItem("servicosRascunho");
+    renderizarServicos();
+    showToast("Todos os serviços foram apagados com sucesso!");
+  });
+}      
         function limparRelatorio() {
             document.getElementById("relatorio_bruto").value = '';
             document.getElementById("relatorio_formatado").innerHTML = '';
@@ -989,7 +1004,7 @@ function salvarServicosRascunho() {
   id="descricao_${s.id}" 
   class="input-padrao descricao" 
   placeholder="Descrição do serviço"
-  style="font-family: 'Segoe UI', Roboto, sans-serif; font-size: 17px; line-height: 1.4;">${s.descricao}</textarea>
+  style="font-family: 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.4;">${s.descricao}</textarea>
     </div>
 
     <div class="bloco">
@@ -2129,6 +2144,7 @@ function fecharPopupConfirmar() {
     window.addEventListener('DOMContentLoaded', () => {
     window._deveRestaurarServicos = true;
 });
+    
     </script>
     <script>
 // Registro do Service Worker com detecção de nova versão
