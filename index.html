@@ -2035,18 +2035,26 @@ function fecharPopupConfirmar() {
 });
     </script>
     <script>
+// Registro do Service Worker com detecção de nova versão
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js').then(reg => {
     reg.onupdatefound = () => {
       const newWorker = reg.installing;
       newWorker.onstatechange = () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Mostra o popup de nova versão
           document.getElementById('update-popup').style.display = 'block';
         }
       };
     };
   }).catch(err => {
     console.log('Erro ao registrar o Service Worker:', err);
+  });
+
+  // Auto-reload quando a nova versão assumir o controle
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('Nova versão ativada. Recarregando automaticamente...');
+    window.location.reload();
   });
 }
 </script>
