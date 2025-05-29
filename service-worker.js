@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meuturno-cache-v1';
+const CACHE_NAME = 'meuturno-cache-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -10,35 +10,36 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  console.log('[ServiceWorker] Instalando nova versão...');
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-  );
-  console.log('[ServiceWorker] Installed');
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
 self.addEventListener('activate', event => {
+  console.log('[ServiceWorker] Ativando e limpando caches antigos...');
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (!cacheWhitelist.includes(cacheName)) {
+            console.log('[ServiceWorker] Deletando cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
     })
   );
 });
