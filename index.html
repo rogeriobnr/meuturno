@@ -297,6 +297,57 @@
   border-bottom: 1px solid #ccc;
   padding-bottom: 4px;
 }
+    .input-padrao {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: white;
+}
+
+.grupo {
+  padding: 15px;
+  background: #fff;
+  margin: 10px 15px 0 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.bloco {
+  margin-bottom: 25px;
+}
+
+.bloco h4 {
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #007acc;
+  border-left: 4px solid #007acc;
+  padding-left: 10px;
+}
+
+.linha {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-adicionar {
+  background: #007acc;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  margin-top: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.btn-adicionar:hover {
+  background: #005f99;
+}
 
         @keyframes fadeIn {
             from {
@@ -329,40 +380,57 @@
         <button onclick="abrir('historico')">Histórico</button>
         <button onclick="abrir('config')">Configurar</button>
     </nav>
+    
     <section id="turno" class="active">
-        <div class="grupo">
-            <label>Data</label>
-            <input id="dataTurno" type="date">
-            <label>Fazenda</label>
-            <input id="fazenda" type="text">
-            <label>Frente</label>
-            <input id="frente" type="text">
-            <label>Turno</label>
-            <select id="turnoLetra">
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-            </select>
-            <div class="grupo">
-                <label><b>Equipe</b></label>
-                <div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
-                    <input id="nomeEquipe" type="text" placeholder="Nome" style="flex: 1;">
-                    <input id="matriculaEquipe" type="text" placeholder="Matrícula" style="flex: 1;">
-                    <button onclick="adicionarEquipe()">Adicionar</button>
-                </div>
-                <div id="boxEquipe"></div>
-            </div>
+  <div class="grupo">
 
-            <div class="grupo">
-                <label>Frota</label>
-                <input id="novaFrota" type="text" placeholder="Código da frota">
-                <label>Horas Planejadas</label>
-                <input id="novaHoraFrota" type="number" step="0.1" placeholder="Ex: 7.20">
-                <button onclick="adicionarFrota()">Adicionar Frota</button>
-            </div>
-            <div class="grupo" id="listaFrotas"></div>
-        </div>
-    </section>
+    <div class="bloco">
+      <h4>Dados do Turno</h4>
+
+      <label><strong>Data</strong></label>
+      <input id="dataTurno" type="date" class="input-padrao">
+
+      <label><strong>Fazenda</strong></label>
+      <input id="fazenda" type="text" class="input-padrao" placeholder="Digite o nome da fazenda">
+
+      <label><strong>Frente / Local</strong></label>
+      <input id="frente" type="text" class="input-padrao" placeholder="Digite a frente de trabalho">
+
+      <label><strong>Turno</strong></label>
+      <select id="turnoLetra" class="input-padrao">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+      </select>
+    </div>
+
+    <div class="bloco">
+      <h4>Equipe</h4>
+
+      <div class="linha">
+        <input id="nomeEquipe" type="text" class="input-padrao" placeholder="Nome" style="flex:1;">
+        <input id="matriculaEquipe" type="text" class="input-padrao" placeholder="Matrícula" style="flex:1;">
+      </div>
+
+      <button onclick="adicionarEquipe()" class="btn-adicionar">Adicionar</button>
+      <div id="boxEquipe"></div>
+    </div>
+
+    <div class="bloco">
+      <h4>Frotas</h4>
+
+      <div class="linha">
+        <input id="novaFrota" type="text" class="input-padrao" placeholder="Código da frota" style="flex:1;">
+        <input id="novaHoraFrota" type="number" step="0.1" class="input-padrao" placeholder="Ex: 7.20" style="flex:1;">
+      </div>
+
+      <button onclick="adicionarFrota()" class="btn-adicionar">Adicionar Frota</button>
+      <div id="listaFrotas" style="margin-top:10px;"></div>
+    </div>
+
+  </div>
+</section>
+    
     <section id="servicos">
         <div id="servicosLista">
         </div>
@@ -413,17 +481,27 @@
     +
 </button>
     </section>
-    <section id="relatorio">
-        <h3 style="text-align: center;">Visualização</h3>
-        <div id="relatorio_formatado" class="grupo" style="white-space: pre-line;"></div>
-        <textarea id="relatorio_bruto" class="editavel" style="display:none;"></textarea>
-        <div class="grupo">
-            <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
-            <button onclick="compartilharRelatorio()">Compartilhar</button>
-            <button onclick="toggleEdicaoRelatorio()">Editar Relatório</button>
-            <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
-        </div>
-    </section>
+ <section id="relatorio">
+  <div class="grupo">
+
+    <div class="bloco">
+      <h4 style="text-align: center;">Visualização</h4>
+      <div id="relatorio_formatado" style="white-space: pre-line;"></div>
+      <textarea id="relatorio_bruto" class="editavel" style="display:none;"></textarea>
+    </div>
+
+    <div class="bloco">
+      <h4 style="text-align: center;">Ações</h4>
+      <div class="botoes" style="text-align:center;">
+        <button onclick="gerarRelatorioFinal()">Gerar Relatório Final</button>
+        <button onclick="compartilharRelatorio()">Compartilhar</button>
+        <button onclick="toggleEdicaoRelatorio()">Editar Relatório</button>
+        <button onclick="limparRelatorio()" style="background:#d9534f; color:white;">Limpar Relatório</button>
+      </div>
+    </div>
+
+  </div>
+</section>
     <section id="historico">
         <div class="grupo">
             <button onclick="abrirPopupApagarPorData()" style="background:#d9534f; color:white;">
@@ -735,7 +813,7 @@
             "Tratores": [
                 { cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" },
                 { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" },
-                { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio2" }
+                { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio" }
             ],
             "Implementos": [
                 { cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" },
@@ -807,31 +885,36 @@ function salvarServicosRascunho() {
     });
 }
         // Renderiza todos os serviços
-        function renderizarServicos() {
-            const div = document.getElementById("servicosLista");
-            div.innerHTML = servicos.map(s => `
-  <div class="grupo" id="servico_${s.id}">
+       function renderizarServicos() {
+  const div = document.getElementById("servicosLista");
+  div.innerHTML = servicos.map(s => `
+  <div class="grupo servico" id="servico_${s.id}" style="margin-bottom: 20px;">
 
     <div class="bloco">
-      <h4>Identificação da O.S</h4>
-      <label>Frota</label>
-      <select id="frota_${s.id}">
-        <option value="">Nenhum</option>
-        ${frotasTurno.map(f =>
-          `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
-        ).join('')}
-      </select>
-
-      <label>Atividade</label>
-      <select id="atividade_${s.id}">
-        <option value="">Nenhum</option>
-        ${atividades.map(a =>
-          `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
-        ).join('')}
-      </select>
+      <h4> Identificação da O.S</h4>
+      <div class="linha">
+        <div style="flex:1;">
+          <label>Frota</label>
+          <select id="frota_${s.id}" class="input-padrao">
+            <option value="">Nenhum</option>
+            ${frotasTurno.map(f =>
+              `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>Atividade</label>
+          <select id="atividade_${s.id}" class="input-padrao">
+            <option value="">Nenhum</option>
+            ${atividades.map(a =>
+              `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
 
       <label>Sistema</label>
-      <select id="sistema_${s.id}" onchange="carregarSubsistema(${s.id})">
+      <select id="sistema_${s.id}" class="input-padrao" onchange="carregarSubsistema(${s.id})">
         <option value="">Nenhum</option>
         ${Object.entries(sistemas).map(([g, lst]) => `
           <optgroup label="${g}">
@@ -843,7 +926,7 @@ function salvarServicosRascunho() {
       </select>
 
       <label>Subsistema</label>
-      <select id="subsistema_${s.id}">
+      <select id="subsistema_${s.id}" class="input-padrao">
         <option value="">Nenhum</option>
         ${(subsistemas[s.sistema] || []).map(sub =>
           `<option ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
@@ -852,18 +935,18 @@ function salvarServicosRascunho() {
     </div>
 
     <div class="bloco">
-      <h4>Operação</h4>
+      <h4> Operação</h4>
       <div class="linha">
         <div style="flex:1;">
           <label>Máquina parada?</label>
-          <select id="parada_${s.id}">
+          <select id="parada_${s.id}" class="input-padrao">
             <option value="sim" ${!s.parada || s.parada === "sim" ? 'selected' : ''}>Sim</option>
             <option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option>
           </select>
         </div>
         <div style="flex:1;">
           <label>Falha operacional?</label>
-          <select id="falha_${s.id}">
+          <select id="falha_${s.id}" class="input-padrao">
             <option value="não" ${!s.falha || s.falha === "não" ? 'selected' : ''}>Não</option>
             <option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option>
           </select>
@@ -871,7 +954,7 @@ function salvarServicosRascunho() {
       </div>
 
       <label>Tipo de manutenção</label>
-      <select id="tipo_${s.id}">
+      <select id="tipo_${s.id}" class="input-padrao">
         <option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>CORRETIVA</option>
         <option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>CONDICIONAL</option>
         <option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>MELHORIA</option>
@@ -880,66 +963,70 @@ function salvarServicosRascunho() {
       <div class="linha">
         <div style="flex:1;">
           <label>Data inicial</label>
-          <input type="date" id="data_${s.id}" value="${s.data || dataHojeInput()}">
+          <input type="date" id="data_${s.id}" value="${s.data || dataHojeInput()}" class="input-padrao">
         </div>
         <div style="flex:1;">
           <label>Hora inicial</label>
-          <input type="time" id="inicio_${s.id}" value="${s.inicio || ''}">
+          <input type="time" id="inicio_${s.id}" value="${s.inicio || ''}" class="input-padrao">
         </div>
       </div>
 
       <div class="linha">
         <div style="flex:1;">
           <label>Data final</label>
-          <input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInput()}">
+          <input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInput()}" class="input-padrao">
         </div>
         <div style="flex:1;">
           <label>Hora final</label>
-          <input type="time" id="fim_${s.id}" value="${s.fim || ''}">
+          <input type="time" id="fim_${s.id}" value="${s.fim || ''}" class="input-padrao">
         </div>
       </div>
     </div>
-      <textarea id="descricao_${s.id}" style="display:none;">${s.descricao}</textarea>
-     </br>       
-    <div class="botoes">
-      <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
-        ${s.texto ? "Regerar O.S" : "Gerar O.S"}
-      </button>
-    </div>
-    
-    <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
-      <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
-      <div class="botoes">
-        <button onclick="copiarTexto(${s.id})">Copiar</button>
-        <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button> 
-        <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">❌ Excluir</button>
-      </div>
+
+    <div class="bloco">
+      <h4> Descrição</h4>
+      <textarea 
+  id="descricao_${s.id}" 
+  class="input-padrao descricao" 
+  placeholder="Descrição do serviço"
+  style="font-family: 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.4;">${s.descricao}</textarea>
     </div>
 
-    <textarea class="editavel" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
+    <div class="bloco">
+      <div class="botoes">
+        <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
+          ${s.texto ? "Regerar O.S" : "Gerar O.S"}
+        </button>
+      </div>
+
+      <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
+        <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
+        <div class="botoes">
+          <button onclick="copiarTexto(${s.id})">Copiar</button>
+          <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button>
+          <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">❌ Excluir</button>
+        </div>
+      </div>
+
+      <textarea class="editavel input-padrao" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
+    </div>
 
   </div>
 `).join('');
-            aplicarEventosRascunho();
-            // Controle do botão global
-            const btnGlobal = document.getElementById("btnAddServico");
-            if (servicos.length > 0) {
-                btnGlobal.style.display = "none";
-            } else {
-                btnGlobal.style.display = "block";
-            }
 
-            // Scroll suave para o último serviço renderizado
-            setTimeout(() => {
-                const lista = document.getElementById("servicosLista");
-                const ultimo = lista.lastElementChild;
-                if (ultimo) {
-                    ultimo.scrollIntoView({ behavior: 'smooth' });
-                }
-            }, 100);
-            
-        }
+  aplicarEventosRascunho();
 
+  const btnGlobal = document.getElementById("btnAddServico");
+  btnGlobal.style.display = servicos.length > 0 ? "none" : "block";
+
+  setTimeout(() => {
+    const lista = document.getElementById("servicosLista");
+    const ultimo = lista.lastElementChild;
+    if (ultimo) {
+      ultimo.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, 100);
+}
     function aplicarEventosRascunho() {
     document.querySelectorAll('#servicosLista .servico input, #servicosLista .servico select, #servicosLista .servico textarea').forEach(el => {
         el.addEventListener('input', salvarServicosRascunho);
@@ -988,36 +1075,40 @@ function salvarServicosRascunho() {
 
         // Gera o texto da O.S.
         function gerarTextoOS(id) {
-            const f = document.getElementById(`frota_${id}`).value || "Nenhum";
-            const frente = document.getElementById("frente").value || "Nenhum";
-            const atividade = document.getElementById(`atividade_${id}`).value || "Nenhum";
-            const sistema = document.getElementById(`sistema_${id}`).value || "Nenhum";
-            const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
-            const descricao = document.getElementById(`descricao_${id}`).value || "-";
+    const f = document.getElementById(`frota_${id}`).value || "Nenhum";
+    const frente = document.getElementById("frente").value || "Nenhum";
+    const atividade = document.getElementById(`atividade_${id}`).value || "Nenhum";
+    const sistema = document.getElementById(`sistema_${id}`).value || "Nenhum";
+    const subsistema = document.getElementById(`subsistema_${id}`).value || "Nenhum";
+    const descricao = document.getElementById(`descricao_${id}`).value || "-";
 
-            const dataRaw = document.getElementById(`data_${id}`).value || dataHojeInput();
-            const [ano, mes, dia] = dataRaw.split('-');
-            const data = `${dia}/${mes}/${ano}`;
+    const dataRaw = document.getElementById(`data_${id}`).value || dataHojeInput();
+    const [ano, mes, dia] = dataRaw.split('-');
+    const data = `${dia}/${mes}/${ano}`;
 
-            const inicio = document.getElementById(`inicio_${id}`).value || "--:--";
-            const fim = document.getElementById(`fim_${id}`).value || "--:--";
+    const inicio = document.getElementById(`inicio_${id}`).value || "--:--";
+    const fim = document.getElementById(`fim_${id}`).value || "--:--";
 
-            const parada = document.getElementById(`parada_${id}`).value;
-            const tipo = document.getElementById(`tipo_${id}`).value;
-            const falha = document.getElementById(`falha_${id}`).value;
+    const parada = document.getElementById(`parada_${id}`).value;
+    const tipo = document.getElementById(`tipo_${id}`).value;
+    const falha = document.getElementById(`falha_${id}`).value;
 
-            const solicitante = obterEquipeTexto() || "Equipe não informada";
+    const solicitante = obterEquipeTexto() || "Equipe não informada";
 
-            const dadosOS = { f, frente, atividade, sistema, subsistema, descricao, data, inicio, fim, parada, tipo, falha, solicitante };
+    const servico = servicos.find(s => s.id === id); // <- importante para salvar oportunidade
 
-            if (tipo === "CONDICIONAL" || tipo === "MELHORIA") {
-                abrirPopupOportunidade(function (oportunidade) {
-                    gerarTextoOSFinal(oportunidade, dadosOS, id);
-                });
-            } else {
-                gerarTextoOSFinal('', dadosOS, id);
-            }
-        }
+    const dadosOS = { f, frente, atividade, sistema, subsistema, descricao, data, inicio, fim, parada, tipo, falha, solicitante };
+
+    if (tipo === "CONDICIONAL" || tipo === "MELHORIA") {
+        abrirPopupOportunidade(function (oportunidade) {
+            servico.oportunidade = oportunidade; // <- SALVANDO AQUI
+            gerarTextoOSFinal(oportunidade, dadosOS, id);
+        });
+    } else {
+        servico.oportunidade = ''; // <- LIMPA CASO SEJA CORRETIVA
+        gerarTextoOSFinal('', dadosOS, id);
+    }
+}
         function gerarTextoOSFinal(oportunidade, dados, id) {
             const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
                 `*Máquina está parada por manutenção:* \n` +
@@ -1447,18 +1538,23 @@ function calcularDMGeral() {
                     html += `
         <div class="grupo" style="background:#f9f9f9;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>${s.datahora}</strong>
+            <div style="font-weight: bold; font-size: 15px;">
+  ${s.datahora.split(', ')[1] || s.datahora}
+</div>
             <button onclick="toggleCorpo(${s.id})" style="background:none; border:none; width:10%;font-size:20px; cursor:pointer;">👁️</button>
           </div>
-          <div class="linha">
-            OS: <input 
- id="os_input_${s.id}" 
- style="width:20%;" 
- value="${s.osNumero || ""}" 
- oninput="validarOS(${s.id})"
- ${s.status === "pendente" ? "" : "disabled"}>
-            FROTA: ${s.frota} STATUS: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}
-          </div>
+          <div class="linha" style="flex-wrap: wrap; align-items: center; gap: 10px;">
+  <label style="font-weight: bold;">OS:</label>
+  <input 
+    id="os_input_${s.id}" 
+    style="min-width: 80px; max-width: 90px;" 
+    value="${s.osNumero || ""}" 
+    oninput="validarOS(${s.id})"
+    ${s.status === "pendente" ? "" : "disabled"}>
+
+  <span><strong>Frota:</strong> ${s.frota}</span>
+  <span><strong>Status:</strong> ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+</div>
           <div id="corpo_${s.id}" style="display:none; margin-top:10px;">
             <textarea class="editavel" id="htexto_${s.id}">${s.texto}</textarea>
             <div class="botoes">
