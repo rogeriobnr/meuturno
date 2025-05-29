@@ -283,6 +283,20 @@
         .linha input[type="time"] {
             min-width: 100px;
         }
+        .bloco {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background: #fff;
+}
+.bloco h4 {
+  margin: 0 0 8px;
+  color: #007acc;
+  font-size: 16px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 4px;
+}
 
         @keyframes fadeIn {
             from {
@@ -483,6 +497,12 @@
 
             document.getElementById(modulo).classList.add('active');
             document.querySelector(`nav button[onclick="abrir('${modulo}')"]`).classList.add('active');
+            if (modulo === 'servicos') {
+              if (window._deveRestaurarServicos) {
+                restaurarServicosRascunho();
+                window._deveRestaurarServicos = false;
+              }
+            }
         }
     </script>
     <script>
@@ -759,25 +779,55 @@
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             }, 100);
         }
+    
+        // Salva o rascunho de serviços temporários
+function salvarServicosRascunho() {
+    const servicos = Array.from(document.querySelectorAll('.servico')).map(div => {
+        return {
+            frota: div.querySelector('.frota').value,
+            atividade: div.querySelector('.atividade').value,
+            sistema: div.querySelector('.sistema').value,
+            subsistema: div.querySelector('.subsistema').value,
+            descricao: div.querySelector('.descricao').value,
+            parada: div.querySelector('.parada').checked,
+            manutencao: div.querySelector('.manutencao').value,
+            falha: div.querySelector('.falha').value,
+            data: div.querySelector('.data').value,
+            inicio: div.querySelector('.inicio').value,
+            fim: div.querySelector('.fim').value,
+            solicitante: div.querySelector('.solicitante').value
+        };
+    });
+    localStorage.setItem('servicosRascunho', JSON.stringify(servicos));
+}
+    function restaurarServicosRascunho() {
+    const rascunhos = JSON.parse(localStorage.getItem('servicosRascunho')) || [];
+    rascunhos.forEach(dados => {
+        adicionarServico(dados);
+    });
+}
         // Renderiza todos os serviços
         function renderizarServicos() {
             const div = document.getElementById("servicosLista");
             div.innerHTML = servicos.map(s => `
-    <div class="grupo" id="servico_${s.id}">
+  <div class="grupo" id="servico_${s.id}">
+
+    <div class="bloco">
+      <h4>Identificação da O.S</h4>
       <label>Frota</label>
       <select id="frota_${s.id}">
         <option value="">Nenhum</option>
         ${frotasTurno.map(f =>
-                `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
-            ).join('')}
+          `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`
+        ).join('')}
       </select>
 
       <label>Atividade</label>
       <select id="atividade_${s.id}">
         <option value="">Nenhum</option>
         ${atividades.map(a =>
-                `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
-            ).join('')}
+          `<option ${s.atividade === a ? 'selected' : ''}>${a}</option>`
+        ).join('')}
       </select>
 
       <label>Sistema</label>
@@ -786,7 +836,7 @@
         ${Object.entries(sistemas).map(([g, lst]) => `
           <optgroup label="${g}">
             ${lst.map(sys =>
-                `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`
+              `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`
             ).join('')}
           </optgroup>
         `).join('')}
@@ -796,20 +846,13 @@
       <select id="subsistema_${s.id}">
         <option value="">Nenhum</option>
         ${(subsistemas[s.sistema] || []).map(sub =>
-                `<option ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
-            ).join('')}
+          `<option ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
+        ).join('')}
       </select>
+    </div>
 
-      <label>Descrição</label>
-      <textarea id="descricao_${s.id}">${s.descricao}</textarea>
-
-      <label>Tipo de manutenção</label>
-      <select id="tipo_${s.id}">
-        <option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>CORRETIVA</option>
-        <option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>CONDICIONAL</option>
-        <option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>MELHORIA</option>
-      </select>
-
+    <div class="bloco">
+      <h4>Operação</h4>
       <div class="linha">
         <div style="flex:1;">
           <label>Máquina parada?</label>
@@ -827,47 +870,57 @@
         </div>
       </div>
 
-    <div class="linha">
-  <div style="flex:1;">
-    <label>Data inicial</label>
-    <input type="date" id="data_${s.id}" value="${s.data || dataHojeInput()}">
-  </div>
-  <div style="flex:1;">
-    <label>Hora inicial</label>
-    <input type="time" id="inicio_${s.id}" value="${s.inicio || ''}">
-  </div>
-</div>
+      <label>Tipo de manutenção</label>
+      <select id="tipo_${s.id}">
+        <option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>CORRETIVA</option>
+        <option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>CONDICIONAL</option>
+        <option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>MELHORIA</option>
+      </select>
 
-<div class="linha">
-  <div style="flex:1;">
-    <label>Data final</label>
-    <input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInput()}">
-  </div>
-  <div style="flex:1;">
-    <label>Hora final</label>
-    <input type="time" id="fim_${s.id}" value="${s.fim || ''}">
-  </div>
-</div>
-
-      <div class="botoes">
-        <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
-          ${s.texto ? "Regerar O.S" : "Gerar O.S"}
-        </button>
-      </div>
-
-      <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
-        <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
-        <div class="botoes">
-          <button onclick="copiarTexto(${s.id})">Copiar</button>
-          <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button> 
-          <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">❌ Excluir</button>
+      <div class="linha">
+        <div style="flex:1;">
+          <label>Data inicial</label>
+          <input type="date" id="data_${s.id}" value="${s.data || dataHojeInput()}">
+        </div>
+        <div style="flex:1;">
+          <label>Hora inicial</label>
+          <input type="time" id="inicio_${s.id}" value="${s.inicio || ''}">
         </div>
       </div>
 
-      <textarea class="editavel" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
+      <div class="linha">
+        <div style="flex:1;">
+          <label>Data final</label>
+          <input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInput()}">
+        </div>
+        <div style="flex:1;">
+          <label>Hora final</label>
+          <input type="time" id="fim_${s.id}" value="${s.fim || ''}">
+        </div>
+      </div>
     </div>
-  `).join('');
-            
+      <textarea id="descricao_${s.id}" style="display:none;">${s.descricao}</textarea>
+     </br>       
+    <div class="botoes">
+      <button id="botao_${s.id}" onclick="processarOS(${s.id})" style="background:#007acc; color:white;">
+        ${s.texto ? "Regerar O.S" : "Gerar O.S"}
+      </button>
+    </div>
+    
+    <div id="preview_${s.id}" style="display: ${s.texto ? 'block' : 'none'};">
+      <div id="interpretado_${s.id}" class="preview">${s.texto ? interpretarMarkdown(s.texto) : ''}</div>
+      <div class="botoes">
+        <button onclick="copiarTexto(${s.id})">Copiar</button>
+        <button onclick="compartilharWhatsApp(${s.id})">Compartilhar</button> 
+        <button onclick="removerServico(${s.id})" style="background:#d9534f; color:white;">❌ Excluir</button>
+      </div>
+    </div>
+
+    <textarea class="editavel" id="texto_${s.id}" style="display:none;">${s.texto || ""}</textarea>
+
+  </div>
+`).join('');
+            aplicarEventosRascunho();
             // Controle do botão global
             const btnGlobal = document.getElementById("btnAddServico");
             if (servicos.length > 0) {
@@ -884,8 +937,16 @@
                     ultimo.scrollIntoView({ behavior: 'smooth' });
                 }
             }, 100);
+            
         }
 
+    function aplicarEventosRascunho() {
+    document.querySelectorAll('#servicosLista .servico input, #servicosLista .servico select, #servicosLista .servico textarea').forEach(el => {
+        el.addEventListener('input', salvarServicosRascunho);
+        el.addEventListener('change', salvarServicosRascunho);
+    });
+}
+    
         function processarOS(id) {
             salvarValoresServicos();
 
@@ -1009,7 +1070,7 @@
     
   </div>
 `;
-
+            localStorage.removeItem('servicosRascunho');
             salvarOSnoHistorico(id);
             showToast("O.S gerada!");
 
@@ -1709,11 +1770,7 @@ function calcularDMGeral() {
 }
     </script>
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js')
-                .then(() => console.log('Service Worker registrado com sucesso!'))
-                .catch(err => console.log('Erro ao registrar Service Worker:', err));
-        }
+   
         //popup botao apagar historico por data
 
         function dataHojeBR() {
@@ -1973,12 +2030,36 @@ function fecharPopupConfirmar() {
     function fecharTeclado() {
     document.activeElement.blur();
 }
+    window.addEventListener('DOMContentLoaded', () => {
+    window._deveRestaurarServicos = true;
+});
     </script>
+    <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js').then(reg => {
+    reg.onupdatefound = () => {
+      const newWorker = reg.installing;
+      newWorker.onstatechange = () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          document.getElementById('update-popup').style.display = 'block';
+        }
+      };
+    };
+  }).catch(err => {
+    console.log('Erro ao registrar o Service Worker:', err);
+  });
+}
+</script>
     <div class="popup-overlay" id="overlayPopup"></div>
 <div class="popup" id="popupGenerico">
     <h3 id="popupTitulo"></h3>
     <p id="popupMensagem"></p>
     <div class="botoes" id="popupBotoes"></div>
 </div>
+    <!--popup serviceworker-->
+    <div id="update-popup" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#007acc;color:white;padding:15px 25px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.3);z-index:1000;font-weight:bold;">
+  Nova versão disponível. <button onclick="location.reload()" style="background:white;color:#007acc;border:none;font-weight:bold;padding:5px 10px;border-radius:5px;cursor:pointer;">Atualizar</button>
+</div>
+    
 </body>
 </html>
