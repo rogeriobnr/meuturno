@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meuturno-cache-v3.1';
+const CACHE_NAME = 'meuturno-cache-v3.1.0';
 const urlsToCache = [
   './',
   './index.html',
