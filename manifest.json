@@ -3,8 +3,8 @@
   "short_name": "MeuTurno",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#2b2b2b",
-  "theme_color": "#2b2b2b",
+  "background_color": "#2563eb",
+  "theme_color": "#2563eb",
   "description": "App de Relatório de Manutenção",
   "icons": [
     {
