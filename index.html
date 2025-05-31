@@ -329,10 +329,10 @@
             <div id="historico_lista" class="space-y-4"></div>
             <div class="bg-white p-4 rounded-lg shadow mt-4">
                 <button onclick="baixarBackupHistorico()"
-                    class="bg-purple-500 hover:bg-purple-600 text-white w-full mb-2 py-2 px-4 rounded-md font-semibold transition-colors duration-150">&#128190;
+                    class="bg-blue-500 hover:bg-blue-600 text-white w-full mb-2 py-2 px-4 rounded-md font-semibold transition-colors duration-150">&#128190;
                     Backup do Histórico</button>
                 <button onclick="document.getElementById('fileBackupHistoricoInput').click()"
-                    class="bg-indigo-500 hover:bg-indigo-600 text-white w-full py-2 px-4 rounded-md font-semibold transition-colors duration-150">Restaurar
+                    class="bg-blue-700 hover:bg-blue-800 text-white w-full py-2 px-4 rounded-md font-semibold transition-colors duration-150">Restaurar
                     Backup do Histórico</button>
                 <input type="file" id="fileBackupHistoricoInput" accept=".json" class="hidden"
                     onchange="restaurarBackupHistorico(event)">
@@ -912,6 +912,12 @@
             const nome = document.getElementById('inputFrota').value.trim();
             const horasInput = document.getElementById('inputHoraFrota').value;
 
+            // Verifica se a frota já existe, ignorando maiúsculas/minúsculas
+            if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) {
+                showToast("Erro: Esta frota já foi adicionada.");
+                return; // Impede a adição da frota duplicada
+            }
+
             if (!nome || horasInput === "") {
                 showToast("Preencha corretamente a frota e as horas!");
                 return;
@@ -1053,6 +1059,12 @@
             const horasInputEl = document.getElementById('novaHoraFrota');
             const nome = nomeInput.value.trim();
             const horasInput = horasInputEl.value;
+
+            // Verifica se a frota já existe, ignorando maiúsculas/minúsculas
+            if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) {
+                showToast("Erro: Esta frota já foi adicionada.");
+                return; // Impede a adição da frota duplicada
+            }
 
             if (!nome || horasInput === "") {
                 showToast("Preencha corretamente a frota e as horas!");
