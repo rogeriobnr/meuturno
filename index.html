@@ -852,9 +852,16 @@
             document.getElementById('overlayPopup').style.display = 'none';
         }
 
-        function abrirPopupConfirmar(mensagem, acao, titulo = "Confirmação") {
+        function abrirPopupConfirmar(mensagem, acao, titulo = "Confirmação", isHtmlMensagem = false) { // ADICIONADO: isHtmlMensagem
             document.getElementById('popupConfirmarTitulo').innerText = titulo;
-            document.getElementById('popupConfirmarMensagem').innerText = mensagem;
+
+            const mensagemElement = document.getElementById('popupConfirmarMensagem');
+            if (isHtmlMensagem) {
+                mensagemElement.innerHTML = mensagem; // Usa innerHTML se a mensagem for HTML
+            } else {
+                mensagemElement.innerText = mensagem; // Usa innerText para mensagens de texto puro (padrão)
+            }
+
             document.getElementById('overlayConfirmar').style.display = 'block';
             document.getElementById('popupConfirmar').style.display = 'block';
             callbackConfirmar = acao;
@@ -1870,8 +1877,10 @@
                 frota: servicoParaSalvar.frota,
                 tipo: servicoParaSalvar.tipo,
                 texto: servicoParaSalvar.texto,
+                atividade: servicoParaSalvar.atividade, // <<< ADICIONADO
+                inicio: servicoParaSalvar.inicio,       // <<< ADICIONADO
                 status: itemExistente ? itemExistente.status : "pendente",
-                datahoraRegistro: datahoraRegistro,
+                datahoraRegistro: datahoraRegistro, // Manteremos para ordenação interna se necessário
                 osNumero: itemExistente ? itemExistente.osNumero : "",
                 dataOS: servicoParaSalvar.data,
                 dataKey: dataKey
@@ -1927,23 +1936,28 @@
                     );
 
                     osDoDia.forEach(s => {
+                        const codAtividade = s.atividade ? s.atividade.split(" - ")[0] : "N/A";
+                        const horaInicioServico = s.inicio || "--:--"; // Usar a hora de início do serviço
+
                         html += `
                                 <div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <div class="text-xs text-gray-600 font-medium">Registado em: ${s.datahoraRegistro}</div>
-                                        <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1">👁️</button>
+                                    <div class="flex justify-between items-center mb-2 text-sm">
+                                        <div class="flex-grow">
+                                            <span class="text-gray-700">Frota: <strong class="font-semibold text-blue-700">${s.frota || "N/D"}</strong></span>
+                                            <span class="text-gray-600"> | ${codAtividade} - ${horaInicioServico}</span>
+                                        </div>
+                                        <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1 ml-2">👁️</button>
                                     </div>
-                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                                        <label class="font-medium">Nº O.S.:</label>
-                                        <input id="os_input_${s.uniqueId}" class="mt-1 block w-24 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
-                                        <span class="text-gray-700"><strong>Frota:</strong> ${s.frota}</span>
-                                        <span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1">
+                                        <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
+                                        <input id="os_input_${s.uniqueId}" class="block w-28 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"} placeholder="Digite o Nº">
+                                        <span class="font-semibold whitespace-nowrap ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
                                     </div>
                                     <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
-                                        <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}">${s.texto}</textarea>
+                                        <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}" readonly>${s.texto}</textarea>
                                         <div class="mt-2 flex flex-col sm:flex-row gap-2">
                                             ${s.status === "pendente"
-                                ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${!s.osNumero ? 'disabled' : ''}>Marcar como Finalizada</button>`
+                                ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${(!s.osNumero || s.osNumero.trim() === "") ? 'disabled' : ''}>Marcar como Finalizada</button>`
                                 : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`
                             }
                                             <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar Texto</button>
@@ -2434,23 +2448,21 @@
                 if (dados && dados.data && dados.data !== dataHoje) {
                     // A data guardada é diferente da data de hoje
                     abrirPopupConfirmar(
-                        `Os dados guardados são de ${dados.data.split('-').reverse().join('/')}. Deseja iniciar um novo turno para hoje (${dataHoje.split('-').reverse().join('/')})? Os serviços e frotas do turno anterior serão limpos. "PARA MANTER OS DADOS DO TURNO ANTERIOR NESSE TURNO CLIQUE EM CANCELAR E ALTERE A DATA PARA DE HOJE".`,
+                        `Os dados guardados são de ${dados.data.split('-').reverse().join('/')}. Deseja iniciar um novo turno para hoje (${dataHoje.split('-').reverse().join('/')})? Os serviços e frotas do turno anterior serão limpos.` +
+                        `<br><br><span class="text-red-600 font-bold">"PARA MANTER OS DADOS DO TURNO ANTERIOR NESTE TURNO, CLIQUE EM CANCELAR E ALTERE A DATA PARA DE HOJE".</span>`,
                         async () => {
                             // O utilizador confirmou, vamos limpar os dados do turno
                             const dadosTurnoAntigo = {
-                                // Podemos manter a equipe se quisermos
                                 equipe: dados.equipe || [],
                             };
-                            // Limpa as variáveis globais
                             frotasTurno = [];
                             servicos = [];
-
-                            // Limpa os dados do turno no IndexedDB e recarrega a UI
                             await dbSave(STORE_TURNO, { id: TURNO_ATUAL_ID, ...dadosTurnoAntigo });
-                            await carregarTudo(); // Recarrega com os dados limpos
+                            await carregarTudo();
                             showToast("Novo turno iniciado.");
                         },
-                        "Iniciar Novo Turno?"
+                        "Iniciar Novo Turno?",
+                        true // ADICIONADO: Indica que esta mensagem específica contém HTML
                     );
                     // É importante que o resto da função não continue a carregar os dados antigos até que o utilizador decida.
                 }
