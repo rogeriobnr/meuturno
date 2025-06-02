@@ -756,15 +756,11 @@
          */
         function getCabecalhoServicoTexto(servico) {
             const frota = servico.frota || "N/D";
-            let atividadeTexto = "N/D";
-            if (servico.atividade) {
-                const partesAtividade = servico.atividade.split(" - ");
-                atividadeTexto = partesAtividade.length > 1 ? partesAtividade[1] : partesAtividade[0]; // Pega a descrição da atividade
-                if (atividadeTexto.length > 25) {
-                    atividadeTexto = atividadeTexto.substring(0, 25) + "...";
-                }
-            }
-            return `<span class="frota-destaque">Frota: ${frota}</span> <span class="atividade-info">| Atividade: ${atividadeTexto}</span>`;
+            const codAtividade = (servico.atividade || "N/D").split(" - ")[0];
+            const horaInicio = servico.inicio || "--:--";
+            const horaFim = servico.fim || "--:--";
+
+            return `<span class="frota-destaque">Frota: ${frota}</span> <span class="atividade-info">| Atividade: ${codAtividade} - ${horaInicio} / ${horaFim}</span>`;
         }
 
         /** Atualiza o cabeçalho de um serviço específico na UI. */
@@ -778,6 +774,12 @@
 
             const atividadeInput = document.getElementById(`atividade_${servicoId}`);
             if (atividadeInput) servico.atividade = atividadeInput.value;
+
+            const inicioInput = document.getElementById(`inicio_${servicoId}`);
+            if (inicioInput) servico.inicio = inicioInput.value;
+
+            const fimInput = document.getElementById(`fim_${servicoId}`);
+            if (fimInput) servico.fim = fimInput.value;
 
             const cabecalhoInfoDiv = document.querySelector(`#servico_${servicoId} .servico-cabecalho-info`);
             if (cabecalhoInfoDiv) {
@@ -1028,16 +1030,16 @@
             let html = `<div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md space-y-2">`;
             equipe.forEach((item) => {
                 html += `
-                    <div class="flex space-x-2">
-                        <input class="input-nome-equipe flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="text" value="${item.nome}" placeholder="Nome do membro">
-                        <input class="input-matricula-equipe flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="text" value="${item.matricula}" placeholder="Matrícula">
-                    </div>`;
+                        <div class="flex space-x-2">
+                            <input class="input-nome-equipe flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="text" value="${item.nome}" placeholder="Nome do membro">
+                            <input class="input-matricula-equipe flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="text" value="${item.matricula}" placeholder="Matrícula">
+                        </div>`;
             });
             html += `</div>
-                     <div class="mt-3 flex space-x-2">
-                         <button onclick="salvarEdicoesEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">Salvar Alterações</button>
-                         <button onclick="removerEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Limpar Equipe</button>
-                     </div>`;
+                          <div class="mt-3 flex space-x-2">
+                              <button onclick="salvarEdicoesEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">Salvar Alterações</button>
+                              <button onclick="removerEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Limpar Equipe</button>
+                          </div>`;
             box.innerHTML = html;
         }
 
@@ -1132,7 +1134,7 @@
             const novoServico = dadosPreenchidos || {
                 id, sistema: "", subsistema: "", frota: "", atividade: "", descricao: "", texto: "",
                 tipo: "CORRETIVA", parada: "sim", falha: "não", data: dataHojeInputLocal(), dataFinal: dataHojeInputLocal(), inicio: "", fim: "",
-                oportunidade: ""
+                oportunidade: "", isExpanded: true // MODIFICADO: Novo serviço começa expandido
             };
             novoServico.id = id;
 
@@ -1143,7 +1145,8 @@
             setTimeout(() => {
                 const el = document.getElementById(`servico_${id}`);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // MODIFICADO: Scroll para alinhar o novo elemento ao final da tela.
+                    el.scrollIntoView({ behavior: 'smooth', block: 'end' });
                     const detalhes = document.getElementById(`detalhes_${id}`);
                     const toggler = document.getElementById(`toggler_${id}`);
                     if (detalhes && toggler && detalhes.style.display === 'none') {
@@ -1169,17 +1172,20 @@
 
             divLista.innerHTML = servicosFiltrados.map(s => {
                 const osNaoGerada = !s.texto || s.texto.trim() === "";
+                // MODIFICADO: Verifica o estado de expansão
+                const isExpanded = s.isExpanded || false;
                 const classesServico = ['bg-white p-4 rounded-lg shadow mb-4', osNaoGerada ? 'servico-pendente-os' : ''];
                 const subsistemasAtuais = subsistemas[s.sistema] || [];
                 const textoCabecalho = getCabecalhoServicoTexto(s);
 
+                // MODIFICADO: Toggler e display do `servico-detalhes` agora dependem de `isExpanded`
                 return `
                 <article class="${classesServico.join(' ')}" id="servico_${s.id}">
                     <div class="servico-cabecalho" onclick="toggleDetalhesServico(${s.id})">
                         <div class="servico-cabecalho-info">${textoCabecalho}</div>
-                        <span id="toggler_${s.id}" class="servico-cabecalho-toggler">▼</span>
+                        <span id="toggler_${s.id}" class="servico-cabecalho-toggler">${isExpanded ? '▲' : '▼'}</span>
                     </div>
-                    <div class="servico-detalhes" id="detalhes_${s.id}" style="display:none;">
+                    <div class="servico-detalhes" id="detalhes_${s.id}" style="display:${isExpanded ? 'block' : 'none'};">
                         <div class="mt-4 space-y-3"> 
                             <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Identificação da O.S</h5>
                             <div class="grid grid-cols-2 gap-4"> 
@@ -1264,27 +1270,30 @@
         }
 
         function toggleDetalhesServico(id) {
+            const servico = servicos.find(s => s.id === id);
+            if (!servico) return;
+
+            // MODIFICADO: Inverte o estado de expansão baseado no array de serviços
+            servico.isExpanded = !servico.isExpanded;
+
             const detalhes = document.getElementById(`detalhes_${id}`);
             const toggler = document.getElementById(`toggler_${id}`);
             if (detalhes && toggler) {
-                if (detalhes.style.display === 'none' || detalhes.style.display === '') {
-                    detalhes.style.display = 'block';
-                    toggler.textContent = '▲';
-                } else {
-                    detalhes.style.display = 'none';
-                    toggler.textContent = '▼';
-                }
+                // Atualiza o DOM de acordo com o novo estado
+                detalhes.style.display = servico.isExpanded ? 'block' : 'none';
+                toggler.textContent = servico.isExpanded ? '▲' : '▼';
             }
         }
 
         function aplicarEventosDeInput() {
-            document.querySelectorAll('#servicosLista .servico input, #servicosLista .servico select, #servicosLista .servico textarea').forEach(el => {
+            document.querySelectorAll('#servicosLista article input, #servicosLista article select, #servicosLista article textarea').forEach(el => {
                 el.removeEventListener('input', salvarValoresServicos);
                 el.removeEventListener('change', salvarValoresServicos);
                 el.addEventListener('input', salvarValoresServicos);
                 el.addEventListener('change', salvarValoresServicos);
 
-                if (el.id.startsWith('frota_') || el.id.startsWith('atividade_')) {
+                // MODIFICADO: Adiciona os inputs de hora para atualizar o cabeçalho em tempo real
+                if (el.id.startsWith('frota_') || el.id.startsWith('atividade_') || el.id.startsWith('inicio_') || el.id.startsWith('fim_')) {
                     const servicoId = parseInt(el.id.split('_')[1]);
                     el.removeEventListener('change', () => atualizarCabecalhoServico(servicoId));
                     el.addEventListener('change', () => atualizarCabecalhoServico(servicoId));
@@ -1452,43 +1461,23 @@
                 `Solicitante:\n${equipeTexto}`;
 
             servico.texto = txt;
-            const textoEl = document.getElementById(`texto_${servico.id}`);
-            if (textoEl) textoEl.value = txt;
-
-
-            const previewContainer = document.getElementById(`preview_container_${servico.id}`);
-            const previewDiv = document.getElementById(`preview_${servico.id}`);
-            if (previewDiv) previewDiv.innerHTML = interpretarMarkdown(txt);
-            if (previewContainer) previewContainer.classList.remove('hidden');
-
-            const botao = document.getElementById(`botao_${servico.id}`);
-            if (botao) botao.innerText = "Regerar O.S.";
+            // MODIFICADO: Garante que o card vai permanecer aberto após a renderização
+            servico.isExpanded = true;
 
             await salvarOSnoHistorico(servico.id);
             await salvarTudo();
             showToast("O.S gerada/atualizada!");
 
-            const servicoDiv = document.getElementById(`servico_${servico.id}`);
-            if (servicoDiv) servicoDiv.classList.remove('servico-pendente-os');
-
-            atualizarCabecalhoServico(servico.id);
+            // MODIFICADO: `renderizarServicos` irá redesenhar o card já no estado aberto
             renderizarServicos();
 
-            const detalhesServicoProcessado = document.getElementById(`detalhes_${servico.id}`);
-            const togglerServicoProcessado = document.getElementById(`toggler_${servico.id}`);
-            if (detalhesServicoProcessado && togglerServicoProcessado && detalhesServicoProcessado.style.display === 'none') {
-                // Não minimiza automaticamente, mantém o estado atual (que deve ser aberto)
-            } else if (detalhesServicoProcessado && togglerServicoProcessado && detalhesServicoProcessado.style.display !== 'block') {
-                // Se por algum motivo não estiver 'block', força para 'block'
-                detalhesServicoProcessado.style.display = 'block';
-                togglerServicoProcessado.textContent = '▲';
-            }
-
-
+            // MODIFICADO: Scroll para a área de preview, que agora está visível.
             setTimeout(() => {
-                const el = document.getElementById(`servico_${servico.id}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+                const el = document.getElementById(`preview_container_${servico.id}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 200);
         }
 
         function copiarTexto(id) {
@@ -1548,7 +1537,8 @@
                 dataFinal: refServico.dataFinal || dataHojeInputLocal(),
                 inicio: refServico.fim || "",
                 fim: "",
-                oportunidade: ""
+                oportunidade: "",
+                isExpanded: true // MODIFICADO: Começa expandido
             };
 
             const indexReferencia = servicos.findIndex(s => s.id === idReferencia);
@@ -1560,7 +1550,7 @@
             setTimeout(() => {
                 const el = document.getElementById(`servico_${novoServico.id}`);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.scrollIntoView({ behavior: 'smooth', block: 'end' });
                     const detalhes = document.getElementById(`detalhes_${novoServico.id}`);
                     const toggler = document.getElementById(`toggler_${novoServico.id}`);
                     if (detalhes && toggler && (detalhes.style.display === 'none' || detalhes.style.display === '')) {
@@ -1930,7 +1920,7 @@
                 let html = "";
                 datasOrdenadas.forEach(data => {
                     html += `<div class="bg-white p-3 rounded-lg shadow mb-3">
-                                <h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`;
+                                  <h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`;
                     const osDoDia = historicoAgrupado[data].sort((a, b) =>
                         new Date(b.datahoraRegistro.replace(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}:\d{2}:\d{2})/, '$3-$2-$1T$4')) -
                         new Date(a.datahoraRegistro.replace(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}:\d{2}:\d{2})/, '$3-$2-$1T$4'))
@@ -1938,30 +1928,30 @@
 
                     osDoDia.forEach(s => {
                         html += `
-                            <div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
-                                <div class="flex justify-between items-center mb-2">
-                                    <div class="text-xs text-gray-600 font-medium">Registado em: ${s.datahoraRegistro}</div>
-                                    <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1">👁️</button>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                                    <label class="font-medium">Nº O.S.:</label>
-                                    <input id="os_input_${s.uniqueId}" class="mt-1 block w-24 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
-                                    <span class="text-gray-700"><strong>Frota:</strong> ${s.frota}</span>
-                                    <span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
-                                </div>
-                                <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
-                                    <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}">${s.texto}</textarea>
-                                    <div class="mt-2 flex flex-col sm:flex-row gap-2">
-                                        ${s.status === "pendente"
+                                <div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div class="text-xs text-gray-600 font-medium">Registado em: ${s.datahoraRegistro}</div>
+                                        <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1">👁️</button>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                                        <label class="font-medium">Nº O.S.:</label>
+                                        <input id="os_input_${s.uniqueId}" class="mt-1 block w-24 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
+                                        <span class="text-gray-700"><strong>Frota:</strong> ${s.frota}</span>
+                                        <span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+                                    </div>
+                                    <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
+                                        <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}">${s.texto}</textarea>
+                                        <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                                            ${s.status === "pendente"
                                 ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${!s.osNumero ? 'disabled' : ''}>Marcar como Finalizada</button>`
                                 : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`
                             }
-                                        <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar Texto</button>
-                                        <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button>
-                                        <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir do Histórico</button>
+                                            <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar Texto</button>
+                                            <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button>
+                                            <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir do Histórico</button>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>`;
+                                </div>`;
                     });
                     html += `</div>`;
                 });
@@ -2439,7 +2429,31 @@
             try {
                 await initDB();
                 const dados = await dbGet(STORE_TURNO, TURNO_ATUAL_ID);
+                const dataHoje = dataHojeInputLocal(); // Ex: "2024-05-20"
 
+                if (dados && dados.data && dados.data !== dataHoje) {
+                    // A data guardada é diferente da data de hoje
+                    abrirPopupConfirmar(
+                        `Os dados guardados são de ${dados.data.split('-').reverse().join('/')}. Deseja iniciar um novo turno para hoje (${dataHoje.split('-').reverse().join('/')})? Os serviços e frotas do turno anterior serão limpos. "PARA MANTER OS DADOS DO TURNO ANTERIOR NESSE TURNO CLIQUE EM CANCELAR E ALTERE A DATA PARA DE HOJE".`,
+                        async () => {
+                            // O utilizador confirmou, vamos limpar os dados do turno
+                            const dadosTurnoAntigo = {
+                                // Podemos manter a equipe se quisermos
+                                equipe: dados.equipe || [],
+                            };
+                            // Limpa as variáveis globais
+                            frotasTurno = [];
+                            servicos = [];
+
+                            // Limpa os dados do turno no IndexedDB e recarrega a UI
+                            await dbSave(STORE_TURNO, { id: TURNO_ATUAL_ID, ...dadosTurnoAntigo });
+                            await carregarTudo(); // Recarrega com os dados limpos
+                            showToast("Novo turno iniciado.");
+                        },
+                        "Iniciar Novo Turno?"
+                    );
+                    // É importante que o resto da função não continue a carregar os dados antigos até que o utilizador decida.
+                }
                 if (dados) {
                     const dataTurnoEl = document.getElementById("dataTurno");
                     if (dataTurnoEl) dataTurnoEl.value = dados.data || dataHojeInputLocal();
@@ -2456,6 +2470,13 @@
                     equipe = dados.equipe || [];
                     frotasTurno = dados.frotas || [];
                     servicos = dados.servicos || [];
+
+                    // MODIFICADO: Garante que a propriedade `isExpanded` exista em serviços carregados
+                    servicos.forEach(s => {
+                        if (typeof s.isExpanded === 'undefined') {
+                            s.isExpanded = false;
+                        }
+                    });
 
                     const relatorioBruto = dados.relatorio || "";
                     const relatorioBrutoEl = document.getElementById("relatorio_bruto");
@@ -2480,7 +2501,6 @@
                 if (dataTurnoEl) dataTurnoEl.value = dataHojeInputLocal();
             }
         }
-
 
         // =================================================================================
         // INICIALIZAÇÃO E SERVICE WORKER
@@ -2535,5 +2555,4 @@
 
     </script>
 </body>
-
 </html>
