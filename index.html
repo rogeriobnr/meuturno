@@ -760,7 +760,7 @@
             const horaInicio = servico.inicio || "--:--";
             const horaFim = servico.fim || "--:--";
 
-            return `<span class="frota-destaque">Frota: ${frota}</span> <span class="atividade-info">| Atividade: ${codAtividade} - ${horaInicio} / ${horaFim}</span>`;
+            return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| Atividade: ${codAtividade} - ${horaInicio} / ${horaFim}</span>`;
         }
 
         /** Atualiza o cabeçalho de um serviço específico na UI. */
@@ -1690,14 +1690,26 @@
             const turnoLetra = document.getElementById("turnoLetra").value;
             const equipeTextoRel = obterEquipeTexto();
 
-            const qtdMaquinas = frotasTurno.length;
-            const horasPorMaquinaRef = frotasTurno.length > 0 ? (frotasTurno[0].horas || 0).toFixed(2) : "0.00";
-            const horasTotaisPlanejadas = frotasTurno.reduce((soma, f) => soma + (f.horas || 0), 0).toFixed(2);
+            // 1. Identificar frotas ativas: aquelas que têm serviços registrados neste turno
+            //    e que estão na lista frotasTurno (para pegar as horas planejadas).
+            const nomesFrotasComServicos = [...new Set(servicos.map(s => s.frota).filter(Boolean))];
+            const frotasAtivasDoTurno = frotasTurno.filter(f => nomesFrotasComServicos.includes(f.nome));
 
-            const horasParadasTurno = calcularHorasParadasTurno();
-            const dmTurno = calcularDMGeral();
+            // 2. Calcular métricas baseadas APENAS nas frotas ativas do turno
+            const qtdMaquinasNoRelatorio = frotasAtivasDoTurno.length;
+
+            const horasTotaisPlanejadasCalculadas = calcularHorasTotaisPlanejadasGlobais(frotasAtivasDoTurno);
+            const horasTotaisPlanejadasRelatorio = horasTotaisPlanejadasCalculadas.toFixed(2);
+
+            const horasParadasNumerico = calcularHorasParadasTurnoGlobais(frotasAtivasDoTurno);
+            const horasParadasTurnoRelatorio = horasParadasNumerico.toFixed(2);
+
+            const dmTurnoRelatorio = calcularDMGeralGlobal(frotasAtivasDoTurno);
+
+            // Referência de horas por máquina (para as ativas, se houver)
+            const horasPorMaquinaRef = frotasAtivasDoTurno.length > 0 ? (parseFloat(frotasAtivasDoTurno[0].horas) || 0).toFixed(2) : "0.00";
+
             const frenteUpper = frente.toUpperCase();
-
             const [ano, mes, dia] = (dataInput || dataHojeInputLocal()).split("-");
             const dataFormatada = `${dia}/${mes}/${ano}`;
 
@@ -1707,43 +1719,106 @@
                 `*FRENTE:* ${frente}\n` +
                 `*TURNO:* ${turnoLetra}\n` +
                 `*EQUIPE:*\n${equipeTextoRel}\n\n` +
-                `*QTD DE MÁQUINAS:* ${qtdMaquinas}\n` +
-                `*HORAS PLANEJADAS (Ref. Máquina):* ${horasPorMaquinaRef}h\n` +
-                `*HORAS PLANEJADAS (Total Turno):* ${horasTotaisPlanejadas}h\n` +
-                `*HORAS TOTAL PARADA (Corretivas):* ${horasParadasTurno}h (${formatarHorasParaTexto(horasParadasTurno)})\n` +
-                `🟢 *DM DO TURNO:* ${dmTurno}%\n`;
+                // Textos e variáveis atualizados para refletir a base de cálculo
+                `*QTD DE MÁQUINAS:* ${qtdMaquinasNoRelatorio}\n` +
+                `*HORAS PLANEJADAS:* ${horasPorMaquinaRef}h\n` +
+                `*HORAS PLANEJADAS TOTAIS:* ${horasTotaisPlanejadasRelatorio}h\n` +
+                `*HORAS TOTAIS PARADAS:* ${horasParadasTurnoRelatorio}h (${formatarHorasParaTexto(horasParadasTurnoRelatorio)})\n` +
+                `🟢 *DM DO TURNO:* ${dmTurnoRelatorio}%\n`;
 
-            frotasTurno.forEach(f => {
-                const servicosDaFrota = servicos.filter(s => s.frota === f.nome);
+            // 3. O loop para detalhar cada frota também deve usar as frotasAtivasDoTurno
+            if (frotasAtivasDoTurno.length > 0) {
+                relatorio += `\n--- DETALHAMENTO POR FROTA ---\n`;
+            }
 
-                if (servicosDaFrota.length > 0) {
-                    const paradaFrota = calcularHorasParadasPorFrota(f.nome);
-                    const dmFrota = calcularDMFrota(f.nome);
-                    relatorio += `\n🚜 *${f.nome.toUpperCase()}*\n` +
-                        `Horas Planejada: ${(f.horas || 0).toFixed(2)}h\n` +
-                        `Horas Parada (Corretivas): ${paradaFrota}h (${formatarHorasParaTexto(paradaFrota)})\n` +
-                        `*DM:* ${dmFrota}%\n` +
-                        `*RELATÓRIO DE SERVIÇOS:*\n`;
+            frotasAtivasDoTurno.forEach(f => { // Itera sobre frotasAtivasDoTurno
+                const servicosDaFrota = servicos.filter(s => s.frota === f.nome); // servicosDaFrota já é filtrado
 
-                    servicosDaFrota.forEach(s => {
-                        const codAtiv = (s.atividade || "N/A").split(" - ")[0];
-                        const codSub = (s.subsistema || "N/A").split(" - ")[0];
-                        const duracao = calcularDuracaoServico(s);
+                const paradaFrota = calcularHorasParadasPorFrota(f.nome);
+                const dmFrota = calcularDMFrota(f.nome); // Esta função usa f.horas de frotasTurno, o que está correto.
 
-                        relatorio += `- ${s.descricao.trim() || "Descrição não informada"}\n` +
-                            `  (${codAtiv} - ${s.sistema || "N/A"} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo.toUpperCase()}]\n` + // Formato alterado
-                            `  ⏱️ Duração: ${duracao.texto} (Decimal: ${duracao.horas}h)\n`;
-                        if (s.tipo !== "CORRETIVA" && s.oportunidade) {
-                            relatorio += `  Oportunidade: ${s.oportunidade}\n`;
-                        }
-                        relatorio += `\n`;
-                    });
-                }
+                relatorio += `\n🚜 *${f.nome.toUpperCase()}*\n` +
+                    `Horas Planejada: ${(parseFloat(f.horas) || 0).toFixed(2)}h\n` +
+                    `Horas Parada (Corretivas): ${paradaFrota}h (${formatarHorasParaTexto(paradaFrota)})\n` +
+                    `*DM:* ${dmFrota}%\n` +
+                    `*RELATÓRIO DE SERVIÇOS:*\n`;
+
+                servicosDaFrota.forEach(s => {
+                    const codAtiv = (s.atividade || "N/A").split(" - ")[0];
+                    const codSub = (s.subsistema || "N/A").split(" - ")[0];
+                    const duracao = calcularDuracaoServico(s);
+
+
+                    relatorio += `- ${s.descricao.trim() || "Descrição não informada"}\n` +
+                        `  (${codAtiv} - ${s.sistema || "N/A"} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo.toUpperCase()}]\n` +
+                        `  ⏱️ Duração: ${duracao.texto} (Decimal: ${parseFloat(duracao.horas).toFixed(2)}h)\n`;
+
+                    if (s.tipo !== "CORRETIVA" && s.oportunidade) {
+                        relatorio += `  Oportunidade: ${s.oportunidade}\n`;
+                    }
+                    relatorio += `\n`;
+                });
             });
+
+            // Mensagem adicional se nenhuma frota ativa foi encontrada mas existem frotas cadastradas ou serviços.
+            if (qtdMaquinasNoRelatorio === 0) {
+                if (frotasTurno.length > 0 && servicos.length > 0) {
+                    relatorio += `\nNenhuma das frotas cadastradas na aba 'Turno' corresponde às frotas com serviços registrados. Verifique os nomes ou os lançamentos.\n`;
+                } else if (servicos.length === 0 && frotasTurno.length > 0) {
+                    relatorio += `\nNenhum serviço registrado para as frotas do turno.\n`;
+                } else if (servicos.length === 0 && frotasTurno.length === 0) {
+                    relatorio += `\nNenhuma frota cadastrada e nenhum serviço registrado para este turno.\n`;
+                }
+            }
+
             document.getElementById("relatorio_bruto").value = relatorio;
             document.getElementById("relatorio_formatado").innerHTML = interpretarMarkdown(relatorio);
             await salvarTudo();
             showToast("Relatório gerado!");
+        }
+
+        /**
+ * Calcula o total de horas planejadas para uma lista específica de frotas.
+ * @param {Array<object>} listaFrotas - A lista de objetos de frota a considerar.
+ * @returns {number} - O total de horas planejadas.
+ */
+        function calcularHorasTotaisPlanejadasGlobais(listaFrotas) {
+            return listaFrotas.reduce((soma, f) => soma + (parseFloat(f.horas) || 0), 0);
+        }
+
+        /**
+         * Calcula o total de horas paradas por corretiva para uma lista específica de frotas.
+         * @param {Array<object>} listaFrotas - A lista de objetos de frota a considerar.
+         * @returns {number} - O total de horas paradas.
+         */
+        function calcularHorasParadasTurnoGlobais(listaFrotas) {
+            let totalHorasParadas = 0;
+            listaFrotas.forEach(f => {
+                // calcularHorasParadasPorFrota já retorna um número (string convertida para float)
+                // e considera apenas corretivas com máquina parada para a frota f.nome
+                totalHorasParadas += parseFloat(calcularHorasParadasPorFrota(f.nome));
+            });
+            return totalHorasParadas;
+        }
+
+        /**
+         * Calcula a DM Geral para uma lista específica de frotas.
+         * @param {Array<object>} listaFrotas - A lista de objetos de frota a considerar.
+         * @returns {string} - A DM formatada como string com duas casas decimais, ou "100.00"/"0.00".
+         */
+        function calcularDMGeralGlobal(listaFrotas) {
+            const horasPlanejadas = calcularHorasTotaisPlanejadasGlobais(listaFrotas);
+
+            if (horasPlanejadas === 0) {
+                // Se não há horas planejadas:
+                // Se havia frotas na lista (mas com 0h planejadas), DM é 0%.
+                // Se a lista de frotas estava vazia (nenhuma máquina ativa), DM é 100% (sem base para falha).
+                return listaFrotas.length > 0 ? "0.00" : "100.00";
+            }
+            const horasParadas = calcularHorasParadasTurnoGlobais(listaFrotas);
+            const horasOperando = Math.max(0, horasPlanejadas - horasParadas);
+            const dm = (horasOperando / horasPlanejadas) * 100;
+            return dm.toFixed(2);
         }
 
         function calcularDuracaoServico(servico) {
@@ -1774,7 +1849,8 @@
             const diffMs = dataFimObj - dataIniObj;
             const diffMin = Math.max(Math.floor(diffMs / 60000), 0);
 
-            const horasDecimais = (diffMin / 60).toFixed(2);
+
+            const horasDecimais = diffMin / 60;
             const h = Math.floor(diffMin / 60);
             const m = diffMin % 60;
 
@@ -2567,4 +2643,5 @@
 
     </script>
 </body>
+
 </html>
