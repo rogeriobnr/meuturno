@@ -1225,7 +1225,7 @@
             relatorio += `\n🚜 *${f.nome.toUpperCase()}*\n` +
                 `Horas Planejada: ${(parseFloat(f.horas) || 0).toFixed(2)}h\n` +
                 `Horas Parada (Corretivas): ${paradaFrota}h (${formatarHorasParaTexto(paradaFrota)})\n` +
-                `*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n`;
+                `*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`;
             servicosDaFrota.forEach(s => {
                 const codAtiv = (s.atividade || "N/A").split(" - ")[0]; const codSub = (s.subsistema || "N/A").split(" - ")[0];
                 const duracao = calcularDuracaoServico(s);
