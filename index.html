@@ -70,6 +70,7 @@
 <nav id="menu-lateral" class="fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-sm">
     <div class="p-4 border-b">
         <h2 class="text-2xl font-bold text-blue-600">MeuTurno</h2>
+        <img src="logo.png" alt="Logotipo" class="h-8" onerror="this.style.display='none'">
     </div>
     <div class="flex flex-col">
         <a href="#" class="menu-link" data-secao="turno">Turno</a>
@@ -1096,17 +1097,25 @@
         }
     }
     function toggleDetalhesServico(id) {
-        const servico = servicos.find(s => s.id === id);
-        if (!servico) return;
-        servico.isExpanded = !servico.isExpanded;
-        // A renderização cuidará do resto, mas para uma resposta instantânea, podemos manipular o DOM diretamente
-        const detalhes = document.getElementById(`detalhes_${id}`);
-        const toggler = document.getElementById(`toggler_${id}`);
-        if (detalhes && toggler) {
-            detalhes.style.display = servico.isExpanded ? 'block' : 'none';
-            toggler.textContent = servico.isExpanded ? '▲' : '▼';
-        }
+    const servico = servicos.find(s => s.id === id);
+    if (!servico) return;
+
+    // 1. Atualiza o estado do serviço (expandido ou minimizado)
+    servico.isExpanded = !servico.isExpanded;
+
+    // 2. Encontra os elementos corretos na página
+    const article = document.getElementById(`servico_${id}`);
+    if (!article) return;
+
+    const detalhes = article.querySelector('.servico-detalhes');
+    const toggler = article.querySelector('.servico-cabecalho-toggler');
+
+    // 3. Altera a visibilidade e o ícone
+    if (detalhes && toggler) {
+        detalhes.style.display = servico.isExpanded ? 'block' : 'none';
+        toggler.textContent = servico.isExpanded ? '▲' : '▼';
     }
+}
     function aplicarEventosDeInput() {
         document.querySelectorAll('#servicosLista article input, #servicosLista article select, #servicosLista article textarea').forEach(el => {
             el.removeEventListener('input', salvarValoresServicos);
