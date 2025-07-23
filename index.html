@@ -287,20 +287,19 @@
     </div>
 
     <div class="popup-overlay" id="overlayApagarData"></div>
-    <div class="popup" id="popupApagarData">
-        <h3 class="text-xl font-semibold mb-4">Selecione a Data do Histórico para Apagar</h3>
-        <select id="selectDatas"
-            class="mb-4 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></select>
-        <div class="flex justify-end space-x-2">
-            <button
-                class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700"
-                onclick="confirmarApagarPorData()">Apagar</button>
-            <button
-                class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-300 text-gray-800 hover:bg-gray-400"
-                onclick="fecharPopupApagarData()">Cancelar</button>
-        </div>
+<div class="popup" id="popupApagarData">
+    <h3 class="text-xl font-semibold mb-4">Selecione a Data do Histórico para Apagar</h3>
+    <select id="selectDatas"
+        class="mb-4 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></select>
+    <div class="flex justify-end space-x-2">
+        <button
+            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700"
+            onclick="confirmarApagarPorData()">Apagar</button>
+        <button
+            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-300 text-gray-800 hover:bg-gray-400"
+            onclick="fecharPopupApagarData()">Cancelar</button>
     </div>
-
+</div>
     <div class="popup-overlay" id="overlayConfirmar"></div>
     <div class="popup" id="popupConfirmar">
         <h3 id="popupConfirmarTitulo" class="text-xl font-semibold mb-3">Confirmação</h3>
@@ -569,6 +568,10 @@
     // =================================================================================
     // GESTÃO DE POPUPS
     // =================================================================================
+    function fecharPopupApagarData() {
+    document.getElementById('popupApagarData').style.display = 'none';
+    document.getElementById('overlayApagarData').style.display = 'none';
+}
     function abrirPopup(titulo, mensagem, botoes = []) { /* ...código existente... */ 
         document.getElementById('popupTitulo').innerText = titulo;
         document.getElementById('popupMensagem').innerText = mensagem;
@@ -1257,9 +1260,125 @@
     // =================================================================================
     // HISTÓRICO
     // =================================================================================
-    async function salvarOSnoHistorico(idServico) { /* ...código existente... */ const servicoParaSalvar = servicos.find(s => s.id === idServico); if (!servicoParaSalvar || !servicoParaSalvar.texto) return; const dataKey = servicoParaSalvar.data.split('-').reverse().join('/'); const agora = new Date(); const datahoraRegistro = agora.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); let itemExistente = null; try { const todosItens = await dbGetAll(STORE_HISTORICO); itemExistente = todosItens.find(item => item.id === servicoParaSalvar.id && item.dataKey === dataKey); } catch (e) { console.error("Erro ao procurar item existente no histórico:", e); } const itemHistorico = { id: servicoParaSalvar.id, frota: servicoParaSalvar.frota, tipo: servicoParaSalvar.tipo, texto: servicoParaSalvar.texto, atividade: servicoParaSalvar.atividade, inicio: servicoParaSalvar.inicio, status: itemExistente ? itemExistente.status : "pendente", datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : datahoraRegistro, osNumero: itemExistente ? itemExistente.osNumero : "", dataOS: servicoParaSalvar.data, dataKey: dataKey }; if (itemExistente && itemExistente.uniqueId) itemHistorico.uniqueId = itemExistente.uniqueId; try { await dbSave(STORE_HISTORICO, itemHistorico); await mostrarHistorico(); } catch (error) { console.error("Erro ao salvar OS no histórico:", error); showToast("Erro ao salvar OS no histórico."); } }
-    async function mostrarHistorico() { /* ...código existente... */ try { const todosItensHistorico = await dbGetAll(STORE_HISTORICO); const historicoAgrupado = {}; todosItensHistorico.forEach(item => { const dataKey = item.dataKey; if (!historicoAgrupado[dataKey]) historicoAgrupado[dataKey] = []; historicoAgrupado[dataKey].push(item); }); const div = document.getElementById("historico_lista"); if (!div) return; const datasOrdenadas = Object.keys(historicoAgrupado).sort((a, b) => { const [diaA, mesA, anoA] = a.split('/').map(Number); const [diaB, mesB, anoB] = b.split('/').map(Number); return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA); }); if (datasOrdenadas.length === 0) { div.innerHTML = "<p class='text-center text-gray-500'>Nenhuma O.S registada.</p>"; return; } let html = ""; datasOrdenadas.forEach(data => { html += `<div class="bg-white p-3 rounded-lg shadow mb-3"><h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`; const osDoDia = historicoAgrupado[data].sort((a, b) => { const horaA = a.inicio || "00:00"; const horaB = b.inicio || "00:00"; if (horaA < horaB) return -1; if (horaA > horaB) return 1; return 0; }); osDoDia.forEach(s => { const codAtividade = s.atividade ? s.atividade.split(" - ")[0] : "N/A"; const horaInicioServico = s.inicio || "--:--"; html += `<div class="bg-gray-50 p-3 rounded shadow-sm mt-2"><div class="flex justify-between items-center mb-2 text-sm"><div class="flex-grow"><span class="text-gray-700">Frota: <strong class="font-semibold text-blue-700">${s.frota || "N/D"}</strong></span><span class="text-gray-600"> | ${codAtividade} - ${horaInicioServico}</span></div><button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1 ml-2">👁️</button></div><div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1"><label class="font-medium whitespace-nowrap">Nº O.S.:</label><input id="os_input_${s.uniqueId}" class="block w-28 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"} placeholder="Digite o Nº"><span class="font-semibold whitespace-nowrap ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span></div><div id="corpo_hist_${s.uniqueId}" class="hidden mt-3"><textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}" readonly>${s.texto}</textarea><div class="mt-2 flex flex-col sm:flex-row gap-2">${s.status === "pendente" ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${(!s.osNumero || s.osNumero.trim() === "") ? 'disabled' : ''}>Marcar Finalizada</button>` : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`}<button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar</button><button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button><button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir</button></div></div></div>`; }); html += `</div>`; }); div.innerHTML = html; } catch (error) { console.error("Erro ao mostrar histórico:", error); showToast("Erro ao carregar histórico."); const div = document.getElementById("historico_lista"); if(div) div.innerHTML = "<p class='text-center text-red-500'>Erro ao carregar histórico.</p>"; } }
-    function validarOSInput(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const btnFinalizar = document.getElementById(`btnFinalizarOS_${uniqueId}`); if (input && btnFinalizar) { btnFinalizar.disabled = input.value.trim() === ""; } }
+    async function salvarOSnoHistorico(idServico) {
+    const servicoParaSalvar = servicos.find(s => s.id === idServico);
+    if (!servicoParaSalvar || !servicoParaSalvar.texto) return;
+
+    const dataKey = servicoParaSalvar.data.split('-').reverse().join('/');
+    const agora = new Date();
+    const datahoraRegistro = agora.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    let itemExistente = null;
+    try {
+        const todosItens = await dbGetAll(STORE_HISTORICO);
+        itemExistente = todosItens.find(item => item.id === servicoParaSalvar.id && item.dataKey === dataKey);
+    } catch (e) {
+        console.error("Erro ao procurar item existente no histórico:", e);
+    }
+
+    const itemHistorico = {
+        id: servicoParaSalvar.id,
+        frota: servicoParaSalvar.frota,
+        tipo: servicoParaSalvar.tipo,
+        texto: servicoParaSalvar.texto,
+        atividade: servicoParaSalvar.atividade,
+        subsistema: servicoParaSalvar.subsistema, // <-- ADICIONADO
+        inicio: servicoParaSalvar.inicio,
+        fim: servicoParaSalvar.fim, // <-- ADICIONADO
+        status: itemExistente ? itemExistente.status : "pendente",
+        datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : datahoraRegistro,
+        osNumero: itemExistente ? itemExistente.osNumero : "",
+        dataOS: servicoParaSalvar.data,
+        dataKey: dataKey
+    };
+
+    if (itemExistente && itemExistente.uniqueId) {
+        itemHistorico.uniqueId = itemExistente.uniqueId;
+    }
+
+    try {
+        await dbSave(STORE_HISTORICO, itemHistorico);
+        await mostrarHistorico(); // Atualiza a exibição do histórico
+    } catch (error) {
+        console.error("Erro ao salvar OS no histórico:", error);
+        showToast("Erro ao salvar OS no histórico.");
+    }
+}    async function mostrarHistorico() {
+    try {
+        const todosItensHistorico = await dbGetAll(STORE_HISTORICO);
+        const historicoAgrupado = {};
+        todosItensHistorico.forEach(item => {
+            const dataKey = item.dataKey;
+            if (!historicoAgrupado[dataKey]) {
+                historicoAgrupado[dataKey] = [];
+            }
+            historicoAgrupado[dataKey].push(item);
+        });
+
+        const div = document.getElementById("historico_lista");
+        if (!div) return;
+
+        const datasOrdenadas = Object.keys(historicoAgrupado).sort((a, b) => {
+            const [diaA, mesA, anoA] = a.split('/').map(Number);
+            const [diaB, mesB, anoB] = b.split('/').map(Number);
+            return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
+        });
+
+        if (datasOrdenadas.length === 0) {
+            div.innerHTML = "<p class='text-center text-gray-500'>Nenhuma O.S registada.</p>";
+            return;
+        }
+
+        let html = "";
+        datasOrdenadas.forEach(data => {
+            html += `<div class="bg-white p-3 rounded-lg shadow mb-3"><h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`;
+            const osDoDia = historicoAgrupado[data].sort((a, b) => {
+                const horaA = a.inicio || "00:00";
+                const horaB = b.inicio || "00:00";
+                if (horaA < horaB) return -1;
+                if (horaA > horaB) return 1;
+                return 0;
+            });
+            osDoDia.forEach(s => {
+                const codAtividade = s.atividade ? s.atividade.split(" - ")[0] : "N/A";
+                const subsistemaInfo = s.subsistema ? s.subsistema.split(" - ")[0] : "N/D"; // <-- ADICIONADO
+                const horaInicioServico = s.inicio || "--:--";
+                const horaFimServico = s.fim || "--:--"; // <-- ADICIONADO
+
+                html += `<div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
+                    <div class="flex justify-between items-center mb-2 text-sm">
+                        <div class="flex-grow">
+                            <span class="text-gray-700">Frota: <strong class="font-semibold text-blue-700">${s.frota || "N/D"}</strong></span>
+                            <span class="text-gray-600"> | ${codAtividade} - ${subsistemaInfo} [${horaInicioServico} - ${horaFimServico}]</span>
+                        </div>
+                        <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1 ml-2">👁️</button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1">
+                        <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
+                        <input id="os_input_${s.uniqueId}" class="block w-28 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"} placeholder="Digite o Nº">
+                        <span class="font-semibold whitespace-nowrap ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+                    </div>
+                    <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
+                        <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}" readonly>${s.texto}</textarea>
+                        <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                            ${s.status === "pendente" ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${(!s.osNumero || s.osNumero.trim() === "") ? 'disabled' : ''}>Marcar Finalizada</button>` : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`}
+                            <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar</button>
+                            <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button>
+                            <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir</button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        });
+        div.innerHTML = html;
+    } catch (error) {
+        console.error("Erro ao mostrar histórico:", error);
+        showToast("Erro ao carregar histórico.");
+        const div = document.getElementById("historico_lista");
+        if(div) div.innerHTML = "<p class='text-center text-red-500'>Erro ao carregar histórico.</p>";
+    }
+}    function validarOSInput(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const btnFinalizar = document.getElementById(`btnFinalizarOS_${uniqueId}`); if (input && btnFinalizar) { btnFinalizar.disabled = input.value.trim() === ""; } }
     function toggleCorpoHistorico(uniqueId) { /* ...código existente... */ const corpo = document.getElementById(`corpo_hist_${uniqueId}`); if (corpo) corpo.classList.toggle('hidden'); }
     async function finalizarOS(uniqueId) { /* ...código existente... */ const inputOSNumero = document.getElementById(`os_input_${uniqueId}`); const numeroOS = inputOSNumero.value.trim(); if (!numeroOS) { showToast("Preencha o número da O.S."); inputOSNumero.focus(); return; } try { const item = await dbGet(STORE_HISTORICO, uniqueId); if (item) { item.status = "finalizada"; item.osNumero = numeroOS; await dbSave(STORE_HISTORICO, item); await mostrarHistorico(); showToast("O.S finalizada!"); } else { showToast("Erro: O.S não encontrada."); } } catch (error) { console.error("Erro ao finalizar OS:", error); showToast("Erro ao atualizar O.S."); } }
     function habilitarEdicaoOS(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const btn = document.getElementById(`editarOSBtn_${uniqueId}`); if (input && btn) { input.disabled = false; input.focus(); btn.innerText = "Confirmar Edição"; btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600'); btn.classList.add('bg-green-500', 'hover:bg-green-600'); btn.onclick = () => confirmarEdicaoOS(uniqueId); } }
