@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#007acc">
     <title>Meu Turno</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; }
         #toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 0.375rem; padding: 1rem; z-index: 10000; visibility: hidden; }
@@ -27,29 +28,61 @@
         .servico-cabecalho-info .atividade-info { color: #495057; font-size: 0.9em; margin-left: 0.25rem; }
         .servico-cabecalho-toggler { font-size: 1.1em; color: #495057; }
         .servico-detalhes { padding: 1rem; border-width: 1px; border-top-width: 0; border-color: #ced4da; border-bottom-left-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
+        /* Estilos para o Menu Hambúrguer */
+.menu-link {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb; /* gray-200 */
+    font-size: 1rem;
+    color: #374151; /* gray-700 */
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.menu-link:hover {
+    background-color: #f3f4f6; /* gray-100 */
+}
+
+/* Classe que será adicionada via JS para abrir o menu */
+.menu-open #menu-lateral {
+    transform: translateX(0);
+}
+
+.menu-open #menu-overlay {
+    opacity: 1;
+    pointer-events: auto; /* Permite que o overlay seja clicável para fechar o menu */
+}
     </style>
 </head>
 
 <body class="bg-gray-100 text-gray-800">
 
-    <header class="bg-blue-600 text-white p-4 shadow-md flex items-center justify-center gap-x-3">
-        <img src="logo.png" alt="Logo MeuTurno" class="h-10" onerror="this.style.display='none'">
-        <h1 class="text-2xl font-bold tracking-wide">MeuTurno</h1>
-    </header>
+    <header class="bg-blue-600 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
+    <button id="hamburger-btn" class="text-2xl p-2">
+        &#9776; </button>
+    
+    <div class="flex items-center gap-x-2">    
+        <img src="logo.png" alt="Logo MeuTurno" class="h-8" onerror="this.style.display='none'">
+        <h1 id="header-titulo" class="text-xl font-bold">Turno</h1>
+</div>    
 
-    <nav class="bg-gray-50 shadow grid grid-cols-5 border-b border-gray-200">
-        <button onclick="abrir('turno')"
-            class="p-3 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none border-r border-gray-200 active-nav-button">Turno</button>
-        <button onclick="abrir('servicos')"
-            class="p-3 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none border-r border-gray-200">Serviços</button>
-        <button onclick="abrir('relatorio')"
-            class="p-3 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none border-r border-gray-200">Relatório</button>
-        <button onclick="abrir('historico')"
-            class="p-3 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none border-r border-gray-200">Histórico</button>
-        <button onclick="abrir('config')"
-            class="p-3 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none">Configurar</button>
-    </nav>
+    <div class="w-10"></div> 
+</header>
+<nav id="menu-lateral" class="fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-sm">
+    <div class="p-4 border-b">
+        <h2 class="text-2xl font-bold text-blue-600">MeuTurno</h2>
+        <img src="logo.png" alt="Logotipo" class="h-8" onerror="this.style.display='none'">
+    </div>
+    <div class="flex flex-col">
+        <a href="#" class="menu-link" data-secao="turno">Turno</a>
+        <a href="#" class="menu-link" data-secao="servicos">Serviços</a>
+        <a href="#" class="menu-link" data-secao="estatisticas">Estatísticas</a>
+        <a href="#" class="menu-link" data-secao="relatorio">Relatório</a>
+        <a href="#" class="menu-link" data-secao="historico">Histórico</a>
+        <a href="#" class="menu-link" data-secao="config">Configurar</a>
+    </div>
+</nav>
 
+<div id="menu-overlay" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-20 opacity-0 pointer-events-none transition-opacity duration-300 ease-in-out"></div>
     <main class="p-4">
         <section id="turno" class="active">
             <div class="bg-white p-4 rounded-lg shadow space-y-6">
@@ -107,15 +140,22 @@
 
                 <div class="p-4 border border-gray-200 rounded-lg">
                     <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Frotas</h4>
-                    <div class="flex space-x-2 mb-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1">
                         <input id="novaFrota" type="text"
-                            class="flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             placeholder="Código da frota">
                         <input id="novaHoraFrota" type="number" step="0.1"
-                            class="flex-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             placeholder="Ex: 7.5 (7h30min)">
                     </div>
-                    <small class="block text-xs text-gray-500 mb-2">Use ponto para decimal (ex: 7 horas e 30 minutos =
+                    <div class="mt-2">
+                        <label for="tipoFrota" class="block text-sm font-medium text-gray-700">Tipo de Frota*</label>
+                        <select id="tipoFrota" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="maquina">Máquina Principal</option>
+                            <option value="implemento">Implemento</option>
+                        </select>
+                    </div>
+                    <small class="block text-xs text-gray-500 my-2">Use ponto para decimal (ex: 7 horas e 30 minutos =
                         7.5).</small>
                     <button onclick="adicionarFrota()"
                         class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-3 rounded-md font-semibold transition-colors duration-150">Adicionar
@@ -138,52 +178,61 @@
                 </div>
             </div>
 
-            <div id="servicosLista" class="space-y-4"> {/* Ajustado space-y-6 para space-y-4 para dar espaço aos cabeçalhos de data */}
-                {/* Os serviços serão renderizados aqui pelo JavaScript */}
-            </div>
+            <div id="servicosLista" class="space-y-4">
+                </div>
             <button id="btnAddServico" onclick="adicionarServico()"
                 class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md block mx-auto mt-6 font-semibold transition-colors duration-150">
                 Adicionar Novo Serviço
             </button>
         </section>
 
-        <button id="fabAddFrota" onclick="abrirPopupFrota()"
-            class="fixed bottom-28 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-50"
-            style="display: none;">
-            🚜
-        </button>
-        <button id="fabCriarServico" onclick="verificarServicosPendentes()"
-            class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50"
-            style="display: none;">
-            +
-        </button>
+        <section id="estatisticas" class="hidden">
+            <div class="bg-white p-4 rounded-lg shadow space-y-6">
+                <h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Estatísticas do Turno</h2>
+                
+                <div class="p-4 border border-gray-200 rounded-lg text-center">
+                     <h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4>
+                     <p id="stat_dm_turno_atual" class="text-4xl font-bold text-green-600">--.--%</p>
+                     <p id="stat_dm_info" class="text-sm text-gray-500 mt-1">Calculada com base em 0 máquinas principais.</p>
+                </div>
+    
+                <div class="p-4 border border-gray-200 rounded-lg">
+                    <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">O.S. Registradas no Histórico (Últimos 15 dias)</h4>
+                    <canvas id="graficoHistoricoOS"></canvas>
+                    <p class="text-xs text-center text-gray-500 mt-4">
+                        <strong>Nota:</strong> O cálculo de DM histórica ainda não é possível.
+                        Para futuras versões, podemos aprimorar o salvamento de dados para permitir essa análise.
+                    </p>
+                </div>
+            </div>
+        </section>
 
         <section id="relatorio" class="hidden">
              <div class="bg-white p-4 rounded-lg shadow space-y-6">
-                <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Visualização</h4>
-                    <div id="relatorio_formatado"
-                        class="p-3 bg-gray-50 border rounded-md min-h-[100px] whitespace-pre-line"></div>
-                    <textarea id="relatorio_bruto"
-                        class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm hidden mt-2 font-mono h-64"></textarea>
-                </div>
-                <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Ações</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button onclick="gerarRelatorioFinal()"
-                            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">Gerar
-                            Relatório Final</button>
-                        <button onclick="compartilharRelatorio()"
-                            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-500 hover:bg-gray-600 text-white">Compartilhar</button>
-                        <button onclick="toggleEdicaoRelatorio()"
-                            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white">Editar
-                            Relatório</button>
-                        <button onclick="limparRelatorio()"
-                            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Limpar
-                            Relatório</button>
-                    </div>
-                </div>
-            </div>
+                 <div class="p-4 border border-gray-200 rounded-lg">
+                     <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Visualização</h4>
+                     <div id="relatorio_formatado"
+                         class="p-3 bg-gray-50 border rounded-md min-h-[100px] whitespace-pre-line"></div>
+                     <textarea id="relatorio_bruto"
+                         class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm hidden mt-2 font-mono h-64"></textarea>
+                 </div>
+                 <div class="p-4 border border-gray-200 rounded-lg">
+                     <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Ações</h4>
+                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                         <button onclick="gerarRelatorioFinal()"
+                             class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">Gerar
+                             Relatório Final</button>
+                         <button onclick="compartilharRelatorio()"
+                             class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-500 hover:bg-gray-600 text-white">Compartilhar</button>
+                         <button onclick="toggleEdicaoRelatorio()"
+                             class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white">Editar
+                             Relatório</button>
+                         <button onclick="limparRelatorio()"
+                             class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Limpar
+                             Relatório</button>
+                     </div>
+                 </div>
+             </div>
         </section>
 
         <section id="historico" class="hidden">
@@ -249,6 +298,17 @@
         </section>
     </main>
 
+    <button id="fabAddFrota" onclick="abrirPopupFrota()"
+        class="fixed bottom-28 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-50"
+        style="display: none;">
+        🚜
+    </button>
+    <button id="fabCriarServico" onclick="verificarServicosPendentes()"
+        class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50"
+        style="display: none;">
+        +
+    </button>
+
     <div id="toast"></div>
 
     <div class="popup-overlay" id="overlayFrota"></div>
@@ -257,9 +317,16 @@
         <label class="block text-sm font-medium text-gray-700">Frota</label>
         <input type="text" id="inputFrota" placeholder="Ex.: JD6115J"
             class="mt-1 mb-3 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-        <label class="block text-sm font-medium text-gray-700">Horas Planeadas</label>
+        <label class="block text-sm font-medium text-gray-700">Horas Planejadas</label>
         <input type="number" step="0.1" id="inputHoraFrota" placeholder="Ex.: 7.5 (7h30min)"
             class="mt-1 mb-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        <div class="my-3">
+             <label for="popupTipoFrota" class="block text-sm font-medium text-gray-700">Tipo de Frota*</label>
+             <select id="popupTipoFrota" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                <option value="maquina">Máquina Principal</option>
+                <option value="implemento">Implemento</option>
+            </select>
+        </div>
         <small class="block text-xs text-gray-500 mb-4">Use ponto para decimal.</small>
         <div class="flex justify-end space-x-2">
             <button
@@ -287,19 +354,20 @@
     </div>
 
     <div class="popup-overlay" id="overlayApagarData"></div>
-<div class="popup" id="popupApagarData">
-    <h3 class="text-xl font-semibold mb-4">Selecione a Data do Histórico para Apagar</h3>
-    <select id="selectDatas"
-        class="mb-4 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></select>
-    <div class="flex justify-end space-x-2">
-        <button
-            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700"
-            onclick="confirmarApagarPorData()">Apagar</button>
-        <button
-            class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-300 text-gray-800 hover:bg-gray-400"
-            onclick="fecharPopupApagarData()">Cancelar</button>
+    <div class="popup" id="popupApagarData">
+        <h3 class="text-xl font-semibold mb-4">Selecione a Data do Histórico para Apagar</h3>
+        <select id="selectDatas"
+            class="mb-4 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></select>
+        <div class="flex justify-end space-x-2">
+            <button
+                class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700"
+                onclick="confirmarApagarPorData()">Apagar</button>
+            <button
+                class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-300 text-gray-800 hover:bg-gray-400"
+                onclick="fecharPopupApagarData()">Cancelar</button>
+        </div>
     </div>
-</div>
+
     <div class="popup-overlay" id="overlayConfirmar"></div>
     <div class="popup" id="popupConfirmar">
         <h3 id="popupConfirmarTitulo" class="text-xl font-semibold mb-3">Confirmação</h3>
@@ -327,6 +395,17 @@
             class="ml-2 bg-white text-blue-600 py-1 px-3 rounded-md font-bold">Atualizar</button>
     </div>
 
+    <template id="servico-template">
+        <article class="bg-white p-4 rounded-lg shadow mb-4">
+            <div class="servico-cabecalho">
+                <div class="servico-cabecalho-info"></div>
+                <span class="servico-cabecalho-toggler"></span>
+            </div>
+            <div class="servico-detalhes" style="display:none;">
+                </div>
+        </article>
+    </template>
+
 <script>
     // =================================================================================
     // VARIÁVEIS GLOBAIS E CONSTANTES
@@ -337,6 +416,7 @@
     let callbackOportunidade = null;
     let callbackConfirmar = null;
     let db;
+    let graficoOS = null; // Variável para o gráfico de estatísticas
 
     const DB_NAME = 'meuturnoDB';
     const DB_VERSION = 1; 
@@ -344,10 +424,10 @@
     const STORE_HISTORICO = 'historicoOS';
     const TURNO_ATUAL_ID = 'currentTurno';
 
-    const atividades = [ /* ... seu array de atividades ... */ ];
-    const sistemas = { /* ... seu objeto de sistemas ... */ };
-    const subsistemas = { /* ... seu objeto de subsistemas ... */ };
-    // (O conteúdo de atividades, sistemas, subsistemas foi omitido para brevidade, mas deve estar aqui)
+    const atividades = [];
+    const sistemas = {};
+    const subsistemas = {};
+    
     atividades.push(
         "P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO",
         "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE",
@@ -413,7 +493,7 @@
             request.onerror = (event) => { console.error("Erro IndexedDB:", event.target.error); reject(event.target.error); };
         });
     }
-    async function dbSave(storeName, data) { /* ...código existente... */ 
+    async function dbSave(storeName, data) { 
         await initDB();
         return new Promise((resolve, reject) => {
             try {
@@ -425,7 +505,7 @@
             } catch (error) { console.error(`Exceção ao tentar guardar em ${storeName}:`, error); reject(error); }
         });
     }
-    async function dbGet(storeName, key) { /* ...código existente... */
+    async function dbGet(storeName, key) {
         await initDB();
         return new Promise((resolve, reject) => {
             try {
@@ -437,7 +517,7 @@
             } catch (error) { console.error(`Exceção ao tentar obter de ${storeName}:`, error); reject(error); }
         });
     }
-    async function dbGetAll(storeName) { /* ...código existente... */
+    async function dbGetAll(storeName) {
         await initDB();
         return new Promise((resolve, reject) => {
             try {
@@ -449,7 +529,7 @@
             } catch (error) { console.error(`Exceção ao tentar obter todos de ${storeName}:`, error); reject(error); }
         });
     }
-    async function dbDelete(storeName, key) { /* ...código existente... */
+    async function dbDelete(storeName, key) {
         await initDB();
         return new Promise((resolve, reject) => {
             try {
@@ -461,7 +541,7 @@
             } catch (error) { console.error(`Exceção ao tentar apagar de ${storeName}:`, error); reject(error); }
         });
     }
-    async function dbClearStore(storeName) { /* ...código existente... */
+    async function dbClearStore(storeName) {
         await initDB();
         return new Promise((resolve, reject) => {
             try {
@@ -477,54 +557,78 @@
     // =================================================================================
     // FUNÇÕES UTILITÁRIAS E DE UI 
     // =================================================================================
-    function showToast(msg) { /* ...código existente... */ 
+    function inicializarMenuHamburguer() {
+    const btn = document.getElementById('hamburger-btn');
+    const menu = document.getElementById('menu-lateral');
+    const overlay = document.getElementById('menu-overlay');
+    const links = document.querySelectorAll('.menu-link');
+    const body = document.body;
+
+    const abrirMenu = () => body.classList.add('menu-open');
+    const fecharMenu = () => body.classList.remove('menu-open');
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impede que o clique se propague para outros elementos
+        abrirMenu();
+    });
+
+    overlay.addEventListener('click', fecharMenu);
+
+    links.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault(); // Impede que o link mude a URL
+            const secao = link.getAttribute('data-secao');
+            if (secao) {
+                abrir(secao);
+                fecharMenu();
+            }
+        });
+    });
+}
+    
+    function showToast(msg) { 
         const toast = document.getElementById("toast");
         if (!toast) return;
         toast.innerText = msg;
         toast.className = "show";
         setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
     }
-    function dataHojeInputLocal() { /* ...código existente... */
+    function dataHojeInputLocal() {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
         const dia = hoje.getDate().toString().padStart(2, '0');
         return `${ano}-${mes}-${dia}`;
     }
-    function fecharTeclado() { /* ...código existente... */
+    function fecharTeclado() {
         if (document.activeElement && typeof document.activeElement.blur === 'function') {
             document.activeElement.blur();
         }
     }
-    function interpretarMarkdown(texto) { /* ...código existente... */ 
+    function interpretarMarkdown(texto) { 
         if (!texto) return "";
         return texto.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/_(.*?)_/g, '<em>$1</em>').replace(/~(.*?)~/g, '<del>$1</del>').replace(/\n/g, '<br>');
     }
     
-    /**
-     * Formata uma data string de YYYY-MM-DD para DD/MM/YYYY.
-     * @param {string} dataStringYyyyMmDd - A data no formato YYYY-MM-DD.
-     * @returns {string} A data formatada como DD/MM/YYYY ou "Data Inválida".
-     */
     function formatarDataParaExibicao(dataStringYyyyMmDd) {
         if (!dataStringYyyyMmDd || !/^\d{4}-\d{2}-\d{2}$/.test(dataStringYyyyMmDd)) {
             if (dataStringYyyyMmDd && /^\d{2}\/\d{2}\/\d{4}$/.test(dataStringYyyyMmDd)) {
                 return dataStringYyyyMmDd; 
             }
-            return "Sem Data"; // Retorna "Sem Data" se inválido ou vazio
+            return "Sem Data";
         }
         const [ano, mes, dia] = dataStringYyyyMmDd.split('-');
         return `${dia}/${mes}/${ano}`;
     }
 
-    function getCabecalhoServicoTexto(servico) { /* ...código existente... */ 
+    function getCabecalhoServicoTexto(servico) { 
         const frota = servico.frota || "N/D";
         const codAtividade = (servico.atividade || "N/D").split(" - ")[0];
         const horaInicio = servico.inicio || "--:--";
         const horaFim = servico.fim || "--:--";
         return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| Atividade: ${codAtividade} - ${horaInicio} / ${horaFim}</span>`;
     }
-    function atualizarCabecalhoServico(servicoId) { /* ...código existente... */
+    function atualizarCabecalhoServico(servicoId) {
         const servico = servicos.find(s => s.id === servicoId);
         if (!servico) return;
         const frotaInput = document.getElementById(`frota_${servicoId}`);
@@ -542,37 +646,43 @@
     // =================================================================================
     // NAVEGAÇÃO E CONTROLO DE ABAS
     // =================================================================================
-    async function abrir(modulo) { /* ...código existente... */ 
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav-button'));
-        document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
-        const secaoAtiva = document.getElementById(modulo);
-        const botaoAtivo = document.querySelector(`nav button[onclick="abrir('${modulo}')"]`);
-        if (secaoAtiva) secaoAtiva.classList.remove('hidden');
-        if (botaoAtivo) botaoAtivo.classList.add('active-nav-button');
-        const fabCriarServico = document.getElementById('fabCriarServico');
-        const fabFrota = document.getElementById('fabAddFrota');
-        const btnAddServicoGlobal = document.getElementById('btnAddServico');
-        if (modulo === 'servicos') {
-            renderizarServicos();
-            if (fabCriarServico) fabCriarServico.style.display = 'flex';
-            if (fabFrota) fabFrota.style.display = 'flex';
-            if (btnAddServicoGlobal) btnAddServicoGlobal.style.display = servicos.length === 0 ? 'block' : 'none';
-        } else {
-            if (fabCriarServico) fabCriarServico.style.display = 'none';
-            if (fabFrota) fabFrota.style.display = 'none';
-            if (btnAddServicoGlobal) btnAddServicoGlobal.style.display = 'none';
-        }
-        if (modulo === 'historico') { await mostrarHistorico(); }
+    async function abrir(modulo) {
+    // Esconde todas as seções
+    document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+    
+    // Mostra a seção ativa
+    const secaoAtiva = document.getElementById(modulo);
+    if (secaoAtiva) secaoAtiva.classList.remove('hidden');
+
+    // Atualiza o título no cabeçalho
+    const tituloHeader = document.getElementById('header-titulo');
+    if(tituloHeader) {
+        // Converte a primeira letra para maiúscula
+        tituloHeader.textContent = modulo.charAt(0).toUpperCase() + modulo.slice(1);
     }
+    
+    // Controla a visibilidade dos botões flutuantes (FABs)
+    const fabCriarServico = document.getElementById('fabCriarServico');
+    const fabFrota = document.getElementById('fabAddFrota');
+    
+    if (modulo === 'servicos') {
+        renderizarServicos();
+        if (fabCriarServico) fabCriarServico.style.display = 'flex';
+        if (fabFrota) fabFrota.style.display = 'flex';
+    } else {
+        if (fabCriarServico) fabCriarServico.style.display = 'none';
+        if (fabFrota) fabFrota.style.display = 'none';
+    }
+    
+    // Lógica específica de cada aba
+    if (modulo === 'historico') { await mostrarHistorico(); }
+    if (modulo === 'estatisticas') { await renderizarEstatisticas(); }
+}
 
     // =================================================================================
     // GESTÃO DE POPUPS
     // =================================================================================
-    function fecharPopupApagarData() {
-    document.getElementById('popupApagarData').style.display = 'none';
-    document.getElementById('overlayApagarData').style.display = 'none';
-}
-    function abrirPopup(titulo, mensagem, botoes = []) { /* ...código existente... */ 
+    function abrirPopup(titulo, mensagem, botoes = []) { 
         document.getElementById('popupTitulo').innerText = titulo;
         document.getElementById('popupMensagem').innerText = mensagem;
         const divBotoes = document.getElementById('popupBotoes');
@@ -588,11 +698,11 @@
         document.getElementById('overlayPopup').style.display = 'block';
         fecharTeclado();
     }
-    function fecharPopup() { /* ...código existente... */ 
+    function fecharPopup() { 
         document.getElementById('popupGenerico').style.display = 'none';
         document.getElementById('overlayPopup').style.display = 'none';
     }
-    function abrirPopupConfirmar(mensagem, acao, titulo = "Confirmação", isHtmlMensagem = false) { /* ...código existente... */ 
+    function abrirPopupConfirmar(mensagem, acao, titulo = "Confirmação", isHtmlMensagem = false) { 
         document.getElementById('popupConfirmarTitulo').innerText = titulo;
         const mensagemElement = document.getElementById('popupConfirmarMensagem');
         if (isHtmlMensagem) mensagemElement.innerHTML = mensagem;
@@ -602,65 +712,81 @@
         callbackConfirmar = acao;
         fecharTeclado();
     }
-    function confirmarPopupAcao() { /* ...código existente... */ 
+    function confirmarPopupAcao() { 
         if (callbackConfirmar) callbackConfirmar();
         fecharPopupConfirmar();
     }
-    function fecharPopupConfirmar() { /* ...código existente... */ 
+    function fecharPopupConfirmar() { 
         document.getElementById('overlayConfirmar').style.display = 'none';
         document.getElementById('popupConfirmar').style.display = 'none';
     }
-    function abrirPopupOportunidade(callback) { /* ...código existente... */ 
+    function abrirPopupOportunidade(callback) { 
         callbackOportunidade = callback;
         document.getElementById('popupOportunidade').style.display = 'block';
         document.getElementById('overlayOportunidade').style.display = 'block';
         const inputOportunidade = document.getElementById('inputOportunidade');
         inputOportunidade.value = ''; inputOportunidade.focus();
     }
-    function fecharPopupOportunidade() { /* ...código existente... */
+    function fecharPopupOportunidade() {
         document.getElementById('popupOportunidade').style.display = 'none';
         document.getElementById('overlayOportunidade').style.display = 'none';
     }
-    function confirmarOportunidade() { /* ...código existente... */
+    function confirmarOportunidade() {
         const valor = document.getElementById('inputOportunidade').value.trim();
         if (callbackOportunidade) callbackOportunidade(valor);
         fecharPopupOportunidade();
     }
-    function cancelarOportunidade() { /* ...código existente... */
+    function cancelarOportunidade() {
         if (callbackOportunidade) callbackOportunidade('');
         fecharPopupOportunidade();
     }
-    function abrirPopupFrota() { /* ...código existente... */
+    function abrirPopupFrota() {
         document.getElementById('popupFrota').style.display = 'block';
         document.getElementById('overlayFrota').style.display = 'block';
         document.getElementById('inputFrota').value = '';
         document.getElementById('inputHoraFrota').value = '';
         document.getElementById('inputFrota').focus();
     }
-    function fecharPopupFrota() { /* ...código existente... */
+    function fecharPopupFrota() {
         document.getElementById('popupFrota').style.display = 'none';
         document.getElementById('overlayFrota').style.display = 'none';
     }
-    async function confirmarFrota() { /* ...código existente... */
-        if (!validarCamposTurnoBasicos()) return;
-        const nome = document.getElementById('inputFrota').value.trim();
-        const horasInput = document.getElementById('inputHoraFrota').value;
-        if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) { showToast("Erro: Esta frota já foi adicionada."); return; }
-        if (!nome || horasInput === "") { showToast("Preencha corretamente a frota e as horas!"); return; }
-        const horas = parseFloat(horasInput);
-        if (isNaN(horas) || horas <= 0) { showToast("As horas da frota devem ser um número positivo!"); return; }
-        frotasTurno.push({ nome, horas });
-        renderizarFrotas();
-        atualizarSelectsDeFrotasNosServicos();
-        fecharPopupFrota();
-        showToast("Frota adicionada!");
-        await salvarTudo();
-    }
+    async function abrirPopupApagarPorData() {
+    try {
+        // Pega os dados diretamente do banco de dados, em vez de ler o HTML
+        const todosItens = await dbGetAll(STORE_HISTORICO);
+        if (todosItens.length === 0) {
+            showToast("Nenhum histórico para apagar.");
+            return;
+        }
 
+        // Cria uma lista de datas únicas e ordena da mais recente para a mais antiga
+        const datas = [...new Set(todosItens.map(item => item.dataKey))].sort((a, b) => {
+            const [diaA, mesA, anoA] = a.split('/').map(Number);
+            const [diaB, mesB, anoB] = b.split('/').map(Number);
+            return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
+        });
+
+        const select = document.getElementById('selectDatas');
+        select.innerHTML = '<option value="">Selecione uma data</option>' + datas.map(d => `<option value="${d}">${d}</option>`).join('');
+        
+        document.getElementById('popupApagarData').style.display = 'block';
+        document.getElementById('overlayApagarData').style.display = 'block';
+        fecharTeclado();
+    } catch (e) {
+        showToast("Erro ao carregar as datas do histórico.");
+        console.error("Erro em abrirPopupApagarPorData:", e);
+    }
+}
+    function fecharPopupApagarData() {
+        document.getElementById('popupApagarData').style.display = 'none';
+        document.getElementById('overlayApagarData').style.display = 'none';
+    }
+    
     // =================================================================================
     // VALIDAÇÃO DE CAMPOS DO TURNO
     // =================================================================================
-    function validarCamposTurnoBasicos() { /* ...código existente... */
+    function validarCamposTurnoBasicos() {
         const dataTurnoEl = document.getElementById('dataTurno');
         const fazendaEl = document.getElementById('fazenda');
         const frenteEl = document.getElementById('frente');
@@ -682,7 +808,7 @@
     // =================================================================================
     // GESTÃO DE EQUIPE
     // =================================================================================
-    async function adicionarEquipe() { /* ...código existente... */
+    async function adicionarEquipe() {
         if (!validarCamposTurnoBasicos()) return;
         const nomeInput = document.getElementById('nomeEquipe');
         const matriculaInput = document.getElementById('matriculaEquipe');
@@ -696,12 +822,12 @@
             showToast('Membro adicionado à equipe!');
         } else { showToast('Preencha nome e matrícula corretamente!'); }
     }
-    async function removerEquipe() { /* ...código existente... */
+    async function removerEquipe() {
         abrirPopupConfirmar("Tem certeza que deseja limpar toda a equipe?", async () => {
             equipe = []; await salvarEquipe(); renderizarEquipe(); showToast('Equipe limpa!');
         });
     }
-    async function salvarEdicoesEquipe() { /* ...código existente... */
+    async function salvarEdicoesEquipe() {
         const inputsNome = document.querySelectorAll('.input-nome-equipe');
         const inputsMatricula = document.querySelectorAll('.input-matricula-equipe');
         const novaEquipe = [];
@@ -711,7 +837,7 @@
         }
         equipe = novaEquipe; await salvarEquipe(); renderizarEquipe(); showToast('Alterações na equipe salvas!');
     }
-    function renderizarEquipe() { /* ...código existente... */ 
+    function renderizarEquipe() { 
         const box = document.getElementById('boxEquipe');
         if (!box) return;
         if (equipe.length === 0) { box.innerHTML = '<p class="text-sm text-gray-500">Nenhum membro na equipe.</p>'; return; }
@@ -722,7 +848,7 @@
         html += `</div><div class="mt-3 flex space-x-2"><button onclick="salvarEdicoesEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">Salvar</button><button onclick="removerEquipe()" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Limpar</button></div>`;
         box.innerHTML = html;
     }
-    function obterEquipeTexto() { /* ...código existente... */
+    function obterEquipeTexto() {
         if (equipe.length === 0) return "Equipe não informada.";
         return equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n');
     }
@@ -731,31 +857,91 @@
     // =================================================================================
     // GESTÃO DE FROTAS
     // =================================================================================
-    async function adicionarFrota() { /* ...código existente... */
-        if (!validarCamposTurnoBasicos()) return;
-        const nomeInput = document.getElementById('novaFrota');
-        const horasInputEl = document.getElementById('novaHoraFrota');
-        const nome = nomeInput.value.trim(); const horasInput = horasInputEl.value;
-        if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) { showToast("Erro: Frota já adicionada."); return; }
-        if (!nome || horasInput === "") { showToast("Preencha frota e horas!"); return; }
-        const horas = parseFloat(horasInput);
-        if (isNaN(horas) || horas <= 0) { showToast("Horas devem ser número positivo!"); return; }
-        frotasTurno.push({ nome, horas }); renderizarFrotas(); atualizarSelectsDeFrotasNosServicos();
-        nomeInput.value = ''; horasInputEl.value = ''; showToast("Frota adicionada!"); await salvarTudo();
+    async function adicionarFrota() {
+    if (!validarCamposTurnoBasicos()) return;
+    const nomeInput = document.getElementById('novaFrota');
+    const horasInputEl = document.getElementById('novaHoraFrota');
+    const tipoInput = document.getElementById('tipoFrota');
+    const nome = nomeInput.value.trim();
+    const horasInput = horasInputEl.value;
+    const tipo = tipoInput.value;
+
+    if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) {
+        showToast("Erro: Frota já adicionada.");
+        return;
     }
-    function renderizarFrotas() { /* ...código existente... */
+    if (!nome || horasInput === "") {
+        showToast("Preencha frota e horas!");
+        return;
+    }
+    const horas = parseFloat(horasInput);
+    if (isNaN(horas) || horas <= 0) {
+        showToast("Horas devem ser número positivo!");
+        return;
+    }
+    frotasTurno.push({ nome, horas, tipo });
+    renderizarFrotas();
+    atualizarSelectsDeFrotasNosServicos();
+    nomeInput.value = '';
+    horasInputEl.value = '';
+    showToast("Frota adicionada!");
+    await salvarTudo();
+
+    // Linha adicionada para melhorar a experiência do usuário
+    nomeInput.focus(); 
+}
+    async function confirmarFrota() {
+        if (!validarCamposTurnoBasicos()) return;
+        const nome = document.getElementById('inputFrota').value.trim();
+        const horasInput = document.getElementById('inputHoraFrota').value;
+        const tipo = document.getElementById('popupTipoFrota').value;
+        if (frotasTurno.some(f => f.nome.toUpperCase() === nome.toUpperCase())) {
+            showToast("Erro: Esta frota já foi adicionada.");
+            return;
+        }
+        if (!nome || horasInput === "") {
+            showToast("Preencha corretamente a frota e as horas!");
+            return;
+        }
+        const horas = parseFloat(horasInput);
+        if (isNaN(horas) || horas <= 0) {
+            showToast("As horas da frota devem ser um número positivo!");
+            return;
+        }
+        frotasTurno.push({ nome, horas, tipo });
+        renderizarFrotas();
+        atualizarSelectsDeFrotasNosServicos();
+        fecharPopupFrota();
+        showToast("Frota adicionada!");
+        await salvarTudo();
+    }
+    function renderizarFrotas() {
         const div = document.getElementById('listaFrotas');
         if (!div) return;
-        if (frotasTurno.length === 0) { div.innerHTML = "<p class='text-sm text-gray-500'>Nenhuma frota.</p>"; return; }
-        div.innerHTML = frotasTurno.map((f, i) => `<div class="flex justify-between items-center p-2 border-b border-gray-200 text-sm"><span>Frota: <strong class="font-semibold">${f.nome}</strong> - ${f.horas.toFixed(2)}h</span><button onclick="removerFrota(${i})" class="py-1 px-2 rounded-md font-semibold transition-colors duration-150 bg-red-500 text-white hover:bg-red-600 text-xs">Remover</button></div>`).join('');
+        if (frotasTurno.length === 0) {
+            div.innerHTML = "<p class='text-sm text-gray-500'>Nenhuma frota adicionada.</p>";
+            return;
+        }
+        div.innerHTML = frotasTurno.map((f, i) =>
+            `<div class="flex justify-between items-center p-2 border-b border-gray-200 text-sm">
+                <span>
+                    Frota: <strong class="font-semibold">${f.nome}</strong> 
+                    <span class="text-xs font-semibold ${f.tipo === 'maquina' ? 'text-blue-600' : 'text-gray-500'}">
+                        [${f.tipo === 'maquina' ? 'Máquina' : 'Implemento'}]
+                    </span>
+                    - ${f.horas.toFixed(2)}h
+                </span>
+                <button onclick="removerFrota(${i})" class="py-1 px-2 rounded-md font-semibold transition-colors duration-150 bg-red-500 text-white hover:bg-red-600 text-xs">Remover</button>
+            </div>`
+        ).join('');
     }
-    async function removerFrota(index) { /* ...código existente... */
+    async function removerFrota(index) {
         abrirPopupConfirmar('Remover esta frota?', async () => {
             frotasTurno.splice(index, 1); renderizarFrotas(); atualizarSelectsDeFrotasNosServicos();
             showToast("Frota removida!"); await salvarTudo();
         });
     }
-    function atualizarSelectsDeFrotasNosServicos() { /* ...código existente... */
+    function atualizarSelectsDeFrotasNosServicos() {
         servicos.forEach(s => {
             const select = document.getElementById(`frota_${s.id}`);
             if (select) {
@@ -768,7 +954,7 @@
     // =================================================================================
     // SERVIÇOS (O.S) 
     // =================================================================================
-    function adicionarServico(dadosPreenchidos = null) { /* ...código existente... */
+    function adicionarServico(dadosPreenchidos = null) {
         if (!validarCamposTurnoBasicos()) return;
         salvarValoresServicos(); const id = Date.now();
         const novoServico = dadosPreenchidos || {
@@ -780,11 +966,15 @@
         showToast("Novo serviço adicionado.");
         setTimeout(() => { const el = document.getElementById(`servico_${id}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 100);
     }
-
-    // === MODIFICADO: renderizarServicos com agrupamento por data ===
     function renderizarServicos() {
         const filtroFrota = document.getElementById('filtroServicoFrota')?.value.toLowerCase() || "";
         const filtroDescricao = document.getElementById('filtroServicoDescricao')?.value.toLowerCase() || "";
+        const divLista = document.getElementById("servicosLista");
+        if (!divLista) return;
+
+        while (divLista.firstChild) {
+            divLista.removeChild(divLista.firstChild);
+        }
 
         let servicosFiltrados = servicos.filter(s => {
             const frotaMatch = !filtroFrota || (s.frota && s.frota.toLowerCase().includes(filtroFrota));
@@ -793,111 +983,112 @@
         });
 
         servicosFiltrados.sort((a, b) => {
-            const dataA = a.data || '0000-00-00'; 
+            const dataA = a.data || '0000-00-00';
             const dataB = b.data || '0000-00-00';
-            const horaA = a.inicio || '00:00';   
+            const horaA = a.inicio || '00:00';
             const horaB = b.inicio || '00:00';
-            if (dataA < dataB) return -1; if (dataA > dataB) return 1;
-            if (horaA < horaB) return -1; if (horaA > horaB) return 1;
-            return 0; 
+            if (dataA < dataB) return -1;
+            if (dataA > dataB) return 1;
+            if (horaA < horaB) return -1;
+            if (horaA > horaB) return 1;
+            return 0;
         });
 
-        const divLista = document.getElementById("servicosLista");
-        if (!divLista) return;
-
-        const servicosAgrupadosPorData = {};
-        servicosFiltrados.forEach(s => {
-            const dataDoServico = s.data || "Sem Data Registrada"; 
-            if (!servicosAgrupadosPorData[dataDoServico]) {
-                servicosAgrupadosPorData[dataDoServico] = [];
-            }
-            servicosAgrupadosPorData[dataDoServico].push(s);
-        });
-
-        let htmlGerado = "";
-        const datasOrdenadas = Object.keys(servicosAgrupadosPorData).sort(); 
-
-        if (datasOrdenadas.length === 0) {
+        if (servicosFiltrados.length === 0) {
+            let mensagem = "<p class='text-center text-gray-500'>Nenhum serviço cadastrado neste turno ainda.</p>";
             if (filtroFrota || filtroDescricao) {
-                htmlGerado = "<p class='text-center text-gray-500'>Nenhum serviço encontrado para os filtros aplicados.</p>";
-            } else {
-                htmlGerado = "<p class='text-center text-gray-500'>Nenhum serviço cadastrado neste turno ainda.</p>";
+                mensagem = "<p class='text-center text-gray-500'>Nenhum serviço encontrado para os filtros aplicados.</p>";
             }
+            divLista.innerHTML = mensagem;
         } else {
-            datasOrdenadas.forEach(data => {
-                const dataFormatada = formatarDataParaExibicao(data);
-                htmlGerado += `<div class="bg-gray-100 p-3 rounded-lg shadow-md mb-6"> 
-                                 <h3 class="text-xl font-semibold text-blue-700 mb-3 border-b-2 border-blue-200 pb-2">Serviços de: ${dataFormatada}</h3>`;
-                
-                const servicosDoDia = servicosAgrupadosPorData[data]; 
+            const servicoTemplate = document.getElementById('servico-template');
+            const servicosAgrupados = servicosFiltrados.reduce((acc, s) => {
+                const data = s.data || "Sem Data";
+                if (!acc[data]) acc[data] = [];
+                acc[data].push(s);
+                return acc;
+            }, {});
 
-                servicosDoDia.forEach(s => {
+            Object.keys(servicosAgrupados).sort().forEach(dataKey => {
+                const containerData = document.createElement('div');
+                containerData.className = 'bg-gray-100 p-3 rounded-lg shadow-md';
+                containerData.innerHTML = `<h3 class="text-xl font-semibold text-blue-700 mb-3 border-b-2 border-blue-200 pb-2">Serviços de: ${formatarDataParaExibicao(dataKey)}</h3>`;
+                
+                servicosAgrupados[dataKey].forEach(s => {
+                    const clone = servicoTemplate.content.cloneNode(true);
+                    const article = clone.querySelector('article');
+                    const cabecalho = article.querySelector('.servico-cabecalho');
+                    const cabecalhoInfo = article.querySelector('.servico-cabecalho-info');
+                    const toggler = article.querySelector('.servico-cabecalho-toggler');
+                    const detalhes = article.querySelector('.servico-detalhes');
+
                     const osNaoGerada = !s.texto || s.texto.trim() === "";
-                    const isExpanded = s.isExpanded || false; 
-                    const classesServico = ['bg-white p-4 rounded-lg shadow mb-4', osNaoGerada ? 'servico-pendente-os' : ''];
-                    const subsistemasAtuais = subsistemas[s.sistema] || [];
-                    const textoCabecalho = getCabecalhoServicoTexto(s);
+                    article.id = `servico_${s.id}`;
+                    if (osNaoGerada) {
+                        article.classList.add('servico-pendente-os');
+                    }
+
+                    cabecalhoInfo.innerHTML = getCabecalhoServicoTexto(s);
+                    toggler.textContent = s.isExpanded ? '▲' : '▼';
+                    cabecalho.onclick = () => toggleDetalhesServico(s.id);
                     
-                    htmlGerado += `
-                    <article class="${classesServico.join(' ')}" id="servico_${s.id}">
-                        <div class="servico-cabecalho" onclick="toggleDetalhesServico(${s.id})">
-                            <div class="servico-cabecalho-info">${textoCabecalho}</div>
-                            <span id="toggler_${s.id}" class="servico-cabecalho-toggler">${isExpanded ? '▲' : '▼'}</span>
-                        </div>
-                        <div class="servico-detalhes" id="detalhes_${s.id}" style="display:${isExpanded ? 'block' : 'none'};">
-                            <div class="mt-4 space-y-3"> 
-                                <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Identificação da O.S</h5>
-                                <div class="grid grid-cols-2 gap-4"> 
-                                    <div><label for="frota_${s.id}" class="block text-sm font-medium text-gray-700">Frota*</label><select id="frota_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"><option value="">Nenhuma</option>${frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join('')}</select></div>
-                                    <div><label for="atividade_${s.id}" class="block text-sm font-medium text-gray-700">Atividade*</label><select id="atividade_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"><option value="">Nenhuma</option>${atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
-                                    <div><label for="sistema_${s.id}" class="block text-sm font-medium text-gray-700">Sistema*</label><select id="sistema_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="carregarSubsistema(${s.id});"><option value="">Nenhum</option>${Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join('')}</select></div>
-                                    <div><label for="subsistema_${s.id}" class="block text-sm font-medium text-gray-700">Subsistema*</label><select id="subsistema_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">Nenhum</option>${subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div>
-                                </div>
-                            </div>
-                            <div class="mt-4 space-y-3"> 
-                                 <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Operação</h5>
-                                <div class="grid grid-cols-2 gap-4"> 
-                                    <div><label class="block text-sm font-medium text-gray-700">Máquina parada?*</label><select id="parada_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div>
-                                    <div><label class="block text-sm font-medium text-gray-700">Falha operacional?*</label><select id="falha_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div>
-                                </div>
-                                <div><label class="block text-sm font-medium text-gray-700 mt-3">Tipo de manutenção*</label><select id="tipo_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>CORRETIVA</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>CONDICIONAL</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>MELHORIA</option></select></div>
-                                <div class="grid grid-cols-2 gap-4 mt-3"> 
-                                    <div><label class="block text-sm font-medium text-gray-700">Data inicial*</label><input type="date" id="data_${s.id}" value="${s.data || dataHojeInputLocal()}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
-                                    <div><label class="block text-sm font-medium text-gray-700">Hora inicial*</label><input type="time" id="inicio_${s.id}" value="${s.inicio || ''}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 mt-3"> 
-                                    <div><label class="block text-sm font-medium text-gray-700">Data final*</label><input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInputLocal()}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
-                                    <div><label class="block text-sm font-medium text-gray-700">Hora final*</label><input type="time" id="fim_${s.id}" value="${s.fim || ''}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
-                                </div>
-                            </div>
-                            <div class="mt-4 space-y-2">
-                                <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Descrição*</h5>
-                                <textarea id="descricao_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-28" placeholder="Detalhe o problema encontrado e a solução aplicada...">${s.descricao || ""}</textarea>
-                            </div>
-                            <div class="mt-4">
-                                <div class="flex flex-col space-y-2"> 
-                                    <button id="botao_${s.id}" onclick="processarOS(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">${osNaoGerada ? "Gerar O.S." : "Regerar O.S."}</button>
-                                    ${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Excluir Este Serviço</button>` : ''}
-                                </div>
-                                <div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : 'block'} mt-4">
-                                    <div id="preview_${s.id}" class="p-3 bg-gray-50 border rounded-md min-h-[80px] whitespace-pre-line">${interpretarMarkdown(s.texto || "")}</div>
-                                    <div class="mt-3 flex flex-col sm:flex-row sm:space-y-0 space-y-2 sm:space-x-2">
-                                        <button onclick="copiarTexto(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm">Copiar Texto</button>
-                                        <button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-sm">Compartilhar</button>
-                                        <button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-500 hover:bg-blue-600 text-white text-sm">Adicionar Outro Nesta Frota</button>
-                                        <button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-sm">Excluir Este Serviço</button> 
-                                    </div>
-                                </div>
-                                <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm hidden" id="texto_${s.id}">${s.texto || ""}</textarea>
+                    if (s.isExpanded) {
+                        detalhes.style.display = 'block';
+                    }
+
+                    const subsistemasAtuais = subsistemas[s.sistema] || [];
+                    detalhes.innerHTML = `
+                        <div class="mt-4 space-y-3">
+                            <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Identificação da O.S</h5>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label for="frota_${s.id}" class="block text-sm font-medium text-gray-700">Frota*</label><select id="frota_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"><option value="">Nenhuma</option>${frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join('')}</select></div>
+                                <div><label for="atividade_${s.id}" class="block text-sm font-medium text-gray-700">Atividade*</label><select id="atividade_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"><option value="">Nenhuma</option>${atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
+                                <div><label for="sistema_${s.id}" class="block text-sm font-medium text-gray-700">Sistema*</label><select id="sistema_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="carregarSubsistema(${s.id});"><option value="">Nenhum</option>${Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join('')}</select></div>
+                                <div><label for="subsistema_${s.id}" class="block text-sm font-medium text-gray-700">Subsistema*</label><select id="subsistema_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">Nenhum</option>${subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div>
                             </div>
                         </div>
-                    </article>`;
+                        <div class="mt-4 space-y-3">
+                            <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Operação</h5>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-sm font-medium text-gray-700">Máquina parada?*</label><select id="parada_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div>
+                                <div><label class="block text-sm font-medium text-gray-700">Falha operacional?*</label><select id="falha_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div>
+                            </div>
+                            <div><label class="block text-sm font-medium text-gray-700 mt-3">Tipo de manutenção*</label><select id="tipo_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>CORRETIVA</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>CONDICIONAL</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>MELHORIA</option></select></div>
+                            <div class="grid grid-cols-2 gap-4 mt-3">
+                                <div><label class="block text-sm font-medium text-gray-700">Data inicial*</label><input type="date" id="data_${s.id}" value="${s.data || dataHojeInputLocal()}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
+                                <div><label class="block text-sm font-medium text-gray-700">Hora inicial*</label><input type="time" id="inicio_${s.id}" value="${s.inicio || ''}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-3">
+                                <div><label class="block text-sm font-medium text-gray-700">Data final*</label><input type="date" id="dataFinal_${s.id}" value="${s.dataFinal || s.data || dataHojeInputLocal()}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
+                                <div><label class="block text-sm font-medium text-gray-700">Hora final*</label><input type="time" id="fim_${s.id}" value="${s.fim || ''}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="atualizarCabecalhoServico(${s.id})"></div>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <h5 class="text-md font-semibold text-gray-700 border-b pb-1">Descrição*</h5>
+                            <textarea id="descricao_${s.id}" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-28" placeholder="Detalhe o problema encontrado e a solução aplicada...">${s.descricao || ""}</textarea>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex flex-col space-y-2">
+                                <button id="botao_${s.id}" onclick="processarOS(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700">${osNaoGerada ? "Gerar O.S." : "Regerar O.S."}</button>
+                                ${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700">Excluir Este Serviço</button>` : ''}
+                            </div>
+                            <div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : 'block'} mt-4">
+                                <div id="preview_${s.id}" class="p-3 bg-gray-50 border rounded-md min-h-[80px] whitespace-pre-line">${interpretarMarkdown(s.texto || "")}</div>
+                                <div class="mt-3 flex flex-col sm:flex-row sm:space-y-0 space-y-2 sm:space-x-2">
+                                    <button onclick="copiarTexto(${s.id})" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm">Copiar</button>
+                                    <button onclick="compartilharWhatsApp(${s.id})" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-sm">Compartilhar</button>
+                                    <button onclick="adicionarServicoDepois(${s.id})" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-500 hover:bg-blue-600 text-white text-sm">Adicionar Outro</button>
+                                    <button onclick="removerServico(${s.id})" class="flex-1 py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-sm">Excluir</button>
+                                </div>
+                            </div>
+                            <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm hidden" id="texto_${s.id}">${s.texto || ""}</textarea>
+                        </div>`;
+
+                    containerData.appendChild(clone);
                 });
-                htmlGerado += `</div>`; 
+                divLista.appendChild(containerData);
             });
         }
-        
-        divLista.innerHTML = htmlGerado;
 
         aplicarEventosDeInput();
         const btnAddServicoGlobal = document.getElementById('btnAddServico');
@@ -905,13 +1096,11 @@
             btnAddServicoGlobal.style.display = (servicos.length === 0) ? 'block' : 'none';
         }
     }
-    // === FIM DA MODIFICAÇÃO ===
-
-
-    function toggleDetalhesServico(id) { /* ...código existente... */
+    function toggleDetalhesServico(id) {
         const servico = servicos.find(s => s.id === id);
         if (!servico) return;
         servico.isExpanded = !servico.isExpanded;
+        // A renderização cuidará do resto, mas para uma resposta instantânea, podemos manipular o DOM diretamente
         const detalhes = document.getElementById(`detalhes_${id}`);
         const toggler = document.getElementById(`toggler_${id}`);
         if (detalhes && toggler) {
@@ -919,7 +1108,7 @@
             toggler.textContent = servico.isExpanded ? '▲' : '▼';
         }
     }
-    function aplicarEventosDeInput() { /* ...código existente... */
+    function aplicarEventosDeInput() {
         document.querySelectorAll('#servicosLista article input, #servicosLista article select, #servicosLista article textarea').forEach(el => {
             el.removeEventListener('input', salvarValoresServicos);
             el.removeEventListener('change', salvarValoresServicos);
@@ -933,7 +1122,7 @@
         });
     }
     function aplicarFiltrosServicos() { renderizarServicos(); }
-    function carregarSubsistema(id) { /* ...código existente... */
+    function carregarSubsistema(id) {
         const servico = servicos.find(s => s.id === id);
         if (!servico) return;
         const sistemaSelecionado = document.getElementById(`sistema_${id}`).value;
@@ -949,7 +1138,7 @@
             selectSub.value = valorSubsistemaAnterior;
         }
     }
-    async function processarOS(id) { /* ...código existente... */
+    async function processarOS(id) {
         salvarValoresServicos();
         const servico = servicos.find(s => s.id === id);
         if (!servico) { showToast("Erro: Serviço não encontrado."); return; }
@@ -980,15 +1169,13 @@
             if (osGeradaAnteriormente) {
                 abrirPopupConfirmar('Deseja realmente regerar esta O.S.? O texto anterior será substituído.', async () => {
                     await acaoGerar();
-                    // if (botao) botao.innerText = "Regerar O.S."; // O botão é atualizado em gerarTextoOSFinal
                 });
             } else {
                 await acaoGerar();
-                // if (botao) botao.innerText = "Regerar O.S."; // O botão é atualizado em gerarTextoOSFinal
             }
         });
     }
-    function verificarDataCruzaMeiaNoite(servico, callbackContinua) { /* ...código existente... */
+    function verificarDataCruzaMeiaNoite(servico, callbackContinua) {
         const dataIniStr = servico.data; const horaIniStr = servico.inicio;
         const dataFimStr = servico.dataFinal; const horaFimStr = servico.fim;
         if (!dataIniStr || !horaIniStr || !dataFimStr || !horaFimStr) { if (callbackContinua) callbackContinua(); return; }
@@ -1008,18 +1195,13 @@
             );
         } else { if (callbackContinua) callbackContinua(); }
     }
-
-    // === MODIFICADO: gerarTextoOSFinal com atualização explícita do DOM do preview ===
     async function gerarTextoOSFinal(servico) {
         const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA";
         const equipeTexto = obterEquipeTexto();
-
         const [ano, mes, dia] = (servico.data).split('-');
         const dataFormatada = `${dia}/${mes}/${ano}`;
-
         const [anoF, mesF, diaF] = (servico.dataFinal).split('-');
         const dataFinalFormatada = `${diaF}/${mesF}/${anoF}`;
-
         const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
             `*Máquina está parada por manutenção:* \n` +
             `*( ${servico.parada === "sim" ? "❌" : " "} ) sim* *( ${servico.parada === "não" ? "❌" : " "} ) não*\n` +
@@ -1040,37 +1222,12 @@
             `Data final: ${dataFinalFormatada}\n` +
             `Hora fim: ${servico.fim}\n\n` +
             `Solicitante:\n${equipeTexto}`;
-
         servico.texto = txt;
         servico.isExpanded = true; 
-
-        const previewDiv = document.getElementById(`preview_${servico.id}`);
-        if (previewDiv) {
-            previewDiv.innerHTML = interpretarMarkdown(servico.texto);
-        }
-        const textoElTextarea = document.getElementById(`texto_${servico.id}`);
-        if (textoElTextarea) {
-            textoElTextarea.value = servico.texto;
-        }
-        const previewContainer = document.getElementById(`preview_container_${servico.id}`);
-        if (previewContainer) {
-            previewContainer.classList.remove('hidden');
-        }
-        const botaoOriginal = document.getElementById(`botao_${servico.id}`);
-        if (botaoOriginal) {
-            botaoOriginal.innerText = "Regerar O.S.";
-        }
-        const servicoArticle = document.getElementById(`servico_${servico.id}`);
-        if (servicoArticle) {
-            servicoArticle.classList.remove('servico-pendente-os');
-        }
-        
         await salvarOSnoHistorico(servico.id);
         await salvarTudo();
         showToast("O.S gerada/atualizada!");
-
-        renderizarServicos(); 
-
+        renderizarServicos();
         setTimeout(() => {
             const el = document.getElementById(`preview_container_${servico.id}`);
             if (el) {
@@ -1078,9 +1235,7 @@
             }
         }, 200);
     }
-    // === FIM DA MODIFICAÇÃO ===
-
-    function copiarTexto(id) { /* ...código modificado anteriormente... */
+    function copiarTexto(id) {
         const txt = document.getElementById(`texto_${id}`).value;
         navigator.clipboard.writeText(txt)
             .then(() => {
@@ -1090,14 +1245,14 @@
             })
             .catch(err => { console.error('Erro ao copiar:', err); showToast("Falha ao copiar."); });
     }
-    function compartilharWhatsApp(id) { /* ...código modificado anteriormente... */
+    function compartilharWhatsApp(id) {
         const txt = document.getElementById(`texto_${id}`).value;
         if (!txt) { showToast("Gere a O.S. primeiro."); return; }
         window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
         const servico = servicos.find(s => s.id === id);
         if (servico && servico.isExpanded) { toggleDetalhesServico(id); }
     }
-    async function removerServico(id) { /* ...código existente... */
+    async function removerServico(id) {
         abrirPopupConfirmar('Remover este serviço?', async () => {
             const index = servicos.findIndex(s => s.id === id);
             if (index > -1) {
@@ -1105,7 +1260,7 @@
             } else { showToast("Erro: Serviço não encontrado."); }
         });
     }
-    async function adicionarServicoDepois(idReferencia) { /* ...código modificado anteriormente... */
+    async function adicionarServicoDepois(idReferencia) {
         salvarValoresServicos();
         const refServico = servicos.find(s => s.id === idReferencia);
         if (!refServico) { showToast("Erro: Serviço de referência não encontrado."); adicionarServico(); return; }
@@ -1128,7 +1283,7 @@
             }
         }, 200);
     }
-    function salvarValoresServicos() { /* ...código existente... */
+    function salvarValoresServicos() {
         servicos.forEach(s => {
             s.frota = document.getElementById(`frota_${s.id}`)?.value || s.frota || "";
             s.atividade = document.getElementById(`atividade_${s.id}`)?.value || s.atividade || "";
@@ -1145,7 +1300,7 @@
             s.texto = document.getElementById(`texto_${s.id}`)?.value || s.texto || "";
         });
     }
-    function verificarServicosPendentes() { /* ...código existente... */
+    function verificarServicosPendentes() {
         salvarValoresServicos();
         const pendentes = servicos.filter(s => !s.texto || s.texto.trim() === "");
         if (pendentes.length > 0) {
@@ -1166,7 +1321,7 @@
     // =================================================================================
     // RELATÓRIO
     // =================================================================================
-    async function toggleEdicaoRelatorio() { /* ...código existente... */
+    async function toggleEdicaoRelatorio() {
         const textarea = document.getElementById("relatorio_bruto"); const divFormatado = document.getElementById("relatorio_formatado");
         const botao = document.querySelector('button[onclick="toggleEdicaoRelatorio()"]');
         if (textarea.classList.contains('hidden')) {
@@ -1178,59 +1333,63 @@
             await salvarTudo(); showToast("Relatório atualizado.");
         }
     }
-    async function limparRelatorio() { /* ...código existente... */
+    async function limparRelatorio() {
         abrirPopupConfirmar("Limpar o relatório atual?", async () => {
             document.getElementById("relatorio_bruto").value = ''; document.getElementById("relatorio_formatado").innerHTML = '';
             await salvarTudo(); showToast("Relatório limpo!");
         });
     }
-    function compartilharRelatorio() { /* ...código existente... */
+    function compartilharRelatorio() {
         const texto = document.getElementById("relatorio_bruto").value.trim() || document.getElementById("relatorio_formatado").innerText.trim();
         if (!texto) { showToast("Relatório vazio."); return; }
         window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
     }
-    function gerarRelatorioFinal() { /* ...código existente... */
+    function gerarRelatorioFinal() {
         if (!validarCamposTurnoBasicos()) return; salvarValoresServicos();
         const osPendentes = servicos.some(s => !s.texto || s.texto.trim() === "");
         if (osPendentes) {
             abrirPopupConfirmar("Atenção: Há O.S. não geradas. Relatório pode ficar incompleto. Continuar?", () => { procederComGeracaoRelatorio(); });
         } else { procederComGeracaoRelatorio(); }
     }
-    async function procederComGeracaoRelatorio() { /* ...código existente (com as melhorias anteriores)... */
+    async function procederComGeracaoRelatorio() {
         const dataInput = document.getElementById("dataTurno").value;
         const fazenda = document.getElementById("fazenda").value.trim() || "NÃO INFORMADA";
         const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA";
         const turnoLetra = document.getElementById("turnoLetra").value;
         const equipeTextoRel = obterEquipeTexto();
+        const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina');
         const nomesFrotasComServicos = [...new Set(servicos.map(s => s.frota).filter(Boolean))];
         const frotasAtivasDoTurno = frotasTurno.filter(f => nomesFrotasComServicos.includes(f.nome));
-        const qtdMaquinasNoRelatorio = frotasAtivasDoTurno.length;
-        const horasTotaisPlanejadasCalculadas = calcularHorasTotaisPlanejadasGlobais(frotasAtivasDoTurno);
+        const horasTotaisPlanejadasCalculadas = calcularHorasTotaisPlanejadasGlobais(maquinasPrincipais);
         const horasTotaisPlanejadasRelatorio = horasTotaisPlanejadasCalculadas.toFixed(2);
         const horasParadasNumerico = calcularHorasParadasTurnoGlobais(frotasAtivasDoTurno);
         const horasParadasTurnoRelatorio = horasParadasNumerico.toFixed(2);
-        const dmTurnoRelatorio = calcularDMGeralGlobal(frotasAtivasDoTurno);
-        const horasPorMaquinaRef = frotasAtivasDoTurno.length > 0 ? (parseFloat(frotasAtivasDoTurno[0].horas) || 0).toFixed(2) : "0.00";
+        const dmTurnoRelatorio = calcularDMGeralGlobal(maquinasPrincipais, horasParadasNumerico); 
+        const horasPorMaquinaRef = maquinasPrincipais.length > 0 ? (parseFloat(maquinasPrincipais[0].horas) || 0).toFixed(2) : "0.00";
         const frenteUpper = frente.toUpperCase();
         const [ano, mes, dia] = (dataInput || dataHojeInputLocal()).split("-");
         const dataFormatada = `${dia}/${mes}/${ano}`;
         let relatorio = `*MANUTENÇÃO ${frenteUpper} BRACELL*\n\n` +
             `📅 *DATA:* ${dataFormatada}\n` + `*FAZENDA:* ${fazenda}\n` + `*FRENTE:* ${frente}\n` + `*TURNO:* ${turnoLetra}\n` +
-            `*EQUIPE:*\n${equipeTextoRel}\n\n` + `*QTD DE MÁQUINAS:* ${qtdMaquinasNoRelatorio}\n` +
-            `*HORAS PLANEJADAS:* ${horasPorMaquinaRef}h\n` + `*HORAS PLANEJADAS TOTAIS:* ${horasTotaisPlanejadasRelatorio}h\n` +
-            `*HORAS TOTAIS PARADAS:* ${horasParadasTurnoRelatorio}h (${formatarHorasParaTexto(horasParadasTurnoRelatorio)})\n` +
+            `*EQUIPE:*\n${equipeTextoRel}\n\n` +
+            `*QTD DE MÁQUINAS:* ${maquinasPrincipais.length}\n` +
+            `*HORAS PLANEJADAS (por máquina):* ${horasPorMaquinaRef}h\n` +
+            `*HORAS PLANEJADAS TOTAIS (máquinas):* ${horasTotaisPlanejadasRelatorio}h\n` +
+            `*HORAS TOTAIS PARADAS (corretivas):* ${horasParadasTurnoRelatorio}h (${formatarHorasParaTexto(horasParadasTurnoRelatorio)})\n` +
             `🟢 *DM DO TURNO:* ${dmTurnoRelatorio}%\n`;
         if (frotasAtivasDoTurno.length > 0) relatorio += `\n--- DETALHAMENTO POR FROTA ---\n`;
         frotasAtivasDoTurno.forEach(f => {
             const servicosDaFrota = servicos.filter(s => s.frota === f.nome);
             const paradaFrota = calcularHorasParadasPorFrota(f.nome);
             const dmFrota = calcularDMFrota(f.nome);
-            relatorio += `\n🚜 *${f.nome.toUpperCase()}*\n` +
+            const tipoFrotaTexto = f.tipo === 'maquina' ? '[MÁQUINA]' : '[IMPLEMENTO]';
+            relatorio += `\n🚜 *${f.nome.toUpperCase()}* ${tipoFrotaTexto}\n` +
                 `Horas Planejada: ${(parseFloat(f.horas) || 0).toFixed(2)}h\n` +
                 `Horas Parada (Corretivas): ${paradaFrota}h (${formatarHorasParaTexto(paradaFrota)})\n` +
                 `*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`;
             servicosDaFrota.forEach(s => {
-                const codAtiv = (s.atividade || "N/A").split(" - ")[0]; const codSub = (s.subsistema || "N/A").split(" - ")[0];
+                const codAtiv = (s.atividade || "N/A").split(" - ")[0];
+                const codSub = (s.subsistema || "N/A").split(" - ")[0];
                 const duracao = calcularDuracaoServico(s);
                 relatorio += `- ${s.descricao.trim() || "Descrição não informada"}\n` +
                     `  (${codAtiv} - ${s.sistema || "N/A"} - ${codSub}) ${emojiTipo(s.tipo)} [${s.tipo.toUpperCase()}]\n` +
@@ -1239,185 +1398,348 @@
                 relatorio += `\n`;
             });
         });
-        if (qtdMaquinasNoRelatorio === 0) {
-            if (frotasTurno.length > 0 && servicos.length > 0) relatorio += `\nFrotas cadastradas não correspondem às frotas com serviços.\n`;
-            else if (servicos.length === 0 && frotasTurno.length > 0) relatorio += `\nNenhum serviço para as frotas do turno.\n`;
-            else if (servicos.length === 0 && frotasTurno.length === 0) relatorio += `\nNenhuma frota e nenhum serviço registrado.\n`;
+        if (frotasAtivasDoTurno.length === 0) {
+            relatorio += `\nNenhuma frota com serviços registrados.\n`;
         }
         document.getElementById("relatorio_bruto").value = relatorio;
         document.getElementById("relatorio_formatado").innerHTML = interpretarMarkdown(relatorio);
-        await salvarTudo(); showToast("Relatório gerado!");
+        await salvarTudo();
+        showToast("Relatório gerado com a lógica de DM corrigida!");
     }
-    function calcularHorasTotaisPlanejadasGlobais(listaFrotas) { /* ...código existente... */ return listaFrotas.reduce((soma, f) => soma + (parseFloat(f.horas) || 0), 0); }
-    function calcularHorasParadasTurnoGlobais(listaFrotas) { /* ...código existente... */ let totalHorasParadas = 0; listaFrotas.forEach(f => { totalHorasParadas += parseFloat(calcularHorasParadasPorFrota(f.nome)); }); return totalHorasParadas; }
-    function calcularDMGeralGlobal(listaFrotas) { /* ...código existente... */ const horasPlanejadas = calcularHorasTotaisPlanejadasGlobais(listaFrotas); if (horasPlanejadas === 0) return listaFrotas.length > 0 ? "0.00" : "100.00"; const horasParadas = calcularHorasParadasTurnoGlobais(listaFrotas); const horasOperando = Math.max(0, horasPlanejadas - horasParadas); const dm = (horasOperando / horasPlanejadas) * 100; return dm.toFixed(2); }
-    function calcularDuracaoServico(servico) { /* ...código existente... */ const inicioVal = servico.inicio || "00:00"; const fimVal = servico.fim || "00:00"; if (!/^\d{2}:\d{2}$/.test(inicioVal) || !/^\d{2}:\d{2}$/.test(fimVal)) return { horas: 0, texto: "Hora inválida" }; const dataInicialStr = servico.data || dataHojeInputLocal(); const dataFinalStr = servico.dataFinal || dataInicialStr; const dataIniObj = new Date(`${dataInicialStr}T${inicioVal}:00`); const dataFimObj = new Date(`${dataFinalStr}T${fimVal}:00`); if (isNaN(dataIniObj.getTime()) || isNaN(dataFimObj.getTime())) return { horas: 0, texto: "Data/Hora Inv." }; if (dataFimObj < dataIniObj) return { horas: 0, texto: "Fim < Início" }; const diffMs = dataFimObj - dataIniObj; const diffMin = Math.max(Math.floor(diffMs / 60000), 0); const horasDecimais = diffMin / 60; const h = Math.floor(diffMin / 60); const m = diffMin % 60; let textoCompleto = ""; if (h > 0) textoCompleto += `${h}h`; if (m > 0) textoCompleto += `${h > 0 ? " " : ""}${m}min`; if (textoCompleto === "") textoCompleto = "0min"; return { horas: horasDecimais, texto: textoCompleto }; }
-    function formatarHorasParaTexto(horasDecimaisStr) { /* ...código existente... */ const horasDecimais = parseFloat(horasDecimaisStr); if (isNaN(horasDecimais)) return "N/A"; const horas = Math.floor(horasDecimais); const minutos = Math.round((horasDecimais - horas) * 60); if (horas > 0 && minutos > 0) return `${horas}h ${minutos}min`; else if (horas > 0) return `${horas}h`; else if (minutos > 0) return `${minutos}min`; else return `0min`; }
-    function emojiTipo(tipo) { /* ...código existente... */ switch (tipo) { case "CORRETIVA": return "🔧"; case "CONDICIONAL": return "⏳"; case "MELHORIA": return "✨"; default: return "▪️"; } }
-    function calcularHorasParadasPorFrota(nomeFrota) { /* ...código existente... */ let totalHorasParada = 0; servicos.filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA" && s.parada === "sim").forEach(s => { totalHorasParada += parseFloat(calcularDuracaoServico(s).horas); }); return totalHorasParada.toFixed(2); }
-    function calcularDMFrota(nomeFrota) { /* ...código existente... */ const frotaInfo = frotasTurno.find(f => f.nome === nomeFrota); if (!frotaInfo || !frotaInfo.horas || parseFloat(frotaInfo.horas) <= 0) return "0.00"; const horasPlanejada = parseFloat(frotaInfo.horas); const horasParada = parseFloat(calcularHorasParadasPorFrota(nomeFrota)); const horasOperando = Math.max(0, horasPlanejada - horasParada); const dm = (horasOperando / horasPlanejada) * 100; return dm.toFixed(2); }
+    function calcularHorasTotaisPlanejadasGlobais(listaFrotas) { return listaFrotas.reduce((soma, f) => soma + (parseFloat(f.horas) || 0), 0); }
+    function calcularHorasParadasTurnoGlobais(listaFrotas) { let totalHorasParadas = 0; listaFrotas.forEach(f => { totalHorasParadas += parseFloat(calcularHorasParadasPorFrota(f.nome)); }); return totalHorasParadas; }
+    function calcularDMGeralGlobal(listaMaquinas, horasParadasJaCalculadas = null) {
+        const horasPlanejadas = calcularHorasTotaisPlanejadasGlobais(listaMaquinas);
+        if (horasPlanejadas === 0) return listaMaquinas.length > 0 ? "0.00" : "100.00";
+        const horasParadas = horasParadasJaCalculadas !== null ? horasParadasJaCalculadas : calcularHorasParadasTurnoGlobais(listaMaquinas);
+        const horasOperando = Math.max(0, horasPlanejadas - horasParadas);
+        const dm = (horasOperando / horasPlanejadas) * 100;
+        return dm.toFixed(2);
+    }
+    function calcularDuracaoServico(servico) { const inicioVal = servico.inicio || "00:00"; const fimVal = servico.fim || "00:00"; if (!/^\d{2}:\d{2}$/.test(inicioVal) || !/^\d{2}:\d{2}$/.test(fimVal)) return { horas: 0, texto: "Hora inválida" }; const dataInicialStr = servico.data || dataHojeInputLocal(); const dataFinalStr = servico.dataFinal || dataInicialStr; const dataIniObj = new Date(`${dataInicialStr}T${inicioVal}:00`); const dataFimObj = new Date(`${dataFinalStr}T${fimVal}:00`); if (isNaN(dataIniObj.getTime()) || isNaN(dataFimObj.getTime())) return { horas: 0, texto: "Data/Hora Inv." }; if (dataFimObj < dataIniObj) return { horas: 0, texto: "Fim < Início" }; const diffMs = dataFimObj - dataIniObj; const diffMin = Math.max(Math.floor(diffMs / 60000), 0); const horasDecimais = diffMin / 60; const h = Math.floor(diffMin / 60); const m = diffMin % 60; let textoCompleto = ""; if (h > 0) textoCompleto += `${h}h`; if (m > 0) textoCompleto += `${h > 0 ? " " : ""}${m}min`; if (textoCompleto === "") textoCompleto = "0min"; return { horas: horasDecimais, texto: textoCompleto }; }
+    function formatarHorasParaTexto(horasDecimaisStr) { const horasDecimais = parseFloat(horasDecimaisStr); if (isNaN(horasDecimais)) return "N/A"; const horas = Math.floor(horasDecimais); const minutos = Math.round((horasDecimais - horas) * 60); if (horas > 0 && minutos > 0) return `${horas}h ${minutos}min`; else if (horas > 0) return `${horas}h`; else if (minutos > 0) return `${minutos}min`; else return `0min`; }
+    function emojiTipo(tipo) { switch (tipo) { case "CORRETIVA": return "🔧"; case "CONDICIONAL": return "⏳"; case "MELHORIA": return "✨"; default: return "▪️"; } }
+    function calcularHorasParadasPorFrota(nomeFrota) { let totalHorasParada = 0; servicos.filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA" && s.parada === "sim").forEach(s => { totalHorasParada += parseFloat(calcularDuracaoServico(s).horas); }); return totalHorasParada.toFixed(2); }
+    function calcularDMFrota(nomeFrota) { const frotaInfo = frotasTurno.find(f => f.nome === nomeFrota); if (!frotaInfo || !frotaInfo.horas || parseFloat(frotaInfo.horas) <= 0) return "0.00"; const horasPlanejada = parseFloat(frotaInfo.horas); const horasParada = parseFloat(calcularHorasParadasPorFrota(nomeFrota)); const horasOperando = Math.max(0, horasPlanejada - horasParada); const dm = (horasOperando / horasPlanejada) * 100; return dm.toFixed(2); }
 
     // =================================================================================
     // HISTÓRICO
     // =================================================================================
     async function salvarOSnoHistorico(idServico) {
-    const servicoParaSalvar = servicos.find(s => s.id === idServico);
-    if (!servicoParaSalvar || !servicoParaSalvar.texto) return;
-
-    const dataKey = servicoParaSalvar.data.split('-').reverse().join('/');
-    const agora = new Date();
-    const datahoraRegistro = agora.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-    let itemExistente = null;
-    try {
-        const todosItens = await dbGetAll(STORE_HISTORICO);
-        itemExistente = todosItens.find(item => item.id === servicoParaSalvar.id && item.dataKey === dataKey);
-    } catch (e) {
-        console.error("Erro ao procurar item existente no histórico:", e);
-    }
-
-    const itemHistorico = {
-        id: servicoParaSalvar.id,
-        frota: servicoParaSalvar.frota,
-        tipo: servicoParaSalvar.tipo,
-        texto: servicoParaSalvar.texto,
-        atividade: servicoParaSalvar.atividade,
-        subsistema: servicoParaSalvar.subsistema, // <-- ADICIONADO
-        inicio: servicoParaSalvar.inicio,
-        fim: servicoParaSalvar.fim, // <-- ADICIONADO
-        status: itemExistente ? itemExistente.status : "pendente",
-        datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : datahoraRegistro,
-        osNumero: itemExistente ? itemExistente.osNumero : "",
-        dataOS: servicoParaSalvar.data,
-        dataKey: dataKey
-    };
-
-    if (itemExistente && itemExistente.uniqueId) {
-        itemHistorico.uniqueId = itemExistente.uniqueId;
-    }
-
-    try {
-        await dbSave(STORE_HISTORICO, itemHistorico);
-        await mostrarHistorico(); // Atualiza a exibição do histórico
-    } catch (error) {
-        console.error("Erro ao salvar OS no histórico:", error);
-        showToast("Erro ao salvar OS no histórico.");
-    }
-}    async function mostrarHistorico() {
-    try {
-        const todosItensHistorico = await dbGetAll(STORE_HISTORICO);
-        const historicoAgrupado = {};
-        todosItensHistorico.forEach(item => {
-            const dataKey = item.dataKey;
-            if (!historicoAgrupado[dataKey]) {
-                historicoAgrupado[dataKey] = [];
-            }
-            historicoAgrupado[dataKey].push(item);
-        });
-
-        const div = document.getElementById("historico_lista");
-        if (!div) return;
-
-        const datasOrdenadas = Object.keys(historicoAgrupado).sort((a, b) => {
-            const [diaA, mesA, anoA] = a.split('/').map(Number);
-            const [diaB, mesB, anoB] = b.split('/').map(Number);
-            return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
-        });
-
-        if (datasOrdenadas.length === 0) {
-            div.innerHTML = "<p class='text-center text-gray-500'>Nenhuma O.S registada.</p>";
-            return;
+        const servicoParaSalvar = servicos.find(s => s.id === idServico);
+        if (!servicoParaSalvar || !servicoParaSalvar.texto) return;
+        const dataKey = servicoParaSalvar.data.split('-').reverse().join('/');
+        const agora = new Date();
+        const datahoraRegistro = agora.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        let itemExistente = null;
+        try {
+            const todosItens = await dbGetAll(STORE_HISTORICO);
+            itemExistente = todosItens.find(item => item.id === servicoParaSalvar.id && item.dataKey === dataKey);
+        } catch (e) {
+            console.error("Erro ao procurar item existente no histórico:", e);
         }
-
-        let html = "";
-        datasOrdenadas.forEach(data => {
-            html += `<div class="bg-white p-3 rounded-lg shadow mb-3"><h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`;
-            const osDoDia = historicoAgrupado[data].sort((a, b) => {
-                const horaA = a.inicio || "00:00";
-                const horaB = b.inicio || "00:00";
-                if (horaA < horaB) return -1;
-                if (horaA > horaB) return 1;
-                return 0;
-            });
-            osDoDia.forEach(s => {
-                const codAtividade = s.atividade ? s.atividade.split(" - ")[0] : "N/A";
-                const subsistemaInfo = s.subsistema ? s.subsistema.split(" - ")[0] : "N/D"; // <-- ADICIONADO
-                const horaInicioServico = s.inicio || "--:--";
-                const horaFimServico = s.fim || "--:--"; // <-- ADICIONADO
-
-                html += `<div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
-                    <div class="flex justify-between items-center mb-2 text-sm">
-                        <div class="flex-grow">
-                            <span class="text-gray-700">Frota: <strong class="font-semibold text-blue-700">${s.frota || "N/D"}</strong></span>
-                            <span class="text-gray-600"> | ${codAtividade} - ${subsistemaInfo} [${horaInicioServico} - ${horaFimServico}]</span>
-                        </div>
-                        <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1 ml-2">👁️</button>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1">
-                        <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
-                        <input id="os_input_${s.uniqueId}" class="block w-28 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"} placeholder="Digite o Nº">
-                        <span class="font-semibold whitespace-nowrap ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
-                    </div>
-                    <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
-                        <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}" readonly>${s.texto}</textarea>
-                        <div class="mt-2 flex flex-col sm:flex-row gap-2">
-                            ${s.status === "pendente" ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${(!s.osNumero || s.osNumero.trim() === "") ? 'disabled' : ''}>Marcar Finalizada</button>` : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`}
-                            <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar</button>
-                            <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button>
-                            <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir</button>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            html += `</div>`;
-        });
-        div.innerHTML = html;
-    } catch (error) {
-        console.error("Erro ao mostrar histórico:", error);
-        showToast("Erro ao carregar histórico.");
-        const div = document.getElementById("historico_lista");
-        if(div) div.innerHTML = "<p class='text-center text-red-500'>Erro ao carregar histórico.</p>";
+        const itemHistorico = {
+            id: servicoParaSalvar.id,
+            frota: servicoParaSalvar.frota,
+            tipo: servicoParaSalvar.tipo,
+            texto: servicoParaSalvar.texto,
+            atividade: servicoParaSalvar.atividade,
+            subsistema: servicoParaSalvar.subsistema,
+            inicio: servicoParaSalvar.inicio,
+            fim: servicoParaSalvar.fim,
+            status: itemExistente ? itemExistente.status : "pendente",
+            datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : datahoraRegistro,
+            osNumero: itemExistente ? itemExistente.osNumero : "",
+            dataOS: servicoParaSalvar.data,
+            dataKey: dataKey
+        };
+        if (itemExistente && itemExistente.uniqueId) {
+            itemHistorico.uniqueId = itemExistente.uniqueId;
+        }
+        try {
+            await dbSave(STORE_HISTORICO, itemHistorico);
+            await mostrarHistorico();
+        } catch (error) {
+            console.error("Erro ao salvar OS no histórico:", error);
+            showToast("Erro ao salvar OS no histórico.");
+        }
     }
-}    function validarOSInput(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const btnFinalizar = document.getElementById(`btnFinalizarOS_${uniqueId}`); if (input && btnFinalizar) { btnFinalizar.disabled = input.value.trim() === ""; } }
-    function toggleCorpoHistorico(uniqueId) { /* ...código existente... */ const corpo = document.getElementById(`corpo_hist_${uniqueId}`); if (corpo) corpo.classList.toggle('hidden'); }
-    async function finalizarOS(uniqueId) { /* ...código existente... */ const inputOSNumero = document.getElementById(`os_input_${uniqueId}`); const numeroOS = inputOSNumero.value.trim(); if (!numeroOS) { showToast("Preencha o número da O.S."); inputOSNumero.focus(); return; } try { const item = await dbGet(STORE_HISTORICO, uniqueId); if (item) { item.status = "finalizada"; item.osNumero = numeroOS; await dbSave(STORE_HISTORICO, item); await mostrarHistorico(); showToast("O.S finalizada!"); } else { showToast("Erro: O.S não encontrada."); } } catch (error) { console.error("Erro ao finalizar OS:", error); showToast("Erro ao atualizar O.S."); } }
-    function habilitarEdicaoOS(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const btn = document.getElementById(`editarOSBtn_${uniqueId}`); if (input && btn) { input.disabled = false; input.focus(); btn.innerText = "Confirmar Edição"; btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600'); btn.classList.add('bg-green-500', 'hover:bg-green-600'); btn.onclick = () => confirmarEdicaoOS(uniqueId); } }
-    async function confirmarEdicaoOS(uniqueId) { /* ...código existente... */ const input = document.getElementById(`os_input_${uniqueId}`); const numero = input.value.trim(); if (!numero) { showToast("Nº O.S não pode ser vazio."); return; } try { const item = await dbGet(STORE_HISTORICO, uniqueId); if (item) { item.osNumero = numero; await dbSave(STORE_HISTORICO, item); input.disabled = true; const btn = document.getElementById(`editarOSBtn_${uniqueId}`); if (btn) { btn.innerText = "Editar Nº O.S."; btn.classList.remove('bg-green-500', 'hover:bg-green-600'); btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600'); btn.onclick = () => habilitarEdicaoOS(uniqueId); } await mostrarHistorico(); showToast("Nº O.S atualizado!"); } else { showToast("Erro: O.S não encontrada."); } } catch (error) { console.error("Erro ao confirmar edição OS:", error); showToast("Erro ao atualizar O.S."); } }
-    function copiarHistorico(uniqueId) { /* ...código existente... */ const texto = document.getElementById(`htexto_${uniqueId}`)?.value; if (texto) navigator.clipboard.writeText(texto).then(() => showToast("Texto copiado!")).catch(err => showToast("Falha ao copiar.")); else showToast("Texto não encontrado."); }
-    function compartilharHistorico(uniqueId) { /* ...código existente... */ const texto = document.getElementById(`htexto_${uniqueId}`)?.value; if (texto) window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); else showToast("Texto não encontrado."); }
-    async function excluirHistoricoItem(uniqueId) { /* ...código existente... */ abrirPopupConfirmar(`Excluir esta O.S. do histórico?`, async () => { try { await dbDelete(STORE_HISTORICO, uniqueId); await mostrarHistorico(); showToast("O.S. excluída do histórico!"); } catch (error) { console.error("Erro ao excluir OS do histórico:", error); showToast("Erro ao excluir O.S."); } }, "Confirmar Exclusão"); }
+    async function mostrarHistorico() {
+        try {
+            const todosItensHistorico = await dbGetAll(STORE_HISTORICO);
+            const historicoAgrupado = {};
+            todosItensHistorico.forEach(item => {
+                const dataKey = item.dataKey;
+                if (!historicoAgrupado[dataKey]) {
+                    historicoAgrupado[dataKey] = [];
+                }
+                historicoAgrupado[dataKey].push(item);
+            });
+            const div = document.getElementById("historico_lista");
+            if (!div) return;
+            const datasOrdenadas = Object.keys(historicoAgrupado).sort((a, b) => {
+                const [diaA, mesA, anoA] = a.split('/').map(Number);
+                const [diaB, mesB, anoB] = b.split('/').map(Number);
+                return new Date(anoB, mesB - 1, diaB) - new Date(anoA, mesA - 1, diaA);
+            });
+            if (datasOrdenadas.length === 0) {
+                div.innerHTML = "<p class='text-center text-gray-500'>Nenhuma O.S registada.</p>";
+                return;
+            }
+            let html = "";
+            datasOrdenadas.forEach(data => {
+                html += `<div class="bg-white p-3 rounded-lg shadow mb-3"><h3 class="text-md font-semibold text-blue-600 mb-2 border-b pb-1">Data da O.S.: ${data}</h3>`;
+                const osDoDia = historicoAgrupado[data].sort((a, b) => {
+                    const horaA = a.inicio || "00:00";
+                    const horaB = b.inicio || "00:00";
+                    if (horaA < horaB) return -1;
+                    if (horaA > horaB) return 1;
+                    return 0;
+                });
+                osDoDia.forEach(s => {
+                    const codAtividade = s.atividade ? s.atividade.split(" - ")[0] : "N/A";
+                    const subsistemaInfo = s.subsistema ? s.subsistema.split(" - ")[0] : "N/D";
+                    const horaInicioServico = s.inicio || "--:--";
+                    const horaFimServico = s.fim || "--:--";
+                    html += `<div class="bg-gray-50 p-3 rounded shadow-sm mt-2">
+                        <div class="flex justify-between items-center mb-2 text-sm">
+                            <div class="flex-grow">
+                                <span class="text-gray-700">Frota: <strong class="font-semibold text-blue-700">${s.frota || "N/D"}</strong></span>
+                                <span class="text-gray-600"> | ${codAtividade} - ${subsistemaInfo} [${horaInicioServico} - ${horaFimServico}]</span>
+                            </div>
+                            <button onclick="toggleCorpoHistorico(${s.uniqueId})" class="text-blue-500 hover:text-blue-700 text-xl p-1 ml-2">👁️</button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1">
+                            <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
+                            <input id="os_input_${s.uniqueId}" class="block w-28 p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"} placeholder="Digite o Nº">
+                            <span class="font-semibold whitespace-nowrap ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">Status: ${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+                        </div>
+                        <div id="corpo_hist_${s.uniqueId}" class="hidden mt-3">
+                            <textarea class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-xs font-mono h-32" id="htexto_${s.uniqueId}" readonly>${s.texto}</textarea>
+                            <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                                ${s.status === "pendente" ? `<button onclick="finalizarOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-blue-600 text-white hover:bg-blue-700 text-xs flex-1" id="btnFinalizarOS_${s.uniqueId}" ${(!s.osNumero || s.osNumero.trim() === "") ? 'disabled' : ''}>Marcar Finalizada</button>` : `<button id="editarOSBtn_${s.uniqueId}" onclick="habilitarEdicaoOS(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-yellow-500 hover:bg-yellow-600 text-white text-xs flex-1">Editar Nº O.S.</button>`}
+                                <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs flex-1">Copiar</button>
+                                <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-green-500 hover:bg-green-600 text-white text-xs flex-1">Compartilhar</button>
+                                <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 px-4 rounded-md font-semibold transition-colors duration-150 bg-red-600 text-white hover:bg-red-700 text-xs flex-1">Excluir</button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+            });
+            div.innerHTML = html;
+        } catch (error) {
+            console.error("Erro ao mostrar histórico:", error);
+            showToast("Erro ao carregar histórico.");
+            const div = document.getElementById("historico_lista");
+            if(div) div.innerHTML = "<p class='text-center text-red-500'>Erro ao carregar histórico.</p>";
+        }
+    }
+    function validarOSInput(uniqueId) { const input = document.getElementById(`os_input_${uniqueId}`); const btnFinalizar = document.getElementById(`btnFinalizarOS_${uniqueId}`); if (input && btnFinalizar) { btnFinalizar.disabled = input.value.trim() === ""; } }
+    function toggleCorpoHistorico(uniqueId) { const corpo = document.getElementById(`corpo_hist_${uniqueId}`); if (corpo) corpo.classList.toggle('hidden'); }
+    async function finalizarOS(uniqueId) { const inputOSNumero = document.getElementById(`os_input_${uniqueId}`); const numeroOS = inputOSNumero.value.trim(); if (!numeroOS) { showToast("Preencha o número da O.S."); inputOSNumero.focus(); return; } try { const item = await dbGet(STORE_HISTORICO, uniqueId); if (item) { item.status = "finalizada"; item.osNumero = numeroOS; await dbSave(STORE_HISTORICO, item); await mostrarHistorico(); showToast("O.S finalizada!"); } else { showToast("Erro: O.S não encontrada."); } } catch (error) { console.error("Erro ao finalizar OS:", error); showToast("Erro ao atualizar O.S."); } }
+    function habilitarEdicaoOS(uniqueId) { const input = document.getElementById(`os_input_${uniqueId}`); const btn = document.getElementById(`editarOSBtn_${uniqueId}`); if (input && btn) { input.disabled = false; input.focus(); btn.innerText = "Confirmar Edição"; btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600'); btn.classList.add('bg-green-500', 'hover:bg-green-600'); btn.onclick = () => confirmarEdicaoOS(uniqueId); } }
+    async function confirmarEdicaoOS(uniqueId) { const input = document.getElementById(`os_input_${uniqueId}`); const numero = input.value.trim(); if (!numero) { showToast("Nº O.S não pode ser vazio."); return; } try { const item = await dbGet(STORE_HISTORICO, uniqueId); if (item) { item.osNumero = numero; await dbSave(STORE_HISTORICO, item); input.disabled = true; const btn = document.getElementById(`editarOSBtn_${uniqueId}`); if (btn) { btn.innerText = "Editar Nº O.S."; btn.classList.remove('bg-green-500', 'hover:bg-green-600'); btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600'); btn.onclick = () => habilitarEdicaoOS(uniqueId); } await mostrarHistorico(); showToast("Nº O.S atualizado!"); } else { showToast("Erro: O.S não encontrada."); } } catch (error) { console.error("Erro ao confirmar edição OS:", error); showToast("Erro ao atualizar O.S."); } }
+    function copiarHistorico(uniqueId) { const texto = document.getElementById(`htexto_${uniqueId}`)?.value; if (texto) navigator.clipboard.writeText(texto).then(() => showToast("Texto copiado!")).catch(err => showToast("Falha ao copiar.")); else showToast("Texto não encontrado."); }
+    function compartilharHistorico(uniqueId) { const texto = document.getElementById(`htexto_${uniqueId}`)?.value; if (texto) window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); else showToast("Texto não encontrado."); }
+    async function excluirHistoricoItem(uniqueId) { abrirPopupConfirmar(`Excluir esta O.S. do histórico?`, async () => { try { await dbDelete(STORE_HISTORICO, uniqueId); await mostrarHistorico(); showToast("O.S. excluída do histórico!"); } catch (error) { console.error("Erro ao excluir OS do histórico:", error); showToast("Erro ao excluir O.S."); } }, "Confirmar Exclusão"); }
+    async function confirmarApagarPorData() { const dataSel = document.getElementById('selectDatas').value; if (!dataSel) { showToast("Selecione uma data."); return; } abrirPopupConfirmar(`Apagar TODO o histórico de ${dataSel}?`, async () => { try { await initDB(); const store = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); const index = store.index('dataKeyIndex'); const request = index.openCursor(IDBKeyRange.only(dataSel)); let count = 0; request.onsuccess = e => { const cursor = e.target.result; if (cursor) { store.delete(cursor.primaryKey); count++; cursor.continue(); } else { if (count > 0) { mostrarHistorico(); showToast(`Histórico de ${dataSel} apagado!`); } else { showToast(`Nenhum item para ${dataSel}.`); } fecharPopupApagarData(); }}; request.onerror = () => { showToast("Erro ao apagar."); fecharPopupApagarData(); }; } catch (e) { showToast("Erro ao apagar."); fecharPopupApagarData(); } }, "Confirmar Exclusão"); }
 
     // =================================================================================
     // BACKUP E RESTAURAÇÃO
     // =================================================================================
-    async function baixarBackup(tipo = "historico") { /* ...código existente... */ let dadosParaBackup = {}; let nomeArquivoBase; try { await initDB(); if (tipo === "historico") { dadosParaBackup.historicoOS = await dbGetAll(STORE_HISTORICO); nomeArquivoBase = "backup_meuturno_historico_"; if (!dadosParaBackup.historicoOS || dadosParaBackup.historicoOS.length === 0) { showToast("Nenhum dado no histórico."); return; } } else { dadosParaBackup.turno = await dbGet(STORE_TURNO, TURNO_ATUAL_ID) || {}; dadosParaBackup.historicoOS = await dbGetAll(STORE_HISTORICO); nomeArquivoBase = "backup_meuturno_completo_"; if (Object.keys(dadosParaBackup.turno).length === 0 && (!dadosParaBackup.historicoOS || dadosParaBackup.historicoOS.length === 0)) { showToast("Nenhum dado para backup."); return; } } } catch (error) { console.error(`Erro ao ler para backup (${tipo}):`, error); showToast(`Erro ao preparar backup.`); return; } const blob = new Blob([JSON.stringify(dadosParaBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const agora = new Date(); const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-'); const nomeArquivo = `${nomeArquivoBase}${dataHora}.json`; const a = document.createElement('a'); a.href = url; a.download = nomeArquivo; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); try { localStorage.setItem("ultimoBackupTimestamp", new Date().toISOString()); } catch (e) { console.warn("Erro ao salvar timestamp:", e); } atualizarInfoUltimoBackup(); showToast(`Backup (${tipo}) criado: ${nomeArquivo}`); }
+    async function baixarBackup(tipo = "historico") { let dadosParaBackup = {}; let nomeArquivoBase; try { await initDB(); if (tipo === "historico") { dadosParaBackup.historicoOS = await dbGetAll(STORE_HISTORICO); nomeArquivoBase = "backup_meuturno_historico_"; if (!dadosParaBackup.historicoOS || dadosParaBackup.historicoOS.length === 0) { showToast("Nenhum dado no histórico."); return; } } else { dadosParaBackup.turno = await dbGet(STORE_TURNO, TURNO_ATUAL_ID) || {}; dadosParaBackup.historicoOS = await dbGetAll(STORE_HISTORICO); nomeArquivoBase = "backup_meuturno_completo_"; if (Object.keys(dadosParaBackup.turno).length === 0 && (!dadosParaBackup.historicoOS || dadosParaBackup.historicoOS.length === 0)) { showToast("Nenhum dado para backup."); return; } } } catch (error) { console.error(`Erro ao ler para backup (${tipo}):`, error); showToast(`Erro ao preparar backup.`); return; } const blob = new Blob([JSON.stringify(dadosParaBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const agora = new Date(); const dataHora = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-'); const nomeArquivo = `${nomeArquivoBase}${dataHora}.json`; const a = document.createElement('a'); a.href = url; a.download = nomeArquivo; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); try { localStorage.setItem("ultimoBackupTimestamp", new Date().toISOString()); } catch (e) { console.warn("Erro ao salvar timestamp:", e); } atualizarInfoUltimoBackup(); showToast(`Backup (${tipo}) criado: ${nomeArquivo}`); }
     function baixarBackupHistorico() { baixarBackup("historico"); }
     function gerarBackupCompleto() { baixarBackup("completo"); }
-    async function restaurarBackupHistorico(event) { /* ...código existente... */ const file = event.target.files[0]; if (!file) return; abrirPopupConfirmar('Restaurar APENAS o HISTÓRICO DE O.S.? Turno atual NÃO será afetado. NÃO PODE SER DESFEITO.', async () => { const reader = new FileReader(); reader.onload = async function (e) { try { const dados = JSON.parse(e.target.result); if (dados && Array.isArray(dados.historicoOS)) { await initDB(); const store = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); await new Promise((resolve, reject) => { store.clear().onsuccess = resolve; store.clear().onerror = reject; }); for (const item of dados.historicoOS) { if (item.hasOwnProperty('uniqueId')) delete item.uniqueId; await new Promise((resolve, reject) => { store.add(item).onsuccess = resolve; store.add(item).onerror = reject; }); } await mostrarHistorico(); showToast("Backup do histórico restaurado!"); } else { showToast("Arquivo de backup de histórico inválido."); } } catch (err) { console.error("Erro ao restaurar backup histórico:", err); showToast("Erro ao restaurar backup do histórico."); } }; reader.readAsText(file); event.target.value = null; }, "Restaurar Histórico"); }
-    async function restaurarBackupCompleto(event) { /* ...código existente... */ const file = event.target.files[0]; if (!file) return; abrirPopupConfirmar('Restaurar backup COMPLETO? TODOS os dados atuais (turno, histórico) SERÃO SUBSTITUÍDOS. NÃO PODE SER DESFEITO.', async () => { const reader = new FileReader(); reader.onload = async function (e) { try { const dados = JSON.parse(e.target.result); if (dados && typeof dados === 'object') { await initDB(); if (dados.turno) { dados.turno.id = TURNO_ATUAL_ID; await dbSave(STORE_TURNO, dados.turno); } else { await dbClearStore(STORE_TURNO); } const historicoStore = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); await new Promise(r => { historicoStore.clear().onsuccess = r; }); if (dados.historicoOS && Array.isArray(dados.historicoOS)) { for (const item of dados.historicoOS) { if (item.hasOwnProperty('uniqueId')) delete item.uniqueId; await new Promise(r => { historicoStore.add(item).onsuccess = r; }); } } await carregarTudo(); await mostrarHistorico(); atualizarInfoUltimoBackup(); showToast("Backup completo restaurado!"); } else { showToast("Arquivo de backup completo inválido."); } } catch (err) { console.error("Erro ao restaurar backup completo:", err); showToast("Erro ao restaurar backup completo."); } }; reader.readAsText(file); event.target.value = null; }, "Restaurar Backup Completo"); }
-    function atualizarInfoUltimoBackup() { /* ...código existente... */ const pInfo = document.getElementById("infoUltimoBackup"); if (!pInfo) return; let timestamp; try { timestamp = localStorage.getItem("ultimoBackupTimestamp"); } catch (e) { pInfo.textContent = "Não foi possível verificar."; return; } if (timestamp) { const dataBackup = new Date(timestamp); pInfo.textContent = `Último backup: ${dataBackup.toLocaleDateString('pt-BR')} às ${dataBackup.toLocaleTimeString('pt-BR')}.`; const umaSemanaAtras = new Date(); umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7); if (dataBackup < umaSemanaAtras) pInfo.innerHTML += ' <strong class="text-orange-500">(Antigo!)</strong>'; } else { pInfo.textContent = "Nenhum backup. Recomendável fazer um."; } }
+    async function restaurarBackupHistorico(event) { const file = event.target.files[0]; if (!file) return; abrirPopupConfirmar('Restaurar APENAS o HISTÓRICO DE O.S.? Turno atual NÃO será afetado. NÃO PODE SER DESFEITO.', async () => { const reader = new FileReader(); reader.onload = async function (e) { try { const dados = JSON.parse(e.target.result); if (dados && Array.isArray(dados.historicoOS)) { await initDB(); const store = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); await new Promise((resolve, reject) => { store.clear().onsuccess = resolve; store.clear().onerror = reject; }); for (const item of dados.historicoOS) { if (item.hasOwnProperty('uniqueId')) delete item.uniqueId; await new Promise((resolve, reject) => { store.add(item).onsuccess = resolve; store.add(item).onerror = reject; }); } await mostrarHistorico(); showToast("Backup do histórico restaurado!"); } else { showToast("Arquivo de backup de histórico inválido."); } } catch (err) { console.error("Erro ao restaurar backup histórico:", err); showToast("Erro ao restaurar backup do histórico."); } }; reader.readAsText(file); event.target.value = null; }, "Restaurar Histórico"); }
+    async function restaurarBackupCompleto(event) { const file = event.target.files[0]; if (!file) return; abrirPopupConfirmar('Restaurar backup COMPLETO? TODOS os dados atuais (turno, histórico) SERÃO SUBSTITUÍDOS. NÃO PODE SER DESFEITO.', async () => { const reader = new FileReader(); reader.onload = async function (e) { try { const dados = JSON.parse(e.target.result); if (dados && typeof dados === 'object') { await initDB(); if (dados.turno) { dados.turno.id = TURNO_ATUAL_ID; await dbSave(STORE_TURNO, dados.turno); } else { await dbClearStore(STORE_TURNO); } const historicoStore = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); await new Promise(r => { historicoStore.clear().onsuccess = r; }); if (dados.historicoOS && Array.isArray(dados.historicoOS)) { for (const item of dados.historicoOS) { if (item.hasOwnProperty('uniqueId')) delete item.uniqueId; await new Promise(r => { historicoStore.add(item).onsuccess = r; }); } } await carregarTudo(); await mostrarHistorico(); atualizarInfoUltimoBackup(); showToast("Backup completo restaurado!"); } else { showToast("Arquivo de backup completo inválido."); } } catch (err) { console.error("Erro ao restaurar backup completo:", err); showToast("Erro ao restaurar backup completo."); } }; reader.readAsText(file); event.target.value = null; }, "Restaurar Backup Completo"); }
+    function atualizarInfoUltimoBackup() { const pInfo = document.getElementById("infoUltimoBackup"); if (!pInfo) return; let timestamp; try { timestamp = localStorage.getItem("ultimoBackupTimestamp"); } catch (e) { pInfo.textContent = "Não foi possível verificar."; return; } if (timestamp) { const dataBackup = new Date(timestamp); pInfo.textContent = `Último backup: ${dataBackup.toLocaleDateString('pt-BR')} às ${dataBackup.toLocaleTimeString('pt-BR')}.`; const umaSemanaAtras = new Date(); umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7); if (dataBackup < umaSemanaAtras) pInfo.innerHTML += ' <strong class="text-orange-500">(Antigo!)</strong>'; } else { pInfo.textContent = "Nenhum backup. Recomendável fazer um."; } }
 
     // =================================================================================
     // LIMPEZA DE DADOS
     // =================================================================================
-    async function limparTodosServicos() { /* ...código existente... */ abrirPopupConfirmar("Apagar TODOS os serviços do TURNO ATUAL?", async () => { servicos = []; renderizarServicos(); await salvarTudo(); showToast("Serviços do turno atual apagados!"); }, "Limpar Serviços"); }
-    async function limparStorage() { /* ...código existente... */ abrirPopupConfirmar('Resetar TODOS OS DADOS (turno, histórico)? Ação IRREVERSÍVEL. Faça backup antes!', async () => { try { await initDB(); if (db) { db.close(); db = null; } const deleteRequest = indexedDB.deleteDatabase(DB_NAME); deleteRequest.onsuccess = () => { try { localStorage.clear(); } catch (e) { console.warn("Erro localStorage clear", e); } location.reload(); }; deleteRequest.onerror = () => { showToast("Erro ao apagar DB."); }; deleteRequest.onblocked = () => { showToast("Exclusão bloqueada. Feche abas."); }; } catch (e) { console.error("Erro limpar storage:", e); showToast("Erro ao limpar dados."); } }, "Resetar Aplicativo"); }
-    async function abrirPopupApagarPorData() { /* ...código existente... */ try { const todosItens = await dbGetAll(STORE_HISTORICO); const datas = [...new Set(todosItens.map(item => item.dataKey))].sort((a, b) => { const [dA,mA,aA] = a.split('/').map(Number); const [dB,mB,aB] = b.split('/').map(Number); return new Date(aB,mB-1,dB) - new Date(aA,mA-1,dA); }); if (datas.length === 0) { showToast("Nenhum histórico."); return; } const select = document.getElementById('selectDatas'); select.innerHTML = '<option value="">Selecione</option>' + datas.map(d => `<option value="${d}">${d}</option>`).join(''); document.getElementById('popupApagarData').style.display = 'block'; document.getElementById('overlayApagarData').style.display = 'block'; fecharTeclado(); } catch (e) { showToast("Erro ao carregar histórico."); } }
-    function fecharPopupApagarPorData() { /* ...código existente... */ document.getElementById('popupApagarData').style.display = 'none'; document.getElementById('overlayApagarData').style.display = 'none'; }
-    async function confirmarApagarPorData() { /* ...código existente... */ const dataSel = document.getElementById('selectDatas').value; if (!dataSel) { showToast("Selecione uma data."); return; } abrirPopupConfirmar(`Apagar TODO o histórico de ${dataSel}?`, async () => { try { await initDB(); const store = db.transaction(STORE_HISTORICO, 'readwrite').objectStore(STORE_HISTORICO); const index = store.index('dataKeyIndex'); const request = index.openCursor(IDBKeyRange.only(dataSel)); let count = 0; request.onsuccess = e => { const cursor = e.target.result; if (cursor) { store.delete(cursor.primaryKey); count++; cursor.continue(); } else { if (count > 0) { mostrarHistorico(); showToast(`Histórico de ${dataSel} apagado!`); } else { showToast(`Nenhum item para ${dataSel}.`); } fecharPopupApagarPorData(); }}; request.onerror = () => { showToast("Erro ao apagar."); fecharPopupApagarPorData(); }; } catch (e) { showToast("Erro ao apagar."); fecharPopupApagarPorData(); } }, "Confirmar Exclusão"); }
-
+    async function limparTodosServicos() { abrirPopupConfirmar("Apagar TODOS os serviços do TURNO ATUAL?", async () => { servicos = []; renderizarServicos(); await salvarTudo(); showToast("Serviços do turno atual apagados!"); }, "Limpar Serviços"); }
+    async function limparStorage() { abrirPopupConfirmar('Resetar TODOS OS DADOS (turno, histórico)? Ação IRREVERSÍVEL. Faça backup antes!', async () => { try { await initDB(); if (db) { db.close(); db = null; } const deleteRequest = indexedDB.deleteDatabase(DB_NAME); deleteRequest.onsuccess = () => { try { localStorage.clear(); } catch (e) { console.warn("Erro localStorage clear", e); } location.reload(); }; deleteRequest.onerror = () => { showToast("Erro ao apagar DB."); }; deleteRequest.onblocked = () => { showToast("Exclusão bloqueada. Feche abas."); }; } catch (e) { console.error("Erro limpar storage:", e); showToast("Erro ao limpar dados."); } }, "Resetar Aplicativo"); }
+    
     // =================================================================================
     // PERSISTÊNCIA E CARREGAMENTO
     // =================================================================================
-    async function salvarDadosParciaisTurno() { /* ...código existente... */ try { const dTurno = await dbGet(STORE_TURNO, TURNO_ATUAL_ID) || { id: TURNO_ATUAL_ID }; dTurno.data = document.getElementById("dataTurno")?.value; dTurno.fazenda = document.getElementById("fazenda")?.value.trim(); dTurno.frente = document.getElementById("frente")?.value.trim(); dTurno.turno = document.getElementById("turnoLetra")?.value; await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro ao salvar dados parciais."); } }
-    async function salvarTudo() { /* ...código existente... */ salvarValoresServicos(); const dTurno = { id: TURNO_ATUAL_ID, data: document.getElementById("dataTurno")?.value, fazenda: document.getElementById("fazenda")?.value.trim(), frente: document.getElementById("frente")?.value.trim(), turno: document.getElementById("turnoLetra")?.value, equipe: equipe, frotas: frotasTurno, servicos: servicos, relatorio: document.getElementById("relatorio_bruto")?.value }; try { await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro crítico ao salvar."); } }
-    async function carregarTudo() { /* ...código existente... */ try { await initDB(); const dados = await dbGet(STORE_TURNO, TURNO_ATUAL_ID); const dataHj = dataHojeInputLocal(); if (dados && dados.data && dados.data !== dataHj) { abrirPopupConfirmar(`Dados de ${dados.data.split('-').reverse().join('/')}. Iniciar novo turno para ${dataHj.split('-').reverse().join('/')}? Serviços/frotas serão limpos.<br><br><span class="text-red-600 font-bold">PARA MANTER, CANCELE E ALTERE A DATA.</span>`, async () => { const mantidos = { equipe: dados.equipe || [] }; frotasTurno = []; servicos = []; document.getElementById("relatorio_bruto").value = ''; document.getElementById("relatorio_formatado").innerHTML = ''; await dbSave(STORE_TURNO, { id: TURNO_ATUAL_ID, data: dataHj, fazenda: dados.fazenda, frente: dados.frente, turno: dados.turno, equipe: mantidos.equipe, frotas: [], servicos: [], relatorio: "" }); await carregarTudo(); showToast("Novo turno iniciado."); }, "Novo Turno?", true); return; } if (dados) { const elD = document.getElementById("dataTurno"); if(elD) elD.value = dados.data || dataHj; const elFa = document.getElementById("fazenda"); if(elFa) elFa.value = dados.fazenda || ""; const elFr = document.getElementById("frente"); if(elFr) elFr.value = dados.frente || ""; const elTL = document.getElementById("turnoLetra"); if(elTL) elTL.value = dados.turno || "A"; equipe = dados.equipe || []; frotasTurno = dados.frotas || []; servicos = dados.servicos || []; servicos.forEach(s => { if (typeof s.isExpanded === 'undefined') s.isExpanded = false; }); const rBruto = dados.relatorio || ""; const elRBruto = document.getElementById("relatorio_bruto"); if(elRBruto) elRBruto.value = rBruto; const elRForm = document.getElementById("relatorio_formatado"); if(elRForm) elRForm.innerHTML = interpretarMarkdown(rBruto); } else { const elD = document.getElementById("dataTurno"); if(elD) elD.value = dataHj; equipe = []; frotasTurno = []; servicos = []; } } catch (e) { showToast("Erro ao carregar dados."); const elD = document.getElementById("dataTurno"); if(elD) elD.value = dataHojeInputLocal(); equipe = []; frotasTurno = []; servicos = []; } }
+    async function salvarDadosParciaisTurno() { try { const dTurno = await dbGet(STORE_TURNO, TURNO_ATUAL_ID) || { id: TURNO_ATUAL_ID }; dTurno.data = document.getElementById("dataTurno")?.value; dTurno.fazenda = document.getElementById("fazenda")?.value.trim(); dTurno.frente = document.getElementById("frente")?.value.trim(); dTurno.turno = document.getElementById("turnoLetra")?.value; await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro ao salvar dados parciais."); } }
+    async function salvarTudo() { salvarValoresServicos(); const dTurno = { id: TURNO_ATUAL_ID, data: document.getElementById("dataTurno")?.value, fazenda: document.getElementById("fazenda")?.value.trim(), frente: document.getElementById("frente")?.value.trim(), turno: document.getElementById("turnoLetra")?.value, equipe: equipe, frotas: frotasTurno, servicos: servicos, relatorio: document.getElementById("relatorio_bruto")?.value }; try { await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro crítico ao salvar."); } }
+    async function carregarTudo() {
+        try {
+            await initDB();
+            const dados = await dbGet(STORE_TURNO, TURNO_ATUAL_ID);
+            const dataHj = dataHojeInputLocal();
+            if (dados && dados.data && dados.data !== dataHj) {
+                abrirPopupConfirmar(
+                    `Dados de ${dados.data.split('-').reverse().join('/')} encontrados. Deseja iniciar um novo turno para hoje (${dataHj.split('-').reverse().join('/')})? <br><br><strong>Os serviços e o relatório do dia anterior serão limpos, mas a equipe e a lista de frotas serão mantidas.</strong><br><br><span class="text-red-600 font-bold">PARA MANTER OS SERVIÇOS, CANCELE E ALTERE A DATA MANUALMENTE.</span>`,
+                    async () => {
+                        servicos = [];
+                        document.getElementById("relatorio_bruto").value = '';
+                        document.getElementById("relatorio_formatado").innerHTML = '';
+                        await dbSave(STORE_TURNO, {
+                            id: TURNO_ATUAL_ID,
+                            data: dataHj,
+                            fazenda: dados.fazenda,
+                            frente: dados.frente,
+                            turno: dados.turno,
+                            equipe: dados.equipe || [],
+                            frotas: dados.frotas || [],
+                            servicos: [],
+                            relatorio: ""
+                        });
+                        await carregarTudo();
+                        showToast("Novo turno iniciado. Frotas e equipe mantidas!");
+                    },
+                    "Iniciar Novo Turno?",
+                    true
+                );
+                return;
+            }
+            if (dados) {
+                const elD = document.getElementById("dataTurno");
+                if (elD) elD.value = dados.data || dataHj;
+                const elFa = document.getElementById("fazenda");
+                if (elFa) elFa.value = dados.fazenda || "";
+                const elFr = document.getElementById("frente");
+                if (elFr) elFr.value = dados.frente || "";
+                const elTL = document.getElementById("turnoLetra");
+                if (elTL) elTL.value = dados.turno || "A";
+                equipe = dados.equipe || [];
+                frotasTurno = dados.frotas || [];
+                servicos = dados.servicos || [];
+                frotasTurno.forEach(f => {
+                    if (typeof f.tipo === 'undefined') f.tipo = 'maquina';
+                });
+                servicos.forEach(s => {
+                    if (typeof s.isExpanded === 'undefined') s.isExpanded = false;
+                });
+                const rBruto = dados.relatorio || "";
+                const elRBruto = document.getElementById("relatorio_bruto");
+                if (elRBruto) elRBruto.value = rBruto;
+                const elRForm = document.getElementById("relatorio_formatado");
+                if (elRForm) elRForm.innerHTML = interpretarMarkdown(rBruto);
+            } else {
+                const elD = document.getElementById("dataTurno");
+                if (elD) elD.value = dataHj;
+                equipe = [];
+                frotasTurno = [];
+                servicos = [];
+            }
+        } catch (e) {
+            showToast("Erro ao carregar dados.");
+            console.error("Erro em carregarTudo:", e);
+            const elD = document.getElementById("dataTurno");
+            if (elD) elD.value = dataHojeInputLocal();
+            equipe = [];
+            frotasTurno = [];
+            servicos = [];
+        }
+    }
+
+    // =================================================================================
+    // ESTATÍSTICAS
+    // =================================================================================
+    async function renderizarEstatisticas() {
+        const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina');
+        const dmTurnoAtual = calcularDMGeralGlobal(maquinasPrincipais);
+        const dmElement = document.getElementById('stat_dm_turno_atual');
+        const dmInfoElement = document.getElementById('stat_dm_info');
+        if (dmElement) dmElement.textContent = `${dmTurnoAtual}%`;
+        if (dmInfoElement) dmInfoElement.textContent = `Calculada com base em ${maquinasPrincipais.length} máquinas principais.`;
+        const todosItensHistorico = await dbGetAll(STORE_HISTORICO);
+        const osPorDia = {};
+        todosItensHistorico.forEach(item => {
+            osPorDia[item.dataKey] = (osPorDia[item.dataKey] || 0) + 1;
+        });
+        const labels = Object.keys(osPorDia).sort((a, b) => {
+            const [diaA, mesA, anoA] = a.split('/').map(Number);
+            const [diaB, mesB, anoB] = b.split('/').map(Number);
+            return new Date(anoA, mesA - 1, diaA) - new Date(anoB, mesB - 1, diaB);
+        }).slice(-15);
+        const data = labels.map(label => osPorDia[label]);
+        const ctx = document.getElementById('graficoHistoricoOS');
+        if (!ctx) return;
+        if (graficoOS) {
+            graficoOS.destroy();
+        }
+        graficoOS = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Nº de O.S. Registradas',
+                    data: data,
+                    backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Contagem de O.S. por Dia'
+                    }
+                }
+            }
+        });
+    }
 
     // =================================================================================
     // INICIALIZAÇÃO E SERVICE WORKER
     // =================================================================================
-    async function main() { /* ...código existente... */ try { await initDB(); await carregarTudo(); renderizarEquipe(); renderizarFrotas(); atualizarSelectsDeFrotasNosServicos(); await mostrarHistorico(); atualizarInfoUltimoBackup(); abrir('turno'); const dataEl = document.getElementById("dataTurno"); if (dataEl && !dataEl.value) dataEl.value = dataHojeInputLocal(); } catch (e) { showToast("Erro grave ao iniciar."); } }
-    if ('serviceWorker' in navigator) { /* ...código existente... */ navigator.serviceWorker.register('./service-worker.js').then(reg => { reg.onupdatefound = () => { const newWorker = reg.installing; newWorker.onstatechange = () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) { const popup = document.getElementById('update-popup'); if (popup) popup.classList.remove('hidden'); } }; }; }).catch(err => console.log('Erro SW:', err)); navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); }); }
+    async function main() {
+    try {
+        await initDB();
+        await carregarTudo();
+        renderizarEquipe();
+        renderizarFrotas();
+        // A linha abaixo não é mais necessária pois a renderização é otimizada
+        // atualizarSelectsDeFrotasNosServicos(); 
+        await mostrarHistorico();
+        atualizarInfoUltimoBackup();
+        abrir('turno');
+        const dataEl = document.getElementById("dataTurno");
+        if (dataEl && !dataEl.value) dataEl.value = dataHojeInputLocal();
+        
+        // ADICIONE ESTA LINHA NO FINAL DA FUNÇÃO 'main'
+        inicializarMenuHamburguer();
+
+    } catch (e) {
+        showToast("Erro grave ao iniciar.");
+        console.error("Erro na função main:", e);
+    }
+}
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+            reg.onupdatefound = () => {
+                const newWorker = reg.installing;
+                newWorker.onstatechange = () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        const popup = document.getElementById('update-popup');
+                        if (popup) popup.classList.remove('hidden');
+                    }
+                };
+            };
+        }).catch(err => console.log('Erro SW:', err));
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+        });
+    }
     document.addEventListener("DOMContentLoaded", main);
 </script>
 </body>
