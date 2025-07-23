@@ -1203,45 +1203,58 @@
         } else { if (callbackContinua) callbackContinua(); }
     }
     async function gerarTextoOSFinal(servico) {
-        const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA";
-        const equipeTexto = obterEquipeTexto();
-        const [ano, mes, dia] = (servico.data).split('-');
-        const dataFormatada = `${dia}/${mes}/${ano}`;
-        const [anoF, mesF, diaF] = (servico.dataFinal).split('-');
-        const dataFinalFormatada = `${diaF}/${mesF}/${anoF}`;
-        const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
-            `*Máquina está parada por manutenção:* \n` +
-            `*( ${servico.parada === "sim" ? "❌" : " "} ) sim* *( ${servico.parada === "não" ? "❌" : " "} ) não*\n` +
-            `*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n` +
-            `•Frota afetada: ${servico.frota}\n` +
-            `•Local/frente: ${frente}\n\n` +
-            `•Tipo de manutenção:\n` +
-            `(${servico.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
-            `(${servico.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
-            `(${servico.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
-            `•Descrição serviço\n${servico.descricao}\n(${servico.atividade.split(" - ")[0]} - ${servico.sistema} - ${(servico.subsistema || "").split(" - ")[0]})\n` +
-            `${servico.oportunidade ? `Oportunidade: ${servico.oportunidade}\n\n` : '\n'}` +
-            `•Foi falha operacional?\n` +
-            `(${servico.falha === "sim" ? "❌" : " "}) Sim\n` +
-            `(${servico.falha === "não" ? "❌" : " "}) Não\n\n` +
-            `Data inicial: ${dataFormatada}\n` +
-            `Hora inicial: ${servico.inicio}\n` +
-            `Data final: ${dataFinalFormatada}\n` +
-            `Hora fim: ${servico.fim}\n\n` +
-            `Solicitante:\n${equipeTexto}`;
-        servico.texto = txt;
-        servico.isExpanded = true; 
-        await salvarOSnoHistorico(servico.id);
-        await salvarTudo();
-        showToast("O.S gerada/atualizada!");
-        renderizarServicos();
-        setTimeout(() => {
-            const el = document.getElementById(`preview_container_${servico.id}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 200);
-    }
+    const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA";
+    const equipeTexto = obterEquipeTexto();
+
+    const [ano, mes, dia] = (servico.data).split('-');
+    const dataFormatada = `${dia}/${mes}/${ano}`;
+
+    const [anoF, mesF, diaF] = (servico.dataFinal).split('-');
+    const dataFinalFormatada = `${diaF}/${mesF}/${anoF}`;
+
+    const txt = `*SOLICITAÇÃO DE O.S*\n\n` +
+        `*Máquina está parada por manutenção:* \n` +
+        `*( ${servico.parada === "sim" ? "❌" : " "} ) sim* *( ${servico.parada === "não" ? "❌" : " "} ) não*\n` +
+        `*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n` +
+        `•Frota afetada: ${servico.frota}\n` +
+        `•Local/frente: ${frente}\n\n` +
+        `•Tipo de manutenção:\n` +
+        `(${servico.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n` +
+        `(${servico.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n` +
+        `(${servico.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n` +
+        `•Descrição serviço\n${servico.descricao}\n(${servico.atividade.split(" - ")[0]} - ${servico.sistema} - ${(servico.subsistema || "").split(" - ")[0]})\n` +
+        `${servico.oportunidade ? `Oportunidade: ${servico.oportunidade}\n\n` : '\n'}` +
+        `•Foi falha operacional?\n` +
+        `(${servico.falha === "sim" ? "❌" : " "}) Sim\n` +
+        `(${servico.falha === "não" ? "❌" : " "}) Não\n\n` +
+        `Data inicial: ${dataFormatada}\n` +
+        `Hora inicial: ${servico.inicio}\n` +
+        `Data final: ${dataFinalFormatada}\n` +
+        `Hora fim: ${servico.fim}\n\n` +
+        `Solicitante:\n${equipeTexto}`;
+
+    // 1. ATUALIZAR O OBJETO DE DADOS (A NOSSA "FONTE DA VERDADE")
+    servico.texto = txt;
+    servico.isExpanded = true; // Força a reabertura do card para mostrar o resultado
+
+    // 2. SALVAR OS DADOS ATUALIZADOS
+    await salvarOSnoHistorico(servico.id);
+    await salvarTudo();
+    showToast("O.S gerada/atualizada!");
+
+    // 3. RENDERIZAR A INTERFACE A PARTIR DOS DADOS ATUALIZADOS
+    // Esta função vai redesenhar tudo, incluindo o texto do botão, o preview, etc.
+    renderizarServicos(); 
+
+    // 4. ROLAR PARA O ELEMENTO APÓS A RENDERIZAÇÃO
+    // Usamos um pequeno timeout para garantir que o DOM foi atualizado pelo renderizarServicos()
+    setTimeout(() => {
+        const el = document.getElementById(`servico_${servico.id}`); // Rola para o <article> principal
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
+}
     function copiarTexto(id) {
         const txt = document.getElementById(`texto_${id}`).value;
         navigator.clipboard.writeText(txt)
@@ -1260,13 +1273,19 @@
         if (servico && servico.isExpanded) { toggleDetalhesServico(id); }
     }
     async function removerServico(id) {
-        abrirPopupConfirmar('Remover este serviço?', async () => {
-            const index = servicos.findIndex(s => s.id === id);
-            if (index > -1) {
-                servicos.splice(index, 1); renderizarServicos(); showToast("Serviço removido!"); await salvarTudo();
-            } else { showToast("Erro: Serviço não encontrado."); }
-        });
-    }
+    salvarValoresServicos(); // ADICIONADO: Garante que os dados da tela são capturados
+    abrirPopupConfirmar('Remover este serviço?', async () => {
+        const index = servicos.findIndex(s => s.id === id);
+        if (index > -1) {
+            servicos.splice(index, 1);
+            renderizarServicos();
+            showToast("Serviço removido!");
+            await salvarTudo();
+        } else {
+            showToast("Erro: Serviço não encontrado.");
+        }
+    });
+}
     async function adicionarServicoDepois(idReferencia) {
         salvarValoresServicos();
         const refServico = servicos.find(s => s.id === idReferencia);
@@ -1329,23 +1348,40 @@
     // RELATÓRIO
     // =================================================================================
     async function toggleEdicaoRelatorio() {
-        const textarea = document.getElementById("relatorio_bruto"); const divFormatado = document.getElementById("relatorio_formatado");
-        const botao = document.querySelector('button[onclick="toggleEdicaoRelatorio()"]');
-        if (textarea.classList.contains('hidden')) {
-            textarea.value = divFormatado.innerText; textarea.classList.remove('hidden'); divFormatado.classList.add('hidden'); textarea.focus();
-            botao.innerText = 'Salvar e Ver Formatado'; botao.classList.remove('bg-yellow-500', 'hover:bg-yellow-600'); botao.classList.add('bg-green-500', 'hover:bg-green-600');
-        } else {
-            divFormatado.innerHTML = interpretarMarkdown(textarea.value); textarea.classList.add('hidden'); divFormatado.classList.remove('hidden');
-            botao.innerText = 'Editar Relatório'; botao.classList.remove('bg-green-500', 'hover:bg-green-600'); botao.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
-            await salvarTudo(); showToast("Relatório atualizado.");
-        }
+    const textarea = document.getElementById("relatorio_bruto");
+    const divFormatado = document.getElementById("relatorio_formatado");
+    const botao = document.querySelector('button[onclick="toggleEdicaoRelatorio()"]');
+
+    if (textarea.classList.contains('hidden')) {
+        textarea.value = divFormatado.innerText;
+        textarea.classList.remove('hidden');
+        divFormatado.classList.add('hidden');
+        textarea.focus();
+        botao.innerText = 'Salvar e Ver Formatado';
+        botao.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+        botao.classList.add('bg-green-500', 'hover:bg-green-600');
+    } else {
+        divFormatado.innerHTML = interpretarMarkdown(textarea.value);
+        textarea.classList.add('hidden');
+        divFormatado.classList.remove('hidden');
+        botao.innerText = 'Editar Relatório';
+        botao.classList.remove('bg-green-500', 'hover:bg-green-600');
+        botao.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+        
+        salvarValoresServicos(); // ADICIONADO: Garante que os dados da tela são capturados antes de salvar
+        await salvarTudo();
+        showToast("Relatório atualizado.");
     }
+}
     async function limparRelatorio() {
-        abrirPopupConfirmar("Limpar o relatório atual?", async () => {
-            document.getElementById("relatorio_bruto").value = ''; document.getElementById("relatorio_formatado").innerHTML = '';
-            await salvarTudo(); showToast("Relatório limpo!");
-        });
-    }
+    salvarValoresServicos(); // ADICIONADO: Garante que os dados da tela são capturados
+    abrirPopupConfirmar("Limpar o relatório atual?", async () => {
+        document.getElementById("relatorio_bruto").value = '';
+        document.getElementById("relatorio_formatado").innerHTML = '';
+        await salvarTudo();
+        showToast("Relatório limpo!");
+    });
+}
     function compartilharRelatorio() {
         const texto = document.getElementById("relatorio_bruto").value.trim() || document.getElementById("relatorio_formatado").innerText.trim();
         if (!texto) { showToast("Relatório vazio."); return; }
@@ -1572,7 +1608,25 @@
     // PERSISTÊNCIA E CARREGAMENTO
     // =================================================================================
     async function salvarDadosParciaisTurno() { try { const dTurno = await dbGet(STORE_TURNO, TURNO_ATUAL_ID) || { id: TURNO_ATUAL_ID }; dTurno.data = document.getElementById("dataTurno")?.value; dTurno.fazenda = document.getElementById("fazenda")?.value.trim(); dTurno.frente = document.getElementById("frente")?.value.trim(); dTurno.turno = document.getElementById("turnoLetra")?.value; await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro ao salvar dados parciais."); } }
-    async function salvarTudo() { salvarValoresServicos(); const dTurno = { id: TURNO_ATUAL_ID, data: document.getElementById("dataTurno")?.value, fazenda: document.getElementById("fazenda")?.value.trim(), frente: document.getElementById("frente")?.value.trim(), turno: document.getElementById("turnoLetra")?.value, equipe: equipe, frotas: frotasTurno, servicos: servicos, relatorio: document.getElementById("relatorio_bruto")?.value }; try { await dbSave(STORE_TURNO, dTurno); } catch (e) { showToast("Erro crítico ao salvar."); } }
+    async function salvarTudo() {
+    // A chamada para salvarValoresServicos() foi REMOVIDA daqui.
+    const dTurno = {
+        id: TURNO_ATUAL_ID,
+        data: document.getElementById("dataTurno")?.value,
+        fazenda: document.getElementById("fazenda")?.value.trim(),
+        frente: document.getElementById("frente")?.value.trim(),
+        turno: document.getElementById("turnoLetra")?.value,
+        equipe: equipe,
+        frotas: frotasTurno,
+        servicos: servicos, // Usa o array 'servicos' que já está atualizado na memória
+        relatorio: document.getElementById("relatorio_bruto")?.value
+    };
+    try {
+        await dbSave(STORE_TURNO, dTurno);
+    } catch (e) {
+        showToast("Erro crítico ao salvar.");
+    }
+}
     async function carregarTudo() {
         try {
             await initDB();
