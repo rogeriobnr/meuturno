@@ -1969,32 +1969,31 @@ async function executarLimpezaCatalogo() {
 // =================================================================================
 // 11. MÓDULO: IMPORTAÇÃO DE EXCEL (NOVO)
 // =================================================================================
+// =================================================================================
+// CÓDIGO CORRIGIDO E FINAL PARA IMPORTAÇÃO DE EXCEL E ENVIO PARA O FIREBASE
+// =================================================================================
 
 /**
  * Lida com a seleção de um ficheiro Excel para importar para o catálogo.
  * @param {Event} event - O evento do input do ficheiro.
  */
-// Substitua a sua função importarCatalogoExcel por esta
 async function importarCatalogoExcel(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // A confirmação inicial continua a mesma
     const confirmado = await new Promise(resolve => 
-        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão atualizados, e os restantes serão adicionados.', resolve)
+        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão ignorados.', resolve)
     );
     if (!confirmado) {
         event.target.value = '';
         return;
     }
 
+    abrirPopupLoading("A ler o ficheiro Excel. Por favor, aguarde...");
+
     const reader = new FileReader();
     reader.onload = async (e) => {
-        // 1. MOSTRA O POPUP DE LOADING
-        abrirPopupLoading("A ler e a processar o ficheiro Excel. Por favor, aguarde...");
-        
         try {
-            // Pequeno atraso para garantir que o navegador desenha o popup antes de começar o trabalho pesado
             await new Promise(resolve => setTimeout(resolve, 50));
 
             const data = new Uint8Array(e.target.result);
@@ -2004,50 +2003,72 @@ async function importarCatalogoExcel(event) {
             
             const itensDoExcel = XLSX.utils.sheet_to_json(worksheet, {
                 header: ["codigoSap", "partNumber", "descricao"],
-                defval: "" // Garante que células vazias se tornem strings vazias
+                defval: "" // Células vazias tornam-se strings vazias
             });
-            itensDoExcel.shift(); 
+            
+            // A linha problemática "itensDoExcel.shift();" foi REMOVIDA.
 
             if (itensDoExcel.length === 0) {
                 throw new Error("Nenhum item válido encontrado no ficheiro Excel.");
             }
             
-            const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap)));
+            // Lógica anti-duplicação
+            const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap).trim()).filter(sap => sap));
             
-            const itensParaProcessar = itensDoExcel.filter(item => {
+            const itensNovos = itensDoExcel.filter(item => {
                 const sap = String(item.codigoSap || '').trim();
-                return sap; // Processa apenas itens que tenham um codigoSap
+                // Adiciona apenas se tiver um SAP e se esse SAP não existir já
+                return sap && !codigosSapExistentes.has(sap);
             });
-
-            const itensNovos = itensParaProcessar.filter(item => !codigosSapExistentes.has(String(item.codigoSap)));
-            const itensParaAtualizar = itensParaProcessar.filter(item => codigosSapExistentes.has(String(item.codigoSap)));
             
-            let mensagem = "Importação concluída. ";
-            if (itensNovos.length > 0) {
-                await enviarLoteParaFirestore(itensNovos, false); // false = adicionar
-                mensagem += `${itensNovos.length} itens novos adicionados. `;
+            if (itensNovos.length === 0) {
+                showToast("Importação concluída. Nenhum item novo para adicionar.", "success");
+                return; // Não precisa de continuar
             }
-            if (itensParaAtualizar.length > 0) {
-                await enviarLoteParaFirestore(itensParaAtualizar, true); // true = atualizar
-                mensagem += `${itensParaAtualizar.length} itens existentes atualizados.`;
-            }
-            if (itensNovos.length === 0 && itensParaAtualizar.length === 0) {
-                mensagem = "Nenhum item novo para adicionar ou atualizar.";
-            }
+            
+            // Atualiza a mensagem do popup para a fase de envio
+            document.querySelector('#popupGenerico #popupMensagem p').textContent = `A enviar ${itensNovos.length} itens novos para a base de dados...`;
 
-            showToast(mensagem, "success");
+            await enviarLoteParaFirestore(itensNovos);
+            showToast(`Importação concluída! ${itensNovos.length} itens novos foram adicionados.`, "success");
 
         } catch (error) {
             showToast(`Erro: ${error.message}`, "error");
             console.error(error);
         } finally {
-            // 2. GARANTE QUE O POPUP DE LOADING FECHA SEMPRE
             fecharPopup();
             event.target.value = '';
         }
     };
     reader.readAsArrayBuffer(file);
 }
+
+/**
+ * Envia um array de itens NOVOS para o Firestore, deixando o Firebase gerar os IDs.
+ * @param {Array<object>} itens - O array de itens a serem enviados.
+ */
+async function enviarLoteParaFirestore(itens) {
+    const batchSize = 499;
+    for (let i = 0; i < itens.length; i += batchSize) {
+        const lote = itens.slice(i, i + batchSize);
+        const batch = firestore.batch();
+
+        lote.forEach(item => {
+            const docRef = firestore.collection('catalogo').doc(); // Cria um novo documento com ID aleatório
+            // Garante que todos os campos existem, mesmo que vazios
+            const itemData = {
+                codigoSap: item.codigoSap || '',
+                partNumber: item.partNumber || '',
+                descricao: item.descricao || ''
+            };
+            batch.set(docRef, itemData);
+        });
+        
+        console.log(`A enviar lote de ${lote.length} itens...`);
+        await batch.commit();
+    }
+}
+
 
 /**
  * Envia um array de itens para o Firestore em lotes de 500.
