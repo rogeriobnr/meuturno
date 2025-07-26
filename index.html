@@ -557,7 +557,20 @@ function abrirPopupConfirmar(titulo, mensagem, callback, acaoConfirmar = 'Confir
         { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(false) }
     ]);
 }
-
+/**
+ * Mostra um popup de 'loading' sem botões que não pode ser fechado pelo utilizador.
+ * @param {string} mensagem - A mensagem a ser exibida.
+ */
+function abrirPopupLoading(mensagem) {
+    const conteudoPopup = `
+        <div class="flex flex-col items-center justify-center py-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-gray-700 text-center">${mensagem}</p>
+        </div>
+    `;
+    // Abre o popup genérico, mas sem passar botões para que não possa ser fechado
+    abrirPopup("A Processar...", conteudoPopup, []); 
+}
 // =================================================================================
 // 6. VALIDAÇÃO E UTILITÁRIOS
 // =================================================================================
@@ -1490,15 +1503,17 @@ async function abrirPopupApagarPorData() {
 // MÓDULO: CONFIGURAÇÕES
 // ---------------------------------
 // Substitua a sua função renderizarSecaoConfig por esta
+// Substitua a sua função renderizarSecaoConfig por esta versão COMPLETA
+
 function renderizarSecaoConfig(container) {
      container.innerHTML = `
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto space-y-6">
-            <h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Backup e Dados</h2>
+            <h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Configurações</h2>
             
             <div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg">
                 <h3 class="text-lg font-semibold text-gray-800">Catálogo de Peças</h3>
                 <div class="space-y-4 mt-2">
-                    <label for="fileImportExcel" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-400 hover:bg-teal-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">
+                    <label for="fileImportExcel" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-600 hover:bg-teal-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">
                         ⬆️ Importar Catálogo (Excel)
                     </label>
                     <input type="file" id="fileImportExcel" accept=".xlsx, .xls" class="hidden" onchange="importarCatalogoExcel(event)">
@@ -1515,10 +1530,37 @@ function renderizarSecaoConfig(container) {
                         🗑️ Limpar Catálogo Remoto (com senha)
                     </button>
                 </div>
-                 <p class="text-xs text-gray-500 mt-2">Importar irá adicionar ou substituir itens existentes com o mesmo Código SAP.</p>
+                 <p class="text-xs text-gray-500 mt-2">A importação/limpeza do catálogo afeta todos os utilizadores.</p>
             </div>
 
+            <div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-800">Backup e Restauro</h3>
+                <div class="space-y-4 mt-2">
+                    <button onclick="gerarBackupCompleto()" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">🗄️ Exportar Dados Completos</button>
+                    <div class="text-center">
+                        <label for="fileBackupCompletoInput" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-3 px-4 rounded-md font-semibold transition-colors">🔄 Importar Dados Completos</label>
+                        <input type="file" id="fileBackupCompletoInput" accept=".json" class="hidden" onchange="restaurarBackupCompleto(event)">
+                        <p class="text-xs text-gray-500 mt-1">Atenção: <strong class="text-red-600">Isto substituirá todos os dados atuais.</strong></p>
+                    </div>
+                </div>
             </div>
+            
+            <div class="space-y-2 text-center p-4 bg-red-50 rounded-lg">
+                 <h3 class="text-lg font-semibold text-red-700">Zona de Perigo</h3>
+                 <div class="space-y-4 mt-2">
+                    <button onclick="limparServicosTurnoAtual()" class="w-full py-3 px-4 rounded-md font-semibold bg-red-500 text-white hover:bg-red-600">🗑️ Limpar Serviços do Turno Atual</button>
+                    <button onclick="resetarAplicacao()" class="w-full py-3 px-4 rounded-md font-semibold bg-red-700 text-white hover:bg-red-800">🗑️ Resetar Todos os Dados da Aplicação</button>
+                 </div>
+            </div>
+
+            <div class="space-y-2 text-center mt-6">
+                <h3 class="text-lg font-semibold text-gray-800">Desenvolvimento</h3>
+                <button onclick="forcarLimpezaCacheEAtualizar()" class="w-full md:w-3/4 lg:w-1/2 mx-auto py-3 px-4 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+                    🧹 Forçar Atualização de Cache
+                </button>
+                <p class="text-xs text-gray-500 mt-1">Use se as alterações visuais não aparecerem.</p>
+            </div>
+        </div>
     `;
 }
 async function limparServicosTurnoAtual() {
@@ -1932,12 +1974,14 @@ async function executarLimpezaCatalogo() {
  * Lida com a seleção de um ficheiro Excel para importar para o catálogo.
  * @param {Event} event - O evento do input do ficheiro.
  */
+// Substitua a sua função importarCatalogoExcel por esta
 async function importarCatalogoExcel(event) {
     const file = event.target.files[0];
     if (!file) return;
 
+    // A confirmação inicial continua a mesma
     const confirmado = await new Promise(resolve => 
-        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão ignorados.', resolve)
+        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão atualizados, e os restantes serão adicionados.', resolve)
     );
     if (!confirmado) {
         event.target.value = '';
@@ -1946,50 +1990,88 @@ async function importarCatalogoExcel(event) {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
+        // 1. MOSTRA O POPUP DE LOADING
+        abrirPopupLoading("A ler e a processar o ficheiro Excel. Por favor, aguarde...");
+        
         try {
+            // Pequeno atraso para garantir que o navegador desenha o popup antes de começar o trabalho pesado
+            await new Promise(resolve => setTimeout(resolve, 50));
+
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // Converte a planilha para um array de objetos JSON
             const itensDoExcel = XLSX.utils.sheet_to_json(worksheet, {
-                // Força os cabeçalhos a serem estes nomes, independentemente do que está no ficheiro
-                header: ["codigoSap", "partNumber", "descricao"] 
+                header: ["codigoSap", "partNumber", "descricao"],
+                defval: "" // Garante que células vazias se tornem strings vazias
             });
-
-            // Remove a primeira linha, que é o próprio cabeçalho
             itensDoExcel.shift(); 
 
             if (itensDoExcel.length === 0) {
-                showToast("Nenhum item válido encontrado no ficheiro Excel.", "error");
-                return;
+                throw new Error("Nenhum item válido encontrado no ficheiro Excel.");
             }
             
-            const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap))); // Garante que a comparação seja de texto
+            const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap)));
             
-            const itensNovos = itensDoExcel.filter(item => {
-                // Garante que o codigoSap é tratado como texto e que o item é válido
+            const itensParaProcessar = itensDoExcel.filter(item => {
                 const sap = String(item.codigoSap || '').trim();
-                return sap && !codigosSapExistentes.has(sap);
+                return sap; // Processa apenas itens que tenham um codigoSap
             });
+
+            const itensNovos = itensParaProcessar.filter(item => !codigosSapExistentes.has(String(item.codigoSap)));
+            const itensParaAtualizar = itensParaProcessar.filter(item => codigosSapExistentes.has(String(item.codigoSap)));
             
-            if (itensNovos.length === 0) {
-                showToast("Importação concluída. Nenhum item novo para adicionar.", "success");
-                return;
+            let mensagem = "Importação concluída. ";
+            if (itensNovos.length > 0) {
+                await enviarLoteParaFirestore(itensNovos, false); // false = adicionar
+                mensagem += `${itensNovos.length} itens novos adicionados. `;
             }
-            
-            await enviarLoteParaFirestore(itensNovos);
-            showToast(`Importação concluída! ${itensNovos.length} itens novos foram adicionados.`, "success");
+            if (itensParaAtualizar.length > 0) {
+                await enviarLoteParaFirestore(itensParaAtualizar, true); // true = atualizar
+                mensagem += `${itensParaAtualizar.length} itens existentes atualizados.`;
+            }
+            if (itensNovos.length === 0 && itensParaAtualizar.length === 0) {
+                mensagem = "Nenhum item novo para adicionar ou atualizar.";
+            }
+
+            showToast(mensagem, "success");
 
         } catch (error) {
-            showToast(`Erro ao ler o ficheiro Excel: ${error.message}`, "error");
+            showToast(`Erro: ${error.message}`, "error");
             console.error(error);
         } finally {
+            // 2. GARANTE QUE O POPUP DE LOADING FECHA SEMPRE
+            fecharPopup();
             event.target.value = '';
         }
     };
     reader.readAsArrayBuffer(file);
+}
+
+/**
+ * Envia um array de itens para o Firestore em lotes de 500.
+ * @param {Array<object>} itens - O array de itens a serem enviados.
+ * @param {boolean} isUpdate - Se true, atualiza os documentos; se false, adiciona novos.
+ */
+async function enviarLoteParaFirestore(itens, isUpdate = false) {
+    const batchSize = 499;
+    for (let i = 0; i < itens.length; i += batchSize) {
+        const lote = itens.slice(i, i + batchSize);
+        const batch = firestore.batch();
+
+        lote.forEach(item => {
+            const docRef = firestore.collection('catalogo').doc(isUpdate ? item.codigoSap : undefined); // Se for adição, o ID é gerado automaticamente
+            batch.set(docRef, {
+                codigoSap: item.codigoSap || '',
+                partNumber: item.partNumber || '',
+                descricao: item.descricao || ''
+            });
+        });
+        
+        console.log(`A enviar lote de ${lote.length} itens...`);
+        await batch.commit();
+    }
 }
 
 // =================================================================================
