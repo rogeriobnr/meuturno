@@ -193,8 +193,9 @@
         </article>
     </template>
     
-    <script>
-  // A sua configuração pessoal do Firebase
+<script>
+
+   // FIREBASE - A sua configuração pessoal do Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok",
     authDomain: "meu-turno-app.firebaseapp.com",
@@ -217,8 +218,10 @@
             console.warn('O navegador atual não suporta persistência offline.');
         }
     });
-</script>
-<script>
+    
+
+
+    
 'use strict';
 document.addEventListener("DOMContentLoaded", main);
 
@@ -226,7 +229,7 @@ document.addEventListener("DOMContentLoaded", main);
 // 1. ESTADO GLOBAL E CONSTANTES
 // =================================================================================
 let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
-const DB_NAME = 'meuturnoDB', DB_VERSION = 3, STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', TURNO_ATUAL_ID = 'currentTurno';
+const DB_NAME = 'meuturnoDB', DB_VERSION = 4, STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', TURNO_ATUAL_ID = 'currentTurno';
 const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
 const sistemas = { "Tratores": [{ cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" }, { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" }, { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio" }], "Implementos": [{ cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" }, { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }]};
 const subsistemas = { "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"], "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"], "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"], "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"], "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"], "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"], "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"], "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"], "9": ["9.1 - Freio", "9.2 - Acumulador"], "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"], "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"], "12": ["12.1 - Caixa de Adubo"], "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"], "14": ["14.1 - Sensores", "14.2 - Chicote"], "15": ["15.1 - Lamina", "15.2 - Ball"]};
@@ -1491,10 +1494,26 @@ async function abrirPopupApagarPorData() {
 // ---------------------------------
 // MÓDULO: CONFIGURAÇÕES
 // ---------------------------------
+
 function renderizarSecaoConfig(container) {
      container.innerHTML = `
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto space-y-6">
             <h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Backup e Dados</h2>
+            
+            <div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-800">Catálogo de Peças</h3>
+                <div class="space-y-4 mt-2">
+                    <label for="fileImportCatalogo" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">
+                        ⬆️ Importar Catálogo (CSV)
+                    </label>
+                    <input type="file" id="fileImportCatalogo" accept=".csv" class="hidden" onchange="importarCatalogoCSV(event)">
+                    <button onclick="exportarCatalogoCSV()" class="w-full flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">
+                        ⬇️ Exportar Catálogo (CSV)
+                    </button>
+                </div>
+                 <p class="text-xs text-gray-500 mt-2">Importar irá adicionar ou substituir itens existentes com o mesmo Código SAP.</p>
+            </div>
+
             <div class="space-y-4">
                 <button onclick="gerarBackupCompleto()" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">🗄️ Exportar Dados Completos</button>
                 <div class="text-center">
@@ -1698,6 +1717,140 @@ function sincronizarCatalogo() {
     });
 }
 
+// =================================================================================
+// 9. MÓDULO: IMPORTAÇÃO / EXPORTAÇÃO DO CATÁLOGO
+// =================================================================================
+
+/**
+ * Lida com a seleção de um ficheiro CSV para importar para o catálogo.
+ * @param {Event} event - O evento do input do ficheiro.
+ */
+async function importarCatalogoCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro? Itens com o mesmo Código SAP serão substituídos.', resolve)
+    );
+    if (!confirmado) {
+        event.target.value = ''; // Limpa a seleção do ficheiro
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        try {
+            const itens = parseCSV(text);
+            if (itens.length === 0) {
+                showToast("Nenhum item válido encontrado no ficheiro CSV.", "error");
+                return;
+            }
+            
+            await enviarLoteParaFirestore(itens);
+            showToast(`Importação concluída! ${itens.length} itens processados.`, "success");
+
+        } catch (error) {
+            showToast(error.message, "error");
+            console.error(error);
+        } finally {
+            event.target.value = ''; // Limpa a seleção do ficheiro para permitir a mesma seleção novamente
+        }
+    };
+    reader.readAsText(file);
+}
+
+/**
+ * Converte o texto de um ficheiro CSV num array de objetos.
+ * @param {string} text - O conteúdo do ficheiro CSV.
+ * @returns {Array<object>} Um array de itens do catálogo.
+ */
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) throw new Error("Ficheiro CSV vazio ou sem dados.");
+    
+    const header = lines[0].split(',').map(h => h.trim());
+    const requiredHeaders = ['codigoSap', 'partNumber', 'descricao'];
+    if (!requiredHeaders.every(h => header.includes(h))) {
+        throw new Error(`Cabeçalho inválido. Deve conter: ${requiredHeaders.join(',')}`);
+    }
+
+    const itens = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        if (values.length !== header.length) {
+            console.warn(`Linha ${i+1} ignorada: número de colunas incorreto.`);
+            continue;
+        }
+        const item = {};
+        header.forEach((key, index) => {
+            item[key] = values[index].trim();
+        });
+
+        // Validação mínima para garantir que o item é válido
+        if (item.codigoSap && item.partNumber && item.descricao) {
+            itens.push(item);
+        } else {
+             console.warn(`Linha ${i+1} ignorada: dados essenciais em falta.`);
+        }
+    }
+    return itens;
+}
+
+/**
+ * Envia um array de itens para o Firestore em lotes de 500.
+ * @param {Array<object>} itens - O array de itens a serem enviados.
+ */
+async function enviarLoteParaFirestore(itens) {
+    const batchSize = 500;
+    for (let i = 0; i < itens.length; i += batchSize) {
+        const lote = itens.slice(i, i + batchSize);
+        const batch = firestore.batch();
+
+        lote.forEach(item => {
+            const docRef = firestore.collection('catalogo').doc(item.codigoSap);
+            batch.set(docRef, {
+                partNumber: item.partNumber,
+                descricao: item.descricao
+            });
+        });
+        
+        console.log(`A enviar lote de ${lote.length} itens...`);
+        await batch.commit();
+    }
+}
+
+/**
+ * Exporta o catálogo atual do Firebase para um ficheiro CSV.
+ */
+async function exportarCatalogoCSV() {
+    if (catalogoLocal.length === 0) {
+        showToast("Catálogo está vazio. Nada para exportar.", "info");
+        return;
+    }
+
+    try {
+        let csvContent = "codigoSap,partNumber,descricao\n";
+        catalogoLocal.forEach(item => {
+            // Lida com descrições que possam ter vírgulas, envolvendo-as em aspas
+            const descricao = `"${item.descricao.replace(/"/g, '""')}"`;
+            csvContent += `${item.codigoSap},${item.partNumber},${descricao}\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `catalogo_meuturno_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Catálogo exportado com sucesso!", "success");
+
+    } catch(error) {
+        console.error("Erro ao exportar catálogo:", error);
+        showToast("Ocorreu um erro ao exportar.", "error");
+    }
+}
 
 // =================================================================================
 // CÓDIGO CORRIGIDO PARA A EXIBIÇÃO E BUSCA DO CATÁLOGO
