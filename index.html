@@ -8,8 +8,9 @@
     <title>Meu Turno</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         #toast {
@@ -1497,10 +1498,16 @@ function renderizarSecaoConfig(container) {
             <div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg">
                 <h3 class="text-lg font-semibold text-gray-800">Catálogo de Peças</h3>
                 <div class="space-y-4 mt-2">
+                    <label for="fileImportExcel" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-400 hover:bg-teal-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">
+                        ⬆️ Importar Catálogo (Excel)
+                    </label>
+                    <input type="file" id="fileImportExcel" accept=".xlsx, .xls" class="hidden" onchange="importarCatalogoExcel(event)">
+
                     <label for="fileImportCatalogo" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">
                         ⬆️ Importar Catálogo (CSV)
                     </label>
                     <input type="file" id="fileImportCatalogo" accept=".csv" class="hidden" onchange="importarCatalogoCSV(event)">
+                    
                     <button onclick="exportarCatalogoCSV()" class="w-full flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">
                         ⬇️ Exportar Catálogo (CSV)
                     </button>
@@ -1508,38 +1515,12 @@ function renderizarSecaoConfig(container) {
                         🗑️ Limpar Catálogo Remoto (com senha)
                     </button>
                 </div>
-                 <p class="text-xs text-gray-500 mt-2">A limpeza do catálogo apagará todos os itens para todos os utilizadores.</p>
+                 <p class="text-xs text-gray-500 mt-2">Importar irá adicionar ou substituir itens existentes com o mesmo Código SAP.</p>
             </div>
 
-            <div class="space-y-4">
-                <button onclick="gerarBackupCompleto()" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">🗄️ Exportar Dados Completos</button>
-                <div class="text-center">
-                    <label for="fileBackupCompletoInput" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-3 px-4 rounded-md font-semibold transition-colors">🔄 Importar Dados Completos</label>
-                    <input type="file" id="fileBackupCompletoInput" accept=".json" class="hidden" onchange="restaurarBackupCompleto(event)">
-                    <p class="text-xs text-gray-500 mt-1">Atenção: <strong class="text-red-600">Isto substituirá todos os dados atuais.</strong></p>
-                </div>
             </div>
-            
-            <hr class="my-6 border-gray-300">
-            <div class="space-y-2 text-center">
-                <h3 class="text-lg font-semibold text-gray-800">Desenvolvimento</h3>
-                <button onclick="forcarLimpezaCacheEAtualizar()" class="w-full md:w-3/4 lg:w-1/2 mx-auto py-3 px-4 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
-                    🧹 Forçar Atualização de Cache
-                </button>
-                <p class="text-xs text-gray-500 mt-1">Use se as alterações visuais não aparecerem.</p>
-            </div>
-            <hr class="my-6 border-gray-300">
-            <div class="space-y-2 text-center">
-                <button onclick="limparServicosTurnoAtual()" class="w-full md:w-3/4 lg:w-1/2 mx-auto py-3 px-4 rounded-md font-semibold bg-red-500 text-white hover:bg-red-600">🗑️ Limpar Serviços do Turno Atual</button>
-            </div>
-            <hr class="my-6 border-gray-300">
-            <div class="space-y-2 text-center">
-                <button onclick="resetarAplicacao()" class="w-full md:w-3/4 lg:w-1/2 mx-auto py-3 px-4 rounded-md font-semibold bg-red-700 text-white hover:bg-red-800">🗑️ Resetar Todos os Dados</button>
-            </div>
-        </div>
     `;
 }
-
 async function limparServicosTurnoAtual() {
     const confirmado = await new Promise(resolve => abrirPopupConfirmar('Limpar Serviços', 'Tem a certeza que deseja apagar TODOS os serviços do turno atual?', resolve));
     if (confirmado) {
@@ -1941,6 +1922,74 @@ async function executarLimpezaCatalogo() {
         console.error("Erro ao limpar o catálogo:", error);
         showToast("Ocorreu um erro durante a limpeza.", "error");
     }
+}
+
+// =================================================================================
+// 11. MÓDULO: IMPORTAÇÃO DE EXCEL (NOVO)
+// =================================================================================
+
+/**
+ * Lida com a seleção de um ficheiro Excel para importar para o catálogo.
+ * @param {Event} event - O evento do input do ficheiro.
+ */
+async function importarCatalogoExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão ignorados.', resolve)
+    );
+    if (!confirmado) {
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Converte a planilha para um array de objetos JSON
+            const itensDoExcel = XLSX.utils.sheet_to_json(worksheet, {
+                // Força os cabeçalhos a serem estes nomes, independentemente do que está no ficheiro
+                header: ["codigoSap", "partNumber", "descricao"] 
+            });
+
+            // Remove a primeira linha, que é o próprio cabeçalho
+            itensDoExcel.shift(); 
+
+            if (itensDoExcel.length === 0) {
+                showToast("Nenhum item válido encontrado no ficheiro Excel.", "error");
+                return;
+            }
+            
+            const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap))); // Garante que a comparação seja de texto
+            
+            const itensNovos = itensDoExcel.filter(item => {
+                // Garante que o codigoSap é tratado como texto e que o item é válido
+                const sap = String(item.codigoSap || '').trim();
+                return sap && !codigosSapExistentes.has(sap);
+            });
+            
+            if (itensNovos.length === 0) {
+                showToast("Importação concluída. Nenhum item novo para adicionar.", "success");
+                return;
+            }
+            
+            await enviarLoteParaFirestore(itensNovos);
+            showToast(`Importação concluída! ${itensNovos.length} itens novos foram adicionados.`, "success");
+
+        } catch (error) {
+            showToast(`Erro ao ler o ficheiro Excel: ${error.message}`, "error");
+            console.error(error);
+        } finally {
+            event.target.value = '';
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 // =================================================================================
