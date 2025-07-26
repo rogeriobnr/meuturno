@@ -38,7 +38,7 @@
 
 #toast.error { background-color: #c0392b; }
 #toast.success { background-color: #27ae60; }
-        popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 9998; display: none; backdrop-filter: blur(4px); }
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 9998; display: none; backdrop-filter: blur(4px); }
         .popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1.25rem; border-radius: 0.75rem; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); z-index: 9999; width: 90%; max-width: 400px; display: none; }
         .menu-open #menu-lateral { transform: translateX(0); }
         .menu-open #menu-overlay { opacity: 1; pointer-events: auto; }
@@ -275,10 +275,17 @@ function initDB() {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
-            if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
+            if (!currentDb.objectStoreNames.contains(STORE_TURNO)) {
+                currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
+            }
             if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) {
                 const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true });
                 hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false });
+            }
+            // ADIÇÃO CORRETA: Cria a nova "tabela" para o catálogo
+            if (!currentDb.objectStoreNames.contains('catalogo')) {
+                // O codigoSap será a chave única de cada item
+                currentDb.createObjectStore('catalogo', { keyPath: 'codigoSap' });
             }
         };
         request.onsuccess = e => { db = e.target.result; resolve(db); };
@@ -1692,10 +1699,24 @@ function sincronizarCatalogo() {
 }
 
 
+// =================================================================================
+// CÓDIGO CORRIGIDO PARA A EXIBIÇÃO E BUSCA DO CATÁLOGO
+// =================================================================================
+
 /**
- * Renderiza a estrutura inicial da secção do catálogo.
+ * Renderiza a estrutura inicial da secção do catálogo e carrega os dados locais.
  */
-function renderizarSecaoCatalogo(container) {
+async function renderizarSecaoCatalogo(container) {
+    // 1. Carrega imediatamente os dados que já estão guardados offline no IndexedDB
+    //    para não ter de esperar pela internet.
+    try {
+        catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
+    } catch(e) {
+        console.error("Erro ao carregar catálogo do IndexedDB:", e);
+        catalogoLocal = []; // Garante que a variável seja um array em caso de erro
+    }
+
+    // 2. Desenha a estrutura HTML da página
     container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow space-y-4">
             <h2 class="text-xl font-bold text-blue-800">Catálogo de Peças</h2>
@@ -1707,11 +1728,13 @@ function renderizarSecaoCatalogo(container) {
                 </div>
         </div>
     `;
+
+    // 3. Agora, com os dados já carregados, renderiza a lista
     renderizarCatalogo();
 }
 
 /**
- * Renderiza a lista de itens do catálogo na tela, aplicando o filtro de busca.
+ * Renderiza a lista de itens do catálogo na tela, aplicando o filtro de busca de forma robusta.
  */
 function renderizarCatalogo() {
     const listaDiv = document.getElementById('listaCatalogo');
@@ -1721,10 +1744,15 @@ function renderizarCatalogo() {
     
     // Filtra o catálogo local com base no termo de busca
     const itensFiltrados = catalogoLocal.filter(item => {
+        // CORREÇÃO: Adiciona `|| ''` para evitar erros caso um campo esteja em falta no Firebase
+        const codigoSap = (item.codigoSap || '').toLowerCase();
+        const partNumber = (item.partNumber || '').toLowerCase();
+        const descricao = (item.descricao || '').toLowerCase();
+
         return (
-            item.codigoSap.toLowerCase().includes(termoBusca) ||
-            item.partNumber.toLowerCase().includes(termoBusca) ||
-            item.descricao.toLowerCase().includes(termoBusca)
+            codigoSap.includes(termoBusca) ||
+            partNumber.includes(termoBusca) ||
+            descricao.includes(termoBusca)
         );
     });
 
@@ -1733,21 +1761,23 @@ function renderizarCatalogo() {
         return;
     }
 
+    // Ordena os resultados por descrição para uma exibição consistente
+    itensFiltrados.sort((a, b) => a.descricao.localeCompare(b.descricao));
+
     listaDiv.innerHTML = itensFiltrados.map(item => `
-        <div class="border rounded-lg p-3 flex justify-between items-center">
-            <div>
-                <p class="font-bold text-gray-800">${item.descricao}</p>
+        <div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-gray-50">
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-gray-800 truncate">${item.descricao}</p>
                 <p class="text-sm text-gray-600">SAP: <span class="font-semibold text-blue-700">${item.codigoSap}</span></p>
                 <p class="text-sm text-gray-600">Part Number: <span class="font-semibold">${item.partNumber}</span></p>
             </div>
-            <div class="flex space-x-2">
-                <button onclick="editarItemCatalogo('${item.codigoSap}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full">✏️</button>
-                <button onclick="excluirItemCatalogo('${item.codigoSap}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full">🗑️</button>
+            <div class="flex space-x-2 pl-2">
+                <button onclick="editarItemCatalogo('${item.codigoSap}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full" title="Editar">✏️</button>
+                <button onclick="excluirItemCatalogo('${item.codigoSap}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir">🗑️</button>
             </div>
         </div>
     `).join('');
 }
-
 /// =================================================================================
 // CÓDIGO FINAL PARA AS AÇÕES DO CATÁLOGO (ADICIONAR, EDITAR, EXCLUIR)
 // =================================================================================
