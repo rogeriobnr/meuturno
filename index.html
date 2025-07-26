@@ -219,10 +219,8 @@
         }
     });
     
-
-
-    
 'use strict';
+const SENHA_LIMPEZA_CATALOGO = 'mudar1234'; // IMPORTANTE: Mude esta senha para a sua senha secreta!
 document.addEventListener("DOMContentLoaded", main);
 
 // =================================================================================
@@ -502,36 +500,30 @@ function showToast(msg, type = 'info') {
  * @param {string} valorInicial - O valor inicial para o campo de input.
  * @param {(valor: string|null) => void} callback - Função chamada com o valor inserido ou null se for cancelado.
  */
-function abrirPopupInput(titulo, label, placeholder, valorInicial, callback) {
-    // Cria o HTML para o formulário dentro do popup
+
+// Substitua a sua função abrirPopupInput por esta
+function abrirPopupInput(titulo, label, placeholder, valorInicial, callback, tipoInput = 'text') {
     const conteudoPopup = `
         <label for="popup-input-field" class="block text-sm font-medium text-gray-700 mb-1">${label}</label>
-        <input type="text" id="popup-input-field" class="w-full p-2 border border-gray-300 rounded-md" placeholder="${placeholder}" value="${valorInicial}">
+        <input type="${tipoInput}" id="popup-input-field" class="w-full p-2 border border-gray-300 rounded-md" placeholder="${placeholder}" value="${valorInicial}">
     `;
     
-    // Define os botões de ação
-    const botoes = [
-        { 
-            texto: 'Confirmar', 
-            classe: 'bg-blue-600 text-white hover:bg-blue-700', 
-            acao: () => {
-                const valor = document.getElementById('popup-input-field').value;
-                callback(valor); // Retorna o texto digitado
-            } 
-        },
-        { 
-            texto: 'Cancelar', 
-            classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', 
-            acao: () => {
-                callback(null); // Retorna null para indicar que a ação foi cancelada
-            } 
-        }
-    ];
+    const botoes = [{ 
+        texto: 'Confirmar', 
+        classe: 'bg-blue-600 text-white hover:bg-blue-700', 
+        acao: () => {
+            const valor = document.getElementById('popup-input-field').value;
+            callback(valor);
+        } 
+    }, { 
+        texto: 'Cancelar', 
+        classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', 
+        acao: () => {
+            callback(null);
+        } 
+    }];
     
-    // Abre o popup genérico com o conteúdo e os botões que criámos
     abrirPopup(titulo, conteudoPopup, botoes);
-
-    // Foca no campo de input assim que o popup abre para facilitar a digitação
     setTimeout(() => document.getElementById('popup-input-field')?.focus(), 50);
 }
 
@@ -1496,7 +1488,7 @@ async function abrirPopupApagarPorData() {
 // ---------------------------------
 // MÓDULO: CONFIGURAÇÕES
 // ---------------------------------
-
+// Substitua a sua função renderizarSecaoConfig por esta
 function renderizarSecaoConfig(container) {
      container.innerHTML = `
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto space-y-6">
@@ -1512,8 +1504,11 @@ function renderizarSecaoConfig(container) {
                     <button onclick="exportarCatalogoCSV()" class="w-full flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">
                         ⬇️ Exportar Catálogo (CSV)
                     </button>
+                    <button onclick="iniciarLimpezaCatalogo()" class="w-full flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 text-white py-3 px-4 rounded-md font-semibold transition-colors">
+                        🗑️ Limpar Catálogo Remoto (com senha)
+                    </button>
                 </div>
-                 <p class="text-xs text-gray-500 mt-2">Importar irá adicionar ou substituir itens existentes com o mesmo Código SAP.</p>
+                 <p class="text-xs text-gray-500 mt-2">A limpeza do catálogo apagará todos os itens para todos os utilizadores.</p>
             </div>
 
             <div class="space-y-4">
@@ -1731,15 +1726,16 @@ function sincronizarCatalogo() {
  * Lida com a seleção de um ficheiro CSV para importar para o catálogo.
  * @param {Event} event - O evento do input do ficheiro.
  */
+
 async function importarCatalogoCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const confirmado = await new Promise(resolve => 
-        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro? Itens com o mesmo Código SAP serão substituídos.', resolve)
+        abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro? Itens com o mesmo Código SAP serão ignorados.', resolve)
     );
     if (!confirmado) {
-        event.target.value = ''; // Limpa a seleção do ficheiro
+        event.target.value = '';
         return;
     }
 
@@ -1747,30 +1743,42 @@ async function importarCatalogoCSV(event) {
     reader.onload = async (e) => {
         const text = e.target.result;
         try {
-            const itens = parseCSV(text);
-            if (itens.length === 0) {
+            const itensDoCSV = parseCSV(text);
+            if (itensDoCSV.length === 0) {
                 showToast("Nenhum item válido encontrado no ficheiro CSV.", "error");
                 return;
             }
+
+            // LÓGICA ANTI-DUPLICAÇÃO
+            // 1. Pega a lista de códigos SAP que já existem no catálogo
+            const codigosSapExistentes = new Set(catalogoLocal.map(item => item.codigoSap));
             
-            await enviarLoteParaFirestore(itens);
-            showToast(`Importação concluída! ${itens.length} itens processados.`, "success");
+            // 2. Filtra o CSV, mantendo apenas os itens cujo codigoSap NÃO existe na lista
+            const itensNovos = itensDoCSV.filter(item => !codigosSapExistentes.has(item.codigoSap));
+
+            if (itensNovos.length === 0) {
+                showToast("Importação concluída. Nenhum item novo para adicionar.", "success");
+                return;
+            }
+            
+            await enviarLoteParaFirestore(itensNovos);
+            showToast(`Importação concluída! ${itensNovos.length} de ${itensDoCSV.length} itens foram adicionados.`, "success");
 
         } catch (error) {
             showToast(error.message, "error");
             console.error(error);
         } finally {
-            event.target.value = ''; // Limpa a seleção do ficheiro para permitir a mesma seleção novamente
+            event.target.value = '';
         }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'latin1');
 }
-
 /**
  * Converte o texto de um ficheiro CSV num array de objetos de forma flexível.
  * @param {string} text - O conteúdo do ficheiro CSV.
  * @returns {Array<object>} Um array de itens do catálogo.
  */
+// Substitua esta função inteira
 function parseCSV(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) throw new Error("Ficheiro CSV vazio ou sem dados.");
@@ -1783,20 +1791,22 @@ function parseCSV(text) {
 
     const itens = [];
     for (let i = 1; i < lines.length; i++) {
-        // Lida com vírgulas dentro de descrições que estão entre aspas
-        const values = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+        const values = lines[i].split(',');
         
+        // Ignora linhas que não têm o mesmo número de colunas que o cabeçalho
+        if (values.length !== header.length) {
+            console.warn(`Linha ${i + 1} ignorada: número de colunas incorreto.`);
+            continue;
+        }
+
         const item = {};
         header.forEach((key, index) => {
-            let value = (values[index] || '').trim();
-            // Remove as aspas do início e do fim, se existirem
-            if (value.startsWith('"') && value.endsWith('"')) {
-                value = value.slice(1, -1).replace(/""/g, '"');
-            }
+            // Limpa o valor e remove aspas extras se existirem
+            const value = (values[index] || '').trim().replace(/^"|"$/g, '');
             item[key] = value;
         });
 
-        // NOVA VALIDAÇÃO: Exige que PELO MENOS UM dos três campos tenha um valor.
+        // Validação final: a linha precisa de ter pelo menos um dos campos
         if (item.codigoSap || item.partNumber || item.descricao) {
             itens.push(item);
         } else {
@@ -1862,6 +1872,74 @@ async function exportarCatalogoCSV() {
     } catch(error) {
         console.error("Erro ao exportar catálogo:", error);
         showToast("Ocorreu um erro ao exportar.", "error");
+    }
+}
+
+
+// =================================================================================
+// 10. MÓDULO: LIMPEZA DE CATÁLOGO (NOVO)
+// =================================================================================
+
+/**
+ * Inicia o processo de limpeza do catálogo, começando por pedir a senha.
+ */
+function iniciarLimpezaCatalogo() {
+    abrirPopupInput(
+        'Confirmação de Segurança',
+        'Para apagar TODO o catálogo, por favor, insira a senha:',
+        '********',
+        '',
+        (senha) => {
+            if (senha === null) return; // Ação cancelada
+            
+            if (senha === SENHA_LIMPEZA_CATALOGO) {
+                executarLimpezaCatalogo();
+            } else {
+                showToast("Senha incorreta.", "error");
+            }
+        },
+        'password' // Importante: define o tipo do input como senha
+    );
+}
+
+/**
+ * Executa a exclusão de todos os documentos da coleção 'catalogo' no Firebase.
+ */
+async function executarLimpezaCatalogo() {
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar('ÚLTIMO AVISO', 'Tem a certeza absoluta de que deseja apagar TODOS os itens do catálogo para TODOS os utilizadores? Esta ação é irreversível.', resolve, 'Sim, apagar tudo')
+    );
+
+    if (!confirmado) return;
+
+    showToast("A iniciar limpeza do catálogo... Isto pode demorar.", "info");
+    
+    try {
+        const querySnapshot = await firestore.collection('catalogo').get();
+        if (querySnapshot.empty) {
+            showToast("O catálogo já está vazio.", "info");
+            return;
+        }
+
+        // O Firebase não permite apagar uma coleção inteira de uma vez no cliente.
+        // É preciso apagar os documentos em lotes.
+        const batchSize = 499;
+        for (let i = 0; i < querySnapshot.docs.length; i += batchSize) {
+            const lote = querySnapshot.docs.slice(i, i + batchSize);
+            const batch = firestore.batch();
+            lote.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            console.log(`Lote de ${lote.length} itens apagado.`);
+        }
+
+        showToast("Catálogo limpo com sucesso!", "success");
+        // A interface será atualizada automaticamente pelo listener onSnapshot.
+
+    } catch (error) {
+        console.error("Erro ao limpar o catálogo:", error);
+        showToast("Ocorreu um erro durante a limpeza.", "error");
     }
 }
 
@@ -1943,10 +2021,12 @@ function renderizarCatalogo() {
 // CÓDIGO FINAL PARA AS AÇÕES DO CATÁLOGO (ADICIONAR, EDITAR, EXCLUIR)
 // =================================================================================
 
-// Substitua as 4 funções de Ações do Catálogo por este bloco
-
 /**
  * Abre um formulário para criar/editar um item, agora guardando o docId para edições.
+ */
+/**
+ * Abre um formulário num popup para criar ou editar um item do catálogo.
+ * @param {object|null} item - O item a ser editado, ou null para criar um novo.
  */
 function abrirPopupFormularioItemCatalogo(item = null) {
     const isEditing = item !== null;
@@ -1972,7 +2052,7 @@ function abrirPopupFormularioItemCatalogo(item = null) {
                 <label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
                 <textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea>
             </div>
-        </div>
+            </div>
     `;
     
     const botoes = [{ 
@@ -1987,7 +2067,6 @@ function abrirPopupFormularioItemCatalogo(item = null) {
 
     abrirPopup(titulo, conteudoPopup, botoes);
 }
-
 /**
  * Salva um item novo (com ID aleatório) ou editado no Firebase.
  */
