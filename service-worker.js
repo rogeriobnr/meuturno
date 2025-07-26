@@ -1,7 +1,7 @@
 'use strict';
 
 // Versão do cache. Altere este valor sempre que atualizar os arquivos do app.
-const CACHE_NAME = 'meuturno-cache-v6.43'; // Incrementei a versão
+const CACHE_NAME = 'meuturno-cache-v6.44'; // Incrementei a versão
 
 // Arquivos essenciais da aplicação (App Shell), incluindo os de CDN.
 const urlsToCache = [
