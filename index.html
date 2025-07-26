@@ -1761,7 +1761,7 @@ async function importarCatalogoCSV(event) {
 }
 
 /**
- * Converte o texto de um ficheiro CSV num array de objetos.
+ * Converte o texto de um ficheiro CSV num array de objetos de forma flexível.
  * @param {string} text - O conteúdo do ficheiro CSV.
  * @returns {Array<object>} Um array de itens do catálogo.
  */
@@ -1777,21 +1777,24 @@ function parseCSV(text) {
 
     const itens = [];
     for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length !== header.length) {
-            console.warn(`Linha ${i+1} ignorada: número de colunas incorreto.`);
-            continue;
-        }
+        // Lida com vírgulas dentro de descrições que estão entre aspas
+        const values = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+        
         const item = {};
         header.forEach((key, index) => {
-            item[key] = values[index].trim();
+            let value = (values[index] || '').trim();
+            // Remove as aspas do início e do fim, se existirem
+            if (value.startsWith('"') && value.endsWith('"')) {
+                value = value.slice(1, -1).replace(/""/g, '"');
+            }
+            item[key] = value;
         });
 
-        // Validação mínima para garantir que o item é válido
-        if (item.codigoSap && item.partNumber && item.descricao) {
+        // NOVA VALIDAÇÃO: Exige que PELO MENOS UM dos três campos tenha um valor.
+        if (item.codigoSap || item.partNumber || item.descricao) {
             itens.push(item);
         } else {
-             console.warn(`Linha ${i+1} ignorada: dados essenciais em falta.`);
+             console.warn(`Linha ${i + 1} ignorada: linha completamente vazia.`);
         }
     }
     return itens;
