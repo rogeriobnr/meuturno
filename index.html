@@ -6,6 +6,8 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -65,15 +67,16 @@
     </header>
     <nav id="menu-lateral" class="fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-sm">
         <div class="p-4 border-b"><h2 class="text-2xl font-bold text-blue-800">MeuTurno</h2></div>
-        <div class="flex flex-col">
+         <div class="flex flex-col">
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="turno">Turno</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="servicos">Serviços</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="estatisticas">Estatísticas</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="relatorio">Relatório</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="historico">Histórico</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="config">Configurar</a>
-        </div>
-    </nav>
+            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="catalogo">Catálogo</a>
+            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="estatisticas">Estatísticas</a>
+             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors" data-secao="config">Configurar</a>
+          </div>
+     </nav>
 
     <div id="menu-overlay" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-20 opacity-0 pointer-events-none transition-opacity duration-300 ease-in-out"></div>
 
@@ -135,11 +138,13 @@
         <section id="relatorio" class="hidden"></section>
         <section id="historico" class="hidden"></section>
         <section id="config" class="hidden"></section>
+        <section id="catalogo" class="hidden"></section>
+        <button id="fabAddItemCatalogo" onclick="abrirPopupFormularioItemCatalogo()" class="fixed bottom-12 right-5 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50" style="display: none;" title="Adicionar Item ao Catálogo">+</button>
+        <button id="fabAddFrota" onclick="abrirPopupFrota()" class="fixed bottom-28 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-50" style="display: none;" title="Adicionar Frota">🚜</button>
+        <button id="fabCriarServico" onclick="adicionarServico()" class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50" style="display: none;" title="Adicionar Novo Serviço">+</button>
     </main>
     
-    <button id="fabAddFrota" onclick="abrirPopupFrota()" class="fixed bottom-28 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-50" style="display: none;" title="Adicionar Frota">🚜</button>
-    <button id="fabCriarServico" onclick="adicionarServico()" class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50" style="display: none;" title="Adicionar Novo Serviço">+</button>
-    
+        
     <div id="toast"></div>
     
     <div class="popup-overlay" id="overlayGenerico"></div>
@@ -188,6 +193,31 @@
         </article>
     </template>
     
+    <script>
+  // A sua configuração pessoal do Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok",
+    authDomain: "meu-turno-app.firebaseapp.com",
+    projectId: "meu-turno-app",
+    storageBucket: "meu-turno-app.firebasestorage.app",
+    messagingSenderId: "967200929614",
+    appId: "1:967200929614:web:3acbf1049a10cdbf87501f"
+  };
+
+  // Inicializa o Firebase e o Firestore
+  const firebaseApp = firebase.initializeApp(firebaseConfig);
+  const firestore = firebase.firestore();
+  
+  // Habilita a persistência offline (essencial para o seu requisito)
+  firestore.enablePersistence()
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn('Persistência do Firestore falhou: múltiplos separadores abertos.');
+        } else if (err.code == 'unimplemented') {
+            console.warn('O navegador atual não suporta persistência offline.');
+        }
+    });
+</script>
 <script>
 'use strict';
 document.addEventListener("DOMContentLoaded", main);
@@ -196,7 +226,7 @@ document.addEventListener("DOMContentLoaded", main);
 // 1. ESTADO GLOBAL E CONSTANTES
 // =================================================================================
 let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
-const DB_NAME = 'meuturnoDB', DB_VERSION = 2, STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', TURNO_ATUAL_ID = 'currentTurno';
+const DB_NAME = 'meuturnoDB', DB_VERSION = 3, STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', TURNO_ATUAL_ID = 'currentTurno';
 const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
 const sistemas = { "Tratores": [{ cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" }, { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" }, { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio" }], "Implementos": [{ cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" }, { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }]};
 const subsistemas = { "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"], "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"], "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"], "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"], "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"], "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"], "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"], "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"], "9": ["9.1 - Freio", "9.2 - Acumulador"], "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"], "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"], "12": ["12.1 - Caixa de Adubo"], "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"], "14": ["14.1 - Sensores", "14.2 - Chicote"], "15": ["15.1 - Lamina", "15.2 - Ball"]};
@@ -208,6 +238,8 @@ async function main() {
     try {
         registrarServiceWorker();
         await initDB();
+        sincronizarCatalogo(); 
+        
         await carregarDadosIniciais();
         renderizarLayoutInicial();
         inicializarMenuHamburguer();
@@ -369,23 +401,43 @@ async function renderizarLayoutInicial() {
     }
 }
 
+// Substitua a sua função 'abrir' por esta versão completa e corrigida
 function abrir(secaoId) {
+    // Esconde todas as secções principais
     document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+    
+    // Mostra a secção ativa e chama a sua função de renderização
     const secaoAtiva = document.getElementById(secaoId);
     if (secaoAtiva) {
         secaoAtiva.classList.remove('hidden');
         const renderFunc = window[`renderizarSecao${secaoId.charAt(0).toUpperCase() + secaoId.slice(1)}`];
-        if (typeof renderFunc === 'function') renderFunc(secaoAtiva);
+        if (typeof renderFunc === 'function') {
+            renderFunc(secaoAtiva);
+        }
     }
+
+    // Atualiza o título no cabeçalho
     document.getElementById('header-titulo').textContent = secaoId.charAt(0).toUpperCase() + secaoId.slice(1);
-    const fabServico = document.getElementById('fabCriarServico');
+    
+    // --- LÓGICA DE VISIBILIDADE DOS BOTÕES FLUTUANTES (CORRIGIDA) ---
+
+    // 1. Pega a referência de todos os botões flutuantes
+    const fabCriarServico = document.getElementById('fabCriarServico');
     const fabFrota = document.getElementById('fabAddFrota');
+    const fabAddItemCatalogo = document.getElementById('fabAddItemCatalogo');
+
+    // 2. Esconde todos eles por padrão
+    fabCriarServico.style.display = 'none';
+    fabFrota.style.display = 'none';
+    fabAddItemCatalogo.style.display = 'none';
+
+    // 3. Mostra apenas os botões necessários para a secção atual
     if (secaoId === 'servicos') {
-        fabServico.style.display = 'flex';
+        fabCriarServico.style.display = 'flex';
         fabFrota.style.display = 'flex';
-    } else {
-        fabServico.style.display = 'none';
-        fabFrota.style.display = 'none';
+    } else if (secaoId === 'catalogo') {
+        // Mostra o botão roxo "+" apenas na secção do catálogo
+        fabAddItemCatalogo.style.display = 'flex';
     }
 }
 
@@ -1594,6 +1646,235 @@ async function forcarLimpezaCacheEAtualizar() {
     }
 }
 
+// =================================================================================
+// 8. MÓDULO: CATÁLOGO (NOVO)
+// =================================================================================
+
+// Variável global para guardar a cópia local do catálogo
+let catalogoLocal = [];
+
+/**
+ * Função principal que inicializa a sincronização com o Firebase.
+ * Ouve por alterações em tempo real e atualiza o banco de dados local (IndexedDB).
+ */
+function sincronizarCatalogo() {
+    firestore.collection('catalogo').onSnapshot(async (snapshot) => {
+        console.log("Recebidos dados do Firebase.");
+        const tx = db.transaction('catalogo', 'readwrite');
+        const store = tx.objectStore('catalogo');
+
+        for (const change of snapshot.docChanges()) {
+            const item = { ...change.doc.data(), codigoSap: change.doc.id };
+
+            if (change.type === 'added' || change.type === 'modified') {
+                console.log('Adicionado/Modificado:', item.codigoSap);
+                store.put(item); // Adiciona ou atualiza no IndexedDB
+            }
+            if (change.type === 'removed') {
+                console.log('Removido:', item.codigoSap);
+                store.delete(item.codigoSap); // Remove do IndexedDB
+            }
+        }
+
+        // Após todas as alterações, atualiza a nossa variável local e a tela
+        tx.oncomplete = async () => {
+            catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
+            // Se o utilizador estiver na página do catálogo, atualiza a lista
+            if (document.getElementById('catalogo')?.classList.contains('hidden') === false) {
+                renderizarCatalogo();
+            }
+            console.log("Sincronização com IndexedDB concluída.");
+        };
+    }, (error) => {
+        console.error("Erro ao ouvir o Firebase:", error);
+        showToast("Falha ao sincronizar com a base de dados.", "error");
+    });
+}
+
+
+/**
+ * Renderiza a estrutura inicial da secção do catálogo.
+ */
+function renderizarSecaoCatalogo(container) {
+    container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow space-y-4">
+            <h2 class="text-xl font-bold text-blue-800">Catálogo de Peças</h2>
+            <div>
+                <label for="buscaCatalogo" class="sr-only">Buscar</label>
+                <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" placeholder="🔎 Buscar por SAP, Part Number ou Descrição..." class="w-full p-3 border border-gray-300 rounded-lg">
+            </div>
+            <div id="listaCatalogo" class="space-y-2">
+                </div>
+        </div>
+    `;
+    renderizarCatalogo();
+}
+
+/**
+ * Renderiza a lista de itens do catálogo na tela, aplicando o filtro de busca.
+ */
+function renderizarCatalogo() {
+    const listaDiv = document.getElementById('listaCatalogo');
+    if (!listaDiv) return;
+
+    const termoBusca = document.getElementById('buscaCatalogo').value.toLowerCase();
+    
+    // Filtra o catálogo local com base no termo de busca
+    const itensFiltrados = catalogoLocal.filter(item => {
+        return (
+            item.codigoSap.toLowerCase().includes(termoBusca) ||
+            item.partNumber.toLowerCase().includes(termoBusca) ||
+            item.descricao.toLowerCase().includes(termoBusca)
+        );
+    });
+
+    if (itensFiltrados.length === 0) {
+        listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhum item encontrado.</p>`;
+        return;
+    }
+
+    listaDiv.innerHTML = itensFiltrados.map(item => `
+        <div class="border rounded-lg p-3 flex justify-between items-center">
+            <div>
+                <p class="font-bold text-gray-800">${item.descricao}</p>
+                <p class="text-sm text-gray-600">SAP: <span class="font-semibold text-blue-700">${item.codigoSap}</span></p>
+                <p class="text-sm text-gray-600">Part Number: <span class="font-semibold">${item.partNumber}</span></p>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="editarItemCatalogo('${item.codigoSap}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full">✏️</button>
+                <button onclick="excluirItemCatalogo('${item.codigoSap}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+/// =================================================================================
+// CÓDIGO FINAL PARA AS AÇÕES DO CATÁLOGO (ADICIONAR, EDITAR, EXCLUIR)
+// =================================================================================
+
+/**
+ * Abre um formulário num popup para criar ou editar um item do catálogo.
+ * @param {object|null} item - O item a ser editado, ou null para criar um novo.
+ */
+function abrirPopupFormularioItemCatalogo(item = null) {
+    const isEditing = item !== null;
+    const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item';
+    
+    // Preenche os valores com os dados do item existente ou deixa em branco para um novo
+    const codigoSap = item?.codigoSap || '';
+    const partNumber = item?.partNumber || '';
+    const descricao = item?.descricao || '';
+
+    const conteudoPopup = `
+        <div class="space-y-3 text-left">
+            <div>
+                <label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP*</label>
+                <input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" ${isEditing ? 'readonly bg-gray-100' : ''} placeholder="Código SAP único">
+                ${isEditing ? '<p class="text-xs text-gray-500 mt-1">O Código SAP não pode ser alterado.</p>' : ''}
+            </div>
+            <div>
+                <label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number*</label>
+                <input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Pode incluir múltiplos, separados por vírgula">
+            </div>
+            <div>
+                <label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição*</label>
+                <textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça ou item">${descricao}</textarea>
+            </div>
+        </div>
+    `;
+    
+    const botoes = [
+        { 
+            texto: 'Salvar', 
+            classe: 'bg-blue-600 text-white hover:bg-blue-700', 
+            acao: () => salvarItemCatalogo(isEditing) // Passa a informação se é uma edição
+        },
+        { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }
+    ];
+
+    abrirPopup(titulo, conteudoPopup, botoes);
+}
+
+/**
+ * Salva um item novo ou editado no Firebase.
+ * @param {boolean} isEditing - Indica se a operação é de edição.
+ */
+async function salvarItemCatalogo(isEditing) {
+    const codigoSapEl = document.getElementById('popup-sap');
+    const partNumberEl = document.getElementById('popup-partnumber');
+    const descricaoEl = document.getElementById('popup-descricao');
+
+    // Remove destaque de erro anterior
+    [codigoSapEl, partNumberEl, descricaoEl].forEach(el => el.classList.remove('campo-invalido'));
+
+    const codigoSap = codigoSapEl.value.trim();
+    const partNumber = partNumberEl.value.trim();
+    const descricao = descricaoEl.value.trim();
+
+    // Validação
+    let invalido = false;
+    if (!codigoSap) { codigoSapEl.classList.add('campo-invalido'); invalido = true; }
+    if (!partNumber) { partNumberEl.classList.add('campo-invalido'); invalido = true; }
+    if (!descricao) { descricaoEl.classList.add('campo-invalido'); invalido = true; }
+    
+    if (invalido) {
+        showToast("Todos os campos são obrigatórios.", "error");
+        return;
+    }
+
+    const itemData = { partNumber, descricao };
+
+    try {
+        if (isEditing) {
+            // Atualiza um documento existente
+            await firestore.collection('catalogo').doc(codigoSap).update(itemData);
+            showToast("Item atualizado com sucesso!", "success");
+        } else {
+            // Cria um novo documento
+            await firestore.collection('catalogo').doc(codigoSap).set(itemData);
+            showToast("Item adicionado com sucesso!", "success");
+        }
+        fecharPopup();
+        // A interface será atualizada automaticamente pelo listener 'onSnapshot' que já criámos!
+    } catch (error) {
+        console.error("Erro ao salvar item no Firebase:", error);
+        showToast("Erro ao salvar o item.", "error");
+    }
+}
+
+/**
+ * Inicia o processo de edição de um item do catálogo.
+ * @param {string} codigoSap - O ID do item a ser editado.
+ */
+function editarItemCatalogo(codigoSap) {
+    const item = catalogoLocal.find(i => i.codigoSap === codigoSap);
+    if (item) {
+        abrirPopupFormularioItemCatalogo(item);
+    } else {
+        showToast("Item não encontrado para edição.", "error");
+    }
+}
+
+/**
+ * Exclui um item do catálogo no Firebase.
+ * @param {string} codigoSap - O ID do item a ser excluído.
+ */
+async function excluirItemCatalogo(codigoSap) {
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar('Excluir Item', `Tem a certeza que deseja excluir o item com SAP <strong>${codigoSap}</strong>? Esta ação não pode ser desfeita.`, resolve)
+    );
+
+    if (confirmado) {
+        try {
+            await firestore.collection('catalogo').doc(codigoSap).delete();
+            showToast("Item excluído com sucesso!", "success");
+            // A interface será atualizada automaticamente pelo listener 'onSnapshot'!
+        } catch (error) {
+            console.error("Erro ao excluir item no Firebase:", error);
+            showToast("Erro ao excluir o item.", "error");
+        }
+    }
+}
 // ---------------------------------
 // FUNÇÕES DE CÁLCULO
 // ---------------------------------
