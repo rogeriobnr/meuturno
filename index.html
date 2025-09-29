@@ -274,7 +274,6 @@
             class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-50"
             style="display: none;" title="Adicionar Novo Serviço">+</button>
     </main>
-    </main>
 
     <div id="toast"></div>
 
@@ -580,7 +579,51 @@
         // ---------------------------------
         async function renderizarSecaoHistorico(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><button onclick="abrirPopupApagarPorData()" class="w-full sm:w-auto py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">🗑️ Apagar Histórico por Data</button></div><div id="historico_lista" class="space-y-4"></div>`; await mostrarHistorico(); }
         async function salvarOSnoHistorico(serviceId) { const servico = servicos.find(s => s.id === serviceId); if (!servico || !servico.texto) return; try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); let itemExistente = todosItens.find(item => item.id === servico.id); const itemHistorico = { id: servico.id, frota: servico.frota, tipo: servico.tipo, texto: servico.texto, descricao: servico.descricao, atividade: servico.atividade, sistema: servico.sistema, subsistema: servico.subsistema, inicio: servico.inicio, fim: servico.fim, dataOS: servico.data, dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'), status: itemExistente ? itemExistente.status : "pendente", osNumero: itemExistente ? itemExistente.osNumero : "", datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : new Date().toLocaleString('pt-BR') }; if (itemExistente) itemHistorico.uniqueId = itemExistente.uniqueId; await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico)); } catch (err) { showToast("Erro ao salvar O.S. no histórico.", "error"); } }
-        async function mostrarHistorico() { const div = document.getElementById("historico_lista"); if (!div) return; try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); if (todosItens.length === 0) { div.innerHTML = "<p class='text-center text-gray-500 p-4'>Nenhuma O.S. registada no histórico.</p>"; return; } const agrupado = todosItens.reduce((acc, item) => { const dataKey = item.dataOS; if (!acc[dataKey]) acc[dataKey] = []; acc[dataKey].push(item); return acc; }, {}); const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a)); div.innerHTML = datasOrdenadas.map(dataKey => `<div class="bg-gray-100 p-3 rounded-lg shadow-md"><h3 class="text-xl font-semibold text-blue-700 mb-3 border-b-2 pb-2">Serviços de: ${formatarDataParaExibicao(dataKey)}</h3>${agrupado[dataKey].sort((a, b) => a.inicio.localeCompare(b.inicio)).map(s => `<div class="bg-white p-3 rounded-lg shadow-sm mt-2"><div class="mb-2 text-sm"><span class="font-semibold text-blue-700">${s.frota}</span> | ${s.atividade.split(" - ")[0]} - ${s.sistema} - ${(s.subsistema || "").split(" - ")[0]} [${s.inicio} - ${s.fim}]</div><div class="text-sm text-gray-800 mb-3"><p class="font-semibold">Descrição:</p><div class="pl-2 whitespace-pre-line">${formatarDescricao(s.descricao)}</div></div><div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"><label class="font-medium whitespace-nowrap">Nº O.S.:</label><input id="os_input_${s.uniqueId}" class="w-28 p-1 border rounded" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}><span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span></div><div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">${s.status === 'pendente' ? `<button id="btnFinalizarOS_${s.uniqueId}" onclick="finalizarOS(${s.uniqueId})" class="py-2 rounded bg-blue-600 text-white text-xs" ${!s.osNumero ? 'disabled' : ''}>Finalizar</button>` : `<button onclick="habilitarEdicaoOS(${s.uniqueId}, this)" class="py-2 rounded bg-yellow-500 text-white text-xs">Editar Nº</button>`}<button onclick="copiarHistorico(${s.uniqueId})" class="py-2 rounded bg-gray-200 text-xs">Copiar Texto O.S.</button><button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 rounded bg-green-500 text-white text-xs">Compartilhar O.S.</button><button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 rounded bg-red-600 text-white text-xs">Excluir</button></div><textarea id="texto_os_hist_${s.uniqueId}" class="hidden">${s.texto}</textarea></div>`).join('')}</div>`).join(''); } catch (e) { div.innerHTML = "<p class='text-center text-red-500 p-4'>Erro ao carregar histórico.</p>"; console.error(e); } }
+        async function mostrarHistorico() { const div = document.getElementById("historico_lista"); if (!div) return; try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); if (todosItens.length === 0) { div.innerHTML = "<p class='text-center text-gray-500 p-4'>Nenhuma O.S. registada no histórico.</p>"; return; } const agrupado = todosItens.reduce((acc, item) => { const dataKey = item.dataOS; if (!acc[dataKey]) acc[dataKey] = []; acc[dataKey].push(item); return acc; }, {}); const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
+div.innerHTML = datasOrdenadas.map(dataKey => `
+    <div class="bg-white rounded-lg shadow-md">
+        
+        <h3 class="text-xl font-semibold text-blue-700 mb-0 border-b-2 pb-2 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onclick="toggleHistoricoDia('${dataKey}')">
+            <span>Serviços de: ${formatarDataParaExibicao(dataKey)}</span>
+            <span id="toggler-dia-${dataKey}" class="text-lg">&#9650;</span>
+        </h3>
+        
+        <div id="historico-dia-${dataKey}" class="p-3 space-y-3" style="display: block;">
+            ${agrupado[dataKey].sort((a, b) => a.inicio.localeCompare(b.inicio)).map(s => `
+                <div class="bg-gray-50 p-3 rounded-lg shadow-sm border-l-4 ${s.status === 'pendente' ? 'border-orange-500' : 'border-green-600'}">
+                    <div class="mb-2 text-sm">
+                        <span class="font-semibold text-blue-700">${s.frota}</span> | ${s.atividade.split(" - ")[0]} - ${s.sistema} - ${(s.subsistema || "").split(" - ")[0]} [${s.inicio} - ${s.fim}]
+                    </div>
+                    <div class="text-sm text-gray-800 mb-3">
+                        <p class="font-semibold">Descrição:</p>
+                        <div class="pl-2 whitespace-pre-line">${formatarDescricao(s.descricao)}</div>
+                    </div>
+                    
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
+    <div class="flex items-center gap-x-4">
+        <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
+        <input id="os_input_${s.uniqueId}" class="w-28 p-1 border rounded" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
+        <span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
+    </div>
+    
+    <button onclick="toggleBotoesHistorico(${s.uniqueId})" class="py-1 px-3 rounded bg-gray-200 hover:bg-gray-300 text-xs font-semibold">
+        Ações &#9776;
+    </button>
+</div>
+
+<div id="botoes-historico-${s.uniqueId}" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2" style="display: none;">
+    ${s.status === 'pendente' ? `<button id="btnFinalizarOS_${s.uniqueId}" onclick="finalizarOS(${s.uniqueId})" class="py-2 rounded bg-blue-600 text-white text-xs" ${!s.osNumero ? 'disabled' : ''}>Finalizar</button>` : `<button onclick="habilitarEdicaoOS(${s.uniqueId}, this)" class="py-2 rounded bg-yellow-500 text-white text-xs">Editar Nº</button>`}
+    <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 rounded bg-gray-200 text-xs">Copiar Texto O.S.</button>
+    <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 rounded bg-green-500 text-white text-xs">Compartilhar O.S.</button>
+    <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 rounded bg-red-600 text-white text-xs">Excluir</button>
+</div>
+<textarea id="texto_os_hist_${s.uniqueId}" class="hidden">${s.texto}</textarea>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+`).join('');
+ } catch (e) { div.innerHTML = "<p class='text-center text-red-500 p-4'>Erro ao carregar histórico.</p>"; console.error(e); } }
         function validarOSInput(id) { document.getElementById(`btnFinalizarOS_${id}`).disabled = !document.getElementById(`os_input_${id}`).value.trim(); }
         function copiarHistorico(id) { const text = document.querySelector(`#texto_os_hist_${id}`).value; navigator.clipboard.writeText(text); showToast('Texto da O.S. copiado!', 'success'); }
         function compartilharHistorico(id) { const text = document.querySelector(`#texto_os_hist_${id}`).value; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank"); }
@@ -592,6 +635,37 @@
         // ---------------------------------
         // OUTROS MÓDULOS
         // ---------------------------------
+        /**
+ * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos serviços de um dia específico no histórico.
+ * @param {string} dataKey - A data (no formato YYYY-MM-DD) que serve como identificador do grupo.
+ */
+function toggleHistoricoDia(dataKey) {
+    const listaServicos = document.getElementById(`historico-dia-${dataKey}`);
+    const toggler = document.getElementById(`toggler-dia-${dataKey}`);
+
+    if (listaServicos && toggler) {
+        // Verifica se a lista de serviços está escondida
+        const isHidden = listaServicos.style.display === 'none';
+        
+        // Alterna a exibição e o ícone
+        listaServicos.style.display = isHidden ? 'block' : 'none';
+        toggler.innerHTML = isHidden ? '&#9650;' : '&#9660;'; // Seta para cima (▲) / Seta para baixo (▼)
+    }
+}
+/**
+ * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos botões de ação
+ * de um item específico no histórico.
+ * @param {number} uniqueId - O ID único do item de serviço no histórico.
+ */
+function toggleBotoesHistorico(uniqueId) {
+    const containerBotoes = document.getElementById(`botoes-historico-${uniqueId}`);
+    if (containerBotoes) {
+        const isHidden = containerBotoes.style.display === 'none';
+        // Usamos 'grid' ao invés de 'block' porque as classes do Tailwind usam display: grid para este elemento
+        containerBotoes.style.display = isHidden ? 'grid' : 'none';
+    }
+}
+
         async function renderizarSecaoEstatisticas(container) { const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const totalHorasParadas = calcularHorasParadasCorretivasTotais(); const dmTurnoAtual = calcularDMGeral(maquinasPrincipais, totalHorasParadas); const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); const osPorDia = {}; osHistorico.forEach(item => { const dataKey = item.dataOS.split('-').reverse().join('/'); osPorDia[dataKey] = (osPorDia[dataKey] || 0) + 1; }); const labels = Object.keys(osPorDia).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'))).slice(-15); const data = labels.map(label => osPorDia[label]); container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Estatísticas do Turno</h2><div class="p-4 border border-gray-200 rounded-lg text-center"><h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4><p class="text-4xl font-bold text-green-600">${dmTurnoAtual}%</p><p class="text-sm text-gray-500 mt-1">Base: ${maquinasPrincipais.length} máquinas. Considera paradas corretivas de todas as frotas.</p></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">O.S. Registradas (Últimos 15 dias)</h4><canvas id="graficoHistoricoOS"></canvas></div></div>`; const ctx = document.getElementById('graficoHistoricoOS'); if (graficoOS) graficoOS.destroy(); if (ctx) { graficoOS = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Nº de O.S.', data, backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); } }
         async function renderizarSecaoRelatorio(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><div id="aviso_relatorio_desatualizado" class="hidden p-3 mb-4 text-sm text-yellow-700 bg-yellow-100 rounded-lg" role="alert"><span class="font-medium">Atenção!</span> Existem serviços novos ou alterados desde que este relatório foi gerado. Clique em "Gerar Relatório Final" para o atualizar.</div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Visualização</h4><div id="relatorio_formatado" class="p-3 bg-gray-50 border rounded-md min-h-[100px] whitespace-pre-line"></div><textarea id="relatorio_bruto" class="hidden mt-1 w-full p-2 border rounded-md font-mono h-64"></textarea><input type="hidden" id="relatorio_snapshot"></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Ações</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onclick="gerarRelatorioFinal()" class="py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">Gerar Relatório Final</button><button onclick="compartilharRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-gray-500 hover:bg-gray-600 text-white">Compartilhar</button><button onclick="toggleEdicaoRelatorio(this)" class="py-2 px-4 rounded-md font-semibold bg-yellow-500 hover:bg-yellow-600 text-white">Editar Relatório</button><button onclick="limparRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Limpar Relatório</button></div></div></div>`; try { const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)); const relatorioSalvo = dados?.relatorio || ''; const snapshotSalvo = dados?.relatorioGeradoComServicos || '[]'; if (relatorioSalvo) { document.getElementById('relatorio_bruto').value = relatorioSalvo; document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorioSalvo); document.getElementById('relatorio_snapshot').value = snapshotSalvo; if (snapshotSalvo !== JSON.stringify(servicos)) { document.getElementById('aviso_relatorio_desatualizado').classList.remove('hidden'); } } } catch (e) { console.error("Erro ao carregar relatório salvo:", e); } }
         async function gerarRelatorioFinal() { if (!validarCamposTurnoBasicos()) return; const data = document.getElementById("dataTurno").value; const fazenda = document.getElementById("fazenda").value.trim().toUpperCase(); const frente = document.getElementById("frente").value.trim().toUpperCase(); const turnoLetra = document.getElementById("turnoLetra").value; const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome.toUpperCase()} - ${item.matricula}`).join('\n') : "EQUIPE NÃO INFORMADA"; const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const horasPlanejadasTotais = maquinasPrincipais.reduce((soma, f) => soma + f.horas, 0); const horasParadasTotais = calcularHorasParadasCorretivasTotais(); const dmGeral = calcularDMGeral(maquinasPrincipais, horasParadasTotais); const mediaHorasPorMaquina = maquinasPrincipais.length > 0 ? (horasPlanejadasTotais / maquinasPrincipais.length) : 0; let relatorio = `*MANUTENÇÃO ${frente} BRACELL*\n\n📅 *DATA:* ${formatarDataParaExibicao(data)}\n*FAZENDA:* ${fazenda}\n*FRENTE:* ${frente}\n*TURNO:* ${turnoLetra}\n*EQUIPE:*\n${equipeTexto}\n\n*QTD DE MÁQUINAS:* ${maquinasPrincipais.length}\n*HORAS PLANEJADAS (por máquina):* ${mediaHorasPorMaquina.toFixed(2).replace('.', ',')}h\n*HORAS PLANEJADAS TOTAIS (máquinas):* ${horasPlanejadasTotais.toFixed(2).replace('.', ',')}h\n*HORAS TOTAIS PARADAS (corretivas):* ${horasParadasTotais.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadasTotais)})\n\n🟢 *DM DO TURNO:* ${dmGeral}%\n\n--- DETALHAMENTO POR FROTA ---\n`; const frotasComServico = [...new Set(servicos.map(s => s.frota))].sort(); frotasComServico.forEach(nomeFrota => { const frota = frotasTurno.find(f => f.nome === nomeFrota); if (!frota) return; const dmFrota = calcularDMFrota(nomeFrota); const horasParadaDaFrota = servicos.filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0); relatorio += `\n🚜 *${frota.nome.toUpperCase()}* ${getTipoTexto(frota.tipo)}\nHoras Planejada: ${frota.horas.toFixed(2).replace('.', ',')}h\nHoras Parada (Corretivas): ${horasParadaDaFrota.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadaDaFrota)})\n*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`; servicos.filter(s => s.frota === nomeFrota).forEach(s => { const duracao = calcularDuracaoServico(s); const codAtiv = (s.atividade || "N/A").split(" - ")[0]; const codSistema = s.sistema || "N/A"; const codSub = (s.subsistema || "N/A").split(" - ")[0]; const emoji = s.tipo === "CORRETIVA" ? "🔧" : (s.tipo === "CONDICIONAL" ? "⏳" : "✨"); relatorio += `${s.descricao.trim()}\n  (${codAtiv} - ${codSistema} - ${codSub}) ${emoji} [${s.tipo}]\n  ⏱️ Duração: ${duracao.texto} (Decimal: ${duracao.horas.toFixed(2).replace('.', ',')}h)\n`; if (s.oportunidade) { relatorio += `Oportunidade: ${s.oportunidade}\n`; } relatorio += '\n'; }); }); document.getElementById('relatorio_bruto').value = relatorio; document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorio); document.getElementById('relatorio_snapshot').value = JSON.stringify(servicos); document.getElementById('aviso_relatorio_desatualizado').classList.add('hidden'); salvarTudo(true); showToast('Relatório gerado e salvo!', 'success'); }
