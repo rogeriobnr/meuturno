@@ -444,7 +444,39 @@
         function formatarDataParaExibicao(dataStr) { if (!dataStr || !/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return "Sem Data"; const [ano, mes, dia] = dataStr.split('-'); return `${dia}/${mes}/${ano}`; }
         function interpretarMarkdown(texto) { if (!texto) return ""; return texto.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
         function minimizarServico(id) { const servico = servicos.find(s => s.id === id); if (servico && servico.isExpanded) { toggleDetalhesServico(id); } }
-        function gerarTextoCabecalhoServico(servico) { const frota = servico.frota || "N/D"; const codAtividade = (servico.atividade || "P000").split(" - ")[0]; const codSistema = servico.sistema || "0"; const codSubsistema = (servico.subsistema || "0.0").split(" - ")[0]; const horaInicio = servico.inicio || "--:--"; const horaFim = servico.fim || "--:--"; const infoServico = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`; return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| ${infoServico}</span>`; }
+                function gerarTextoCabecalhoServico(servico) {
+            const frota = servico.frota || "N/D";
+            const codAtividade = (servico.atividade || "P000").split(" - ")[0];
+            const codSistema = servico.sistema || "0";
+            const codSubsistema = (servico.subsistema || "0.0").split(" - ")[0];
+            const horaInicio = servico.inicio || "--:--";
+            const horaFim = servico.fim || "--:--";
+            const infoServico = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`;
+
+            // --- INÍCIO DA MODIFICAÇÃO ---
+
+            // 1. Criamos uma variável para guardar o texto do tipo de manutenção.
+            let tipoSpan = '';
+
+            // 2. Verificamos o tipo do serviço e definimos o HTML correspondente.
+            if (servico.tipo === 'CORRETIVA') {
+                // Se for 'CORRETIVA', criamos um span com texto vermelho escuro, negrito e itálico.
+                tipoSpan = ` <span class="font-bold italic text-red-700">Corretiva</span>`;
+            } else if (servico.tipo === 'CONDICIONAL') {
+                // Se for 'CONDICIONAL', criamos um span com texto azul, negrito e itálico.
+                tipoSpan = ` <span class="font-bold italic text-blue-600">Condicional</span>`;
+            } else if (servico.tipo === 'MELHORIA') {
+                // Se for 'MELHORIA', criamos um span com texto amarelo, negrito e itálico.
+                tipoSpan = ` <span class="font-bold italic text-yellow-600">Melhoria</span>`;
+            }
+
+            // 3. Juntamos o texto original com o nosso novo span.
+            return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| ${infoServico}</span>${tipoSpan}`;
+            
+            // --- FIM DA MODIFICAÇÃO ---
+        }
+
+
         function formatarDescricao(texto) { if (!texto) return 'Nenhuma descrição fornecida.'; return texto.trim().split('\n').map(linha => `- ${linha.trim()}`).join('\n'); }
         function getTipoTexto(tipo) { switch (tipo) { case 'maquina': return 'Máquina Principal'; case 'implemento': return 'Implemento'; case 'caminhao': return 'Caminhão'; default: return 'N/D'; } }
         function getTipoCor(tipo) { switch (tipo) { case 'maquina': return 'text-blue-600'; case 'implemento': return 'text-gray-500'; case 'caminhao': return 'text-green-600'; default: return 'text-gray-400'; } }
