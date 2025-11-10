@@ -1,7 +1,7 @@
 'use strict';
 
 // Versão do cache. Altere este valor sempre que atualizar os arquivos do app.
-const CACHE_NAME = 'meuturno-cache-v6.49.4'; // Incrementei a versão
+const CACHE_NAME = 'meuturno-cache-v6.49.5'; // Versão Incrementada
 
 // Arquivos essenciais da aplicação (App Shell), incluindo os de CDN.
 const urlsToCache = [
@@ -9,11 +9,14 @@ const urlsToCache = [
   './index.html',
   './manifest.json',
   './logo.png',
-  './icon-192.png', // Supondo que você use estes nomes, ajuste se necessário
+  './icon-192.png', 
   './icon-512.png',
-  // ARQUIVOS DE CDN ADICIONADOS AQUI:
+  // CDNs para performance offline (AGORA INCLUI FIREBASE E SHEETJS)
   'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js', 
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js',
+  'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js' 
 ];
 
 // Instala o Service Worker e guarda os arquivos do App Shell no cache.
