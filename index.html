@@ -334,7 +334,10 @@
                 await carregarDadosIniciais();
                 renderizarLayoutInicial();
                 inicializarMenuHamburguer();
-                abrir('turno');
+
+                // MODIFICADO: Carrega a seção salva no LocalStorage, ou 'turno' como padrão
+                const secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+                abrir(secaoInicial);
             } catch (err) { console.error("Erro fatal ao inicializar:", err); showToast("Erro grave ao iniciar. Tente recarregar.", 'error'); }
         }
 
@@ -384,7 +387,7 @@
                 } else { inicializarEstadoVazio(); }
             } catch (err) { showToast('Erro ao carregar dados iniciais.', 'error'); inicializarEstadoVazio(); }
         }
-        function carregarEstado(dados) { equipe = dados.equipe || []; frotasTurno = dados.frotas || []; servicos = dados.servicos || []; frotasTurno.forEach(f => f.tipo = f.tipo || 'maquina'); servicos.forEach(s => { s.isExpanded = s.isExpanded || false; s.foiCompartilhado = s.foiCompartilhado || false; }); }
+        function carregarEstado(dados) { equipe = dados.equipe || []; frotasTurno = dados.frotas || []; servicos = dados.servicos || []; frotasTurno.forEach(f => f.tipo = f.tipo || 'maquina'); servicos.forEach(s => { s.isExpanded = s.isExpanded || false; s.foiCompartilhado = s.foiCompartilhado || false; s.pecasUtilizadas = s.pecasUtilizadas || []; }); }
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         function salvarTudo(forcar = false) { clearTimeout(debounceTimer); const executar = async () => { try { const relatorioBruto = document.getElementById("relatorio_bruto")?.value || ''; const snapshotServicos = document.getElementById("relatorio_snapshot")?.value || '[]'; const dados = { id: TURNO_ATUAL_ID, data: document.getElementById("dataTurno")?.value, fazenda: document.getElementById("fazenda")?.value.trim(), frente: document.getElementById("frente")?.value.trim(), turno: document.getElementById("turnoLetra")?.value, equipe: equipe, frotas: frotasTurno, servicos: servicos, relatorio: relatorioBruto, relatorioGeradoComServicos: snapshotServicos }; await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); } catch (err) { showToast('Erro ao salvar os dados.', 'error'); } }; if (forcar) executar(); else debounceTimer = setTimeout(executar, 1000); }
         function salvarDadosParciaisTurno() { validarCamposTurnoBasicos(); salvarTudo(); }
@@ -393,7 +396,7 @@
         // 5. RENDERIZAÇÃO E UI
         // =================================================================================
         async function renderizarLayoutInicial() { try { const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); document.getElementById("fazenda").value = d.fazenda || ""; document.getElementById("frente").value = d.frente || ""; document.getElementById("turnoLetra").value = d.turno || "A"; } catch (e) { console.error("Erro ao renderizar layout inicial", e); } }
-        // SUBSTITUA A SUA FUNÇÃO abrir POR ESTA:
+        // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
         function abrir(secaoId) {
             // Esconde todas as secções
             document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
@@ -408,6 +411,9 @@
                 }
             }
 
+            // NOVO: Salva a seção ativa no LocalStorage
+            localStorage.setItem('secaoAtiva', secaoId);
+
             // Atualiza o título do cabeçalho
             document.getElementById('header-titulo').textContent = secaoId === 'catalogo' ? 'Catálogo de Peças' : secaoId.charAt(0).toUpperCase() + secaoId.slice(1);
 
@@ -418,21 +424,22 @@
             const fabCadastroRapidoFrota = document.getElementById('fabCadastroRapidoFrota');
 
             // Esconde todos eles por padrão
-            fabCriarServico.style.display = 'none';
-            fabAddItemCatalogo.style.display = 'none';
-            fabAddFrotaCatalogo.style.display = 'none';
-            fabCadastroRapidoFrota.style.display = 'none';
+            if (fabCriarServico) fabCriarServico.style.display = 'none';
+            if (fabAddItemCatalogo) fabAddItemCatalogo.style.display = 'none';
+            if (fabAddFrotaCatalogo) fabAddFrotaCatalogo.style.display = 'none';
+            if (fabCadastroRapidoFrota) fabCadastroRapidoFrota.style.display = 'none';
 
             // Mostra os botões corretos para a secção atual
             if (secaoId === 'servicos') {
-                fabCriarServico.style.display = 'flex';
-                fabCadastroRapidoFrota.style.display = 'flex'; // MOSTRA o novo botão
+                if (fabCriarServico) fabCriarServico.style.display = 'flex';
+                if (fabCadastroRapidoFrota) fabCadastroRapidoFrota.style.display = 'flex';
             } else if (secaoId === 'catalogo') {
-                fabAddItemCatalogo.style.display = 'flex';
+                if (fabAddItemCatalogo) fabAddItemCatalogo.style.display = 'flex';
             } else if (secaoId === 'frotas') {
-                fabAddFrotaCatalogo.style.display = 'flex';
+                if (fabAddFrotaCatalogo) fabAddFrotaCatalogo.style.display = 'flex';
             }
-        } function inicializarMenuHamburguer() { const btn = document.getElementById('hamburger-btn'); const overlay = document.getElementById('menu-overlay'); const links = document.querySelectorAll('#menu-lateral a'); const fecharMenu = () => document.body.classList.remove('menu-open'); btn.addEventListener('click', e => { e.stopPropagation(); document.body.classList.toggle('menu-open'); }); overlay.addEventListener('click', fecharMenu); links.forEach(link => link.addEventListener('click', e => { e.preventDefault(); abrir(link.getAttribute('data-secao')); fecharMenu(); })); }
+        }
+        function inicializarMenuHamburguer() { const btn = document.getElementById('hamburger-btn'); const overlay = document.getElementById('menu-overlay'); const links = document.querySelectorAll('#menu-lateral a'); const fecharMenu = () => document.body.classList.remove('menu-open'); btn.addEventListener('click', e => { e.stopPropagation(); document.body.classList.toggle('menu-open'); }); overlay.addEventListener('click', fecharMenu); links.forEach(link => link.addEventListener('click', e => { e.preventDefault(); abrir(link.getAttribute('data-secao')); fecharMenu(); })); }
         let toastTimer; function showToast(msg, type = 'info', duration = 2000) { const t = document.getElementById("toast"); if (!t) return; clearTimeout(toastTimer); t.textContent = msg; t.className = ''; t.classList.add(type); requestAnimationFrame(() => { t.classList.add('show'); }); toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration); }
         function abrirPopup(titulo, mensagem, botoes = []) { document.getElementById('popupTitulo').innerHTML = titulo; document.getElementById('popupMensagem').innerHTML = mensagem; const divBotoes = document.getElementById('popupBotoes'); divBotoes.innerHTML = ''; if (botoes.length === 0) botoes.push({ texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }); botoes.forEach(b => { const btn = document.createElement('button'); btn.className = `py-2 px-4 rounded-md font-semibold transition-colors duration-150 ${b.classe}`; btn.innerHTML = b.texto; btn.onclick = () => { fecharPopup(); if (b.acao) b.acao(); }; divBotoes.appendChild(btn); }); document.getElementById('popupGenerico').style.display = 'block'; document.getElementById('overlayGenerico').style.display = 'block'; }
         function fecharPopup() { document.getElementById('popupGenerico').style.display = 'none'; document.getElementById('overlayGenerico').style.display = 'none'; }
@@ -475,6 +482,26 @@
             
             // --- FIM DA MODIFICAÇÃO ---
         }
+        
+        // NOVO: Função auxiliar para validar o tempo de um serviço
+        function validarTempoServico(servico) {
+            if (!servico.inicio || !servico.fim) return true; // Se um dos campos estiver vazio, é válido temporariamente.
+
+            try {
+                // Junta data e hora para criar objetos Date, garantindo a comparação correta.
+                const inicioStr = `${servico.data}T${servico.inicio}`;
+                const fimStr = `${servico.dataFinal}T${servico.fim}`;
+                
+                const dataInicio = new Date(inicioStr);
+                const dataFim = new Date(fimStr);
+
+                // Retorna falso se a hora final for anterior ou igual à inicial
+                return dataFim.getTime() > dataInicio.getTime();
+            } catch (e) {
+                console.error("Erro na validação de tempo:", e);
+                return true; // Assume válido em caso de erro de parse.
+            }
+        }
 
 
         function formatarDescricao(texto) { if (!texto) return 'Nenhuma descrição fornecida.'; return texto.trim().split('\n').map(linha => `- ${linha.trim()}`).join('\n'); }
@@ -502,7 +529,18 @@
         // MÓDULO: CATÁLOGO DE FROTAS (ONLINE)
         // ---------------------------------
         function renderizarSecaoFrotas(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow"><h2 class="text-xl font-bold text-blue-800 mb-4">Catálogo de Frotas</h2><input type="text" id="buscaFrota" oninput="renderizarCatalogoFrotas()" placeholder="🔎 Buscar por código..." class="w-full p-3 border border-gray-300 rounded-lg mb-4"><div id="listaCatalogoFrotas" class="space-y-2"></div></div>`; renderizarCatalogoFrotas(); }
-        function renderizarCatalogoFrotas() { const listaDiv = document.getElementById('listaCatalogoFrotas'); if (!listaDiv) return; const termoBusca = document.getElementById('buscaFrota').value.toLowerCase(); const frotasFiltradas = catalogoFrotas.filter(f => f.nome.toLowerCase().includes(termoBusca)); if (frotasFiltradas.length === 0) { listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma frota encontrada no catálogo.</p>`; return; } frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome)); listaDiv.innerHTML = frotasFiltradas.map(f => `<div class="border rounded-lg p-3 flex justify-between items-center"><div><p class="font-bold text-gray-800">${f.nome}</p><p class="text-sm font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</p></div><button onclick="removerFrotaCatalogo('${f.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir do Catálogo">🗑️</button></div>`).join(''); }
+        // MODIFICADO: Aplica 'removerAcentos' na busca
+        function renderizarCatalogoFrotas() {
+            const listaDiv = document.getElementById('listaCatalogoFrotas');
+            if (!listaDiv) return;
+
+            // MODIFICADO: Aplica removerAcentos na busca
+            const termoBusca = removerAcentos(document.getElementById('buscaFrota').value.toLowerCase());
+
+            const frotasFiltradas = catalogoFrotas.filter(f => removerAcentos(f.nome.toLowerCase()).includes(termoBusca)); 
+            
+            if (frotasFiltradas.length === 0) { listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma frota encontrada no catálogo.</p>`; return; } frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome)); listaDiv.innerHTML = frotasFiltradas.map(f => `<div class="border rounded-lg p-3 flex justify-between items-center"><div><p class="font-bold text-gray-800">${f.nome}</p><p class="text-sm font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</p></div><button onclick="removerFrotaCatalogo('${f.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir do Catálogo">🗑️</button></div>`).join('');
+        }
         function abrirPopupTipoFrota(contexto = 'catalogo') {
             const conteudo = `<p class="mb-4">Selecione o tipo de frota para adicionar:</p>
         <div class="grid grid-cols-1 gap-3">
@@ -534,8 +572,115 @@
         }
         async function salvarFrotaCatalogo(nome, tipo) { if (!nome) { showToast('O código da frota não pode ser vazio.', 'error'); return; } if (catalogoFrotas.some(f => f.nome === nome)) { showToast('Esta frota já existe no catálogo.', 'error'); return; } const novaFrota = { nome, tipo }; try { await firestore.collection('catalogoFrotas').add(novaFrota); showToast('Frota adicionada ao catálogo!', 'success'); } catch (error) { showToast('Erro ao salvar a frota.', 'error'); } }
         async function removerFrotaCatalogo(docId) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir do Catálogo', `Deseja remover esta frota permanentemente do catálogo?`, resolve)); if (confirmado) { try { await firestore.collection('catalogoFrotas').doc(docId).delete(); showToast('Frota removida do catálogo.', 'success'); } catch (error) { showToast('Erro ao remover a frota.', 'error'); } } }
-        function abrirPopupSelecaoFrota() { if (catalogoFrotas.length === 0) { showToast("Catálogo de frotas vazio. Adicione frotas na secção 'Frotas'.", 'error', 3000); return; } const frotasDisponiveis = catalogoFrotas.filter(cf => !frotasTurno.some(ft => ft.nome === cf.nome)); if (frotasDisponiveis.length === 0) { showToast("Todas as frotas do catálogo já estão no turno.", 'info'); return; } let conteudo = `<p class="mb-2">Selecione as frotas para o turno:</p><div class="max-h-64 overflow-y-auto space-y-2">`; frotasDisponiveis.forEach(f => { conteudo += `<label class="flex items-center p-2 border rounded-md hover:bg-gray-100"><input type="checkbox" name="frota-selecao" value="${f.nome}" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"><span class="ml-3 font-semibold">${f.nome}</span><span class="ml-auto text-xs font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</span></label>`; }); conteudo += `</div>`; const botoes = [{ texto: 'Adicionar Selecionadas', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => adicionarFrotasSelecionadasAoTurno() }]; abrirPopup('Selecionar Frotas', `<div id="popup-content-wrapper">${conteudo}</div>`, botoes); }
-        function adicionarFrotasSelecionadasAoTurno() { const checkboxes = document.querySelectorAll('input[name="frota-selecao"]:checked'); if (checkboxes.length === 0) { showToast('Nenhuma frota selecionada.', 'info'); return; } checkboxes.forEach(cb => { const frotaDoCatalogo = catalogoFrotas.find(f => f.nome === cb.value); if (frotaDoCatalogo) { frotasTurno.push({ nome: frotaDoCatalogo.nome, tipo: frotaDoCatalogo.tipo, horas: 7.2 }); } }); renderizarFrotasDoTurno(); salvarTudo(); showToast(`${checkboxes.length} frota(s) adicionada(s) ao turno.`, 'success'); }
+        // MODIFICADO: Adiciona campo de busca e renderiza o catálogo ordenado
+// MODIFICADO: Inclui botão "Cancelar" explícito na lista de botões
+function abrirPopupSelecaoFrota() { 
+    if (catalogoFrotas.length === 0) { 
+        showToast("Catálogo de frotas vazio. Adicione frotas na secção 'Frotas'.", 'error', 3000); 
+        return; 
+    } 
+    
+    // Filtra as frotas que JÁ estão no turno
+    const frotasDisponiveis = catalogoFrotas.filter(cf => !frotasTurno.some(ft => ft.nome === cf.nome)); 
+    
+    if (frotasDisponiveis.length === 0) { 
+        showToast("Todas as frotas do catálogo já estão no turno.", 'info'); 
+        return; 
+    } 
+    
+    // Adiciona campo de busca e contêiner para a lista
+    let conteudo = `<input type="text" id="filtroSelecaoFrota" 
+                        class="w-full p-2 border border-gray-300 rounded-md mb-3" 
+                        placeholder="🔎 Digite para buscar frota..." 
+                        oninput="renderizarListaFrotasDisponiveis()">
+                    <div id="listaFrotasDisponiveis" class="max-h-64 overflow-y-auto space-y-2"></div>`; 
+    
+    // NOVO: Define a lista de botões no rodapé
+    const botoes = [
+        { 
+            texto: 'Cancelar', 
+            classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', 
+            acao: fecharPopup // Ação: apenas fechar o pop-up
+        },
+        { 
+            texto: 'Adicionar Selecionadas', 
+            classe: 'bg-blue-600 text-white hover:bg-blue-700', 
+            acao: () => adicionarFrotasSelecionadasAoTurno() 
+        }
+    ]; 
+    
+    abrirPopup('Selecionar Frotas', `<div id="popup-content-wrapper">${conteudo}</div>`, botoes); 
+    
+    // Chama a renderização inicial após o pop-up abrir
+    renderizarListaFrotasDisponiveis(frotasDisponiveis);
+}
+
+// NOVO: Função para filtrar e renderizar as opções de frota no pop-up de seleção
+function renderizarListaFrotasDisponiveis(frotasIniciais = null) {
+    const listaDiv = document.getElementById('listaFrotasDisponiveis');
+    if (!listaDiv) return;
+
+    // 1. Obtém as frotas a serem processadas (ou as frotas disponíveis se for a 1ª chamada)
+    const frotasDisponiveis = frotasIniciais || catalogoFrotas.filter(cf => !frotasTurno.some(ft => ft.nome === cf.nome));
+
+    // 2. Aplica o filtro de busca
+    const termoBusca = document.getElementById('filtroSelecaoFrota')?.value;
+    const frotasFiltradas = frotasDisponiveis.filter(f => {
+        if (!termoBusca) return true;
+        // Usa removerAcentos para uma busca mais flexível
+        const termoNormalizado = removerAcentos(termoBusca).toLowerCase();
+        const nomeNormalizado = removerAcentos(f.nome).toLowerCase();
+        return nomeNormalizado.includes(termoNormalizado);
+    });
+
+    // 3. Aplica a ordenação crescente (alfabética/numeral)
+    frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    if (frotasFiltradas.length === 0) {
+        listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma frota encontrada com o filtro atual.</p>`;
+        return;
+    }
+    
+    // 4. Gera o HTML
+    let listaHTML = frotasFiltradas.map(f => `
+        <label class="flex items-center p-2 border rounded-md hover:bg-gray-100">
+            <input type="checkbox" name="frota-selecao" value="${f.nome}" 
+                   data-tipo="${f.tipo}" 
+                   class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span class="ml-3 font-semibold">${f.nome}</span>
+            <span class="ml-auto text-xs font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</span>
+        </label>
+    `).join('');
+    
+    listaDiv.innerHTML = listaHTML;
+}
+        // MODIFICADO: Lê o tipo de frota do atributo do checkbox
+// CORRIGIDO: Simplifica a lógica de busca do tipo de frota e garante que só adicione frotas existentes no catálogo.
+function adicionarFrotasSelecionadasAoTurno() { 
+    const checkboxes = document.querySelectorAll('input[name="frota-selecao"]:checked'); 
+    if (checkboxes.length === 0) { 
+        showToast('Nenhuma frota selecionada.', 'info'); 
+        return; 
+    } 
+    
+    checkboxes.forEach(cb => { 
+        const frotaDoCatalogo = catalogoFrotas.find(f => f.nome === cb.value);
+
+        // Apenas adiciona se o item existir no catálogo global de frotas.
+        if (frotaDoCatalogo) { 
+            frotasTurno.push({ 
+                nome: frotaDoCatalogo.nome, 
+                tipo: frotaDoCatalogo.tipo, // Usa o tipo garantido do objeto do catálogo
+                horas: 7.2 
+            }); 
+        } 
+    }); 
+    
+    renderizarFrotasDoTurno(); 
+    salvarTudo(); 
+    showToast(`${checkboxes.length} frota(s) adicionada(s) ao turno.`, 'success'); 
+}
+
         // ADICIONE ESTA NOVA FUNÇÃO
         /**
          * Inicia o fluxo de cadastro rápido a partir do FAB de serviços.
@@ -597,15 +742,324 @@
         // ---------------------------------
         function renderizarSecaoServicos(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Filtrar Serviços</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="filtroServicoFrota" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Frota..." oninput="renderizarServicos()"><input type="text" id="filtroServicoDescricao" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Descrição..." oninput="renderizarServicos()"></div></div><div id="servicosLista" class="space-y-4"></div>`; renderizarServicos(); }
         function renderizarServicos() { const lista = document.getElementById("servicosLista"); if (!lista) return; const filtroFrota = document.getElementById('filtroServicoFrota')?.value.toLowerCase() || ""; const filtroDescricao = document.getElementById('filtroServicoDescricao')?.value.toLowerCase() || ""; const servicosFiltrados = servicos.filter(s => (!filtroFrota || s.frota.toLowerCase().includes(filtroFrota)) && (!filtroDescricao || s.descricao.toLowerCase().includes(filtroDescricao))); servicosFiltrados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); lista.innerHTML = ''; if (servicosFiltrados.length === 0) { lista.innerHTML = `<p class='text-center text-gray-500 p-4'>Nenhum serviço encontrado.</p>`; } else { servicosFiltrados.forEach(s => { const template = document.getElementById('servico-template').content.cloneNode(true); const article = template.querySelector('article'); article.id = `servico_${s.id}`; lista.appendChild(article); preencherDetalhesServico(s); }); } }
-        function preencherDetalhesServico(s) { const article = document.getElementById(`servico_${s.id}`); if (!article) return; if (s.foiCompartilhado) { article.classList.add('servico-compartilhado'); } else { article.classList.remove('servico-compartilhado'); } const osNaoGerada = !s.texto; if (osNaoGerada) { article.classList.add('servico-pendente-os'); } else { article.classList.remove('servico-pendente-os'); } const cabecalhoInfo = article.querySelector('.servico-cabecalho-info'); const toggler = article.querySelector('.servico-cabecalho-toggler'); const detalhes = article.querySelector('.servico-detalhes'); const cabecalhoHTML = gerarTextoCabecalhoServico(s); if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { cabecalhoInfo.innerHTML = cabecalhoHTML; } toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;'; article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id); detalhes.style.display = s.isExpanded ? 'block' : 'none'; if (!s.isExpanded) return; const subsistemasAtuais = subsistemas[s.sistema] || []; const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join(''); const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join(''); const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join(''); const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join(''); detalhes.innerHTML = `<div class="space-y-4"><div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Identificação da O.S</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium text-gray-700">Frota*</label><select data-id="${s.id}" data-field="frota" class="mt-1 w-full p-2 border rounded-md">${frotaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Atividade*</label><select data-id="${s.id}" data-field="atividade" class="mt-1 w-full p-2 border rounded-md">${atividadeOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Sistema*</label><select data-id="${s.id}" data-field="sistema" class="mt-1 w-full p-2 border rounded-md">${sistemaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Subsistema*</label><select data-id="${s.id}" data-field="subsistema" class="mt-1 w-full p-2 border rounded-md">${subsistemaOptions}</select></div></div></div><div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Operação</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="mt-1 w-full p-2 border rounded-md"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div><div><label class="block text-sm font-medium">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="mt-1 w-full p-2 border rounded-md"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div><div class="col-span-2"><label class="block text-sm font-medium">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="mt-1 w-full p-2 border rounded-md"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div><div><label class="block text-sm font-medium">Data inicial*</label><input type="date" data-id="${s.id}" data-field="data" value="${s.data}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora inicial*</label><input type="time" data-id="${s.id}" data-field="inicio" value="${s.inicio}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Data final*</label><input type="date" data-id="${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora final*</label><input type="time" data-id="${s.id}" data-field="fim" value="${s.fim}" class="mt-1 w-full p-2 border rounded-md"></div></div></div><div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-2">Descrição*</h5><textarea data-id="${s.id}" data-field="descricao" class="w-full p-2 border rounded-md h-28" placeholder="Detalhe o problema e a solução...">${s.descricao}</textarea></div><div><div class="flex flex-col space-y-2"><button onclick="processarOS(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">${osNaoGerada ? "Gerar O.S." : "Regerar O.S."}</button>${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Excluir Serviço</button>` : ''}</div><div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4"><div class="p-3 bg-gray-50 border rounded-md whitespace-pre-line">${interpretarMarkdown(s.texto || "")}</div><div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"><button onclick="copiarTexto(${s.id}, this)" class="py-2 px-4 rounded-md font-semibold bg-gray-200 hover:bg-gray-300 text-sm">Copiar</button><button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-green-500 text-white hover:bg-green-600 text-sm">Compartilhar</button><button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-blue-500 text-white hover:bg-blue-600 text-sm">Adicionar Outro</button><button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700 text-sm">Excluir</button></div></div></div></div>`; detalhes.querySelectorAll('input, select, textarea').forEach(el => { el.addEventListener('change', handleServicoInputChange); el.addEventListener('input', handleServicoInputChange); }); }
-        function handleServicoInputChange(event) { const el = event.target; const id = parseInt(el.dataset.id); const field = el.dataset.field; const servico = servicos.find(s => s.id === id); if (!servico) return; servico[field] = el.value; el.classList.remove('campo-invalido'); if (field === 'sistema') { servico.subsistema = ""; renderizarServicos(); } const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; if (camposQueAtualizamCabecalho.includes(field)) { const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); if (cabecalhoInfo) { cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); } } salvarTudo(); }
-        function adicionarServico(dadosPreenchidos = null) { if (!validarCamposTurnoBasicos()) return; const id = Date.now(); const novoServico = dadosPreenchidos || { id, frota: "", atividade: "", sistema: "", subsistema: "", descricao: "", tipo: "CORRETIVA", parada: "sim", falha: "não", data: document.getElementById('dataTurno')?.value || dataHojeInputLocal(), inicio: "", dataFinal: document.getElementById('dataTurno')?.value || dataHojeInputLocal(), fim: "", texto: "", oportunidade: "", isExpanded: true, foiCompartilhado: false }; servicos.push(novoServico); renderizarServicos(); salvarTudo(); showToast("Novo serviço adicionado.", 'success'); setTimeout(() => document.getElementById(`servico_${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }
+        function preencherDetalhesServico(s) { 
+            const article = document.getElementById(`servico_${s.id}`); 
+            if (!article) return; 
+            
+            if (s.foiCompartilhado) { article.classList.add('servico-compartilhado'); } else { article.classList.remove('servico-compartilhado'); } 
+            
+            const osNaoGerada = !s.texto; 
+            if (osNaoGerada) { article.classList.add('servico-pendente-os'); } else { article.classList.remove('servico-pendente-os'); } 
+            
+            const cabecalhoInfo = article.querySelector('.servico-cabecalho-info'); 
+            const toggler = article.querySelector('.servico-cabecalho-toggler'); 
+            const detalhes = article.querySelector('.servico-detalhes'); 
+            const cabecalhoHTML = gerarTextoCabecalhoServico(s); 
+            
+            if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { cabecalhoInfo.innerHTML = cabecalhoHTML; } 
+            
+            toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;'; 
+            article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id); 
+            detalhes.style.display = s.isExpanded ? 'block' : 'none'; 
+            
+            if (!s.isExpanded) return; 
+            
+            // NOVO: Renderiza a lista de peças
+            let listaPecasHTML = '';
+            if (s.pecasUtilizadas && s.pecasUtilizadas.length > 0) {
+                listaPecasHTML = s.pecasUtilizadas.map((p, i) => `
+                    <div class="flex justify-between items-center p-2 bg-gray-100 rounded-md text-sm border-l-4 border-blue-500">
+                        <span class="truncate">
+                            <strong class="text-blue-700">${p.quantidade || '1'}x</strong> ${p.descricao}
+                            <span class="text-xs text-gray-500 ml-1">(SAP: ${p.codigoSap || 'N/D'})</span>
+                        </span>
+                        <button onclick="removerPecaUtilizada(${s.id}, ${i})" class="text-red-500 hover:text-red-700 font-bold text-lg leading-none" title="Remover Peça">&times;</button>
+                    </div>
+                `).join('');
+            } else {
+                listaPecasHTML = '<p class="text-sm text-gray-500 p-2 text-center border rounded-md">Nenhuma peça adicionada.</p>';
+            }
+
+
+            const subsistemasAtuais = subsistemas[s.sistema] || []; 
+            const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join(''); 
+            const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join(''); 
+            const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join(''); 
+            const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join(''); 
+            
+            detalhes.innerHTML = `<div class="space-y-4">
+                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Identificação da O.S</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium text-gray-700">Frota*</label><select data-id="${s.id}" data-field="frota" class="mt-1 w-full p-2 border rounded-md">${frotaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Atividade*</label><select data-id="${s.id}" data-field="atividade" class="mt-1 w-full p-2 border rounded-md">${atividadeOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Sistema*</label><select data-id="${s.id}" data-field="sistema" class="mt-1 w-full p-2 border rounded-md">${sistemaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Subsistema*</label><select data-id="${s.id}" data-field="subsistema" class="mt-1 w-full p-2 border rounded-md">${subsistemaOptions}</select></div></div></div>
+                
+                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Peças Utilizadas</h5>
+                    <div id="lista-pecas-servico-${s.id}" class="space-y-2 mb-4">${listaPecasHTML}</div>
+                    <button onclick="abrirPopupSelecaoPecas(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-indigo-500 text-white hover:bg-indigo-600 text-sm">Adicionar Peça do Catálogo</button>
+                </div>
+                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Operação</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="mt-1 w-full p-2 border rounded-md"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div><div><label class="block text-sm font-medium">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="mt-1 w-full p-2 border rounded-md"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div><div class="col-span-2"><label class="block text-sm font-medium">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="mt-1 w-full p-2 border rounded-md"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div><div><label class="block text-sm font-medium">Data inicial*</label><input type="date" data-id="${s.id}" id="data-${s.id}" data-field="data" value="${s.data}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora inicial*</label><input type="time" data-id="${s.id}" id="inicio-${s.id}" data-field="inicio" value="${s.inicio}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Data final*</label><input type="date" data-id="${s.id}" id="dataFinal-${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora final*</label><input type="time" data-id="${s.id}" id="fim-${s.id}" data-field="fim" value="${s.fim}" class="mt-1 w-full p-2 border rounded-md"></div></div></div><div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-2">Descrição*</h5><textarea data-id="${s.id}" data-field="descricao" class="w-full p-2 border rounded-md h-28" placeholder="Detalhe o problema e a solução...">${s.descricao}</textarea></div><div><div class="flex flex-col space-y-2"><button onclick="processarOS(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">${osNaoGerada ? "Gerar O.S." : "Regerar O.S."}</button>${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Excluir Serviço</button>` : ''}</div><div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4"><div class="p-3 bg-gray-50 border rounded-md whitespace-pre-line">${interpretarMarkdown(s.texto || "")}</div><div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"><button onclick="copiarTexto(${s.id}, this)" class="py-2 px-4 rounded-md font-semibold bg-gray-200 hover:bg-gray-300 text-sm">Copiar</button><button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-green-500 text-white hover:bg-green-600 text-sm">Compartilhar</button><button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-blue-500 text-white hover:bg-blue-600 text-sm">Adicionar Outro</button><button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700 text-sm">Excluir</button></div></div></div></div>`; 
+            
+            // NOVO: Adiciona a validação de tempo aqui
+            const inputFim = detalhes.querySelector(`#fim-${s.id}`);
+            const inputDataFinal = detalhes.querySelector(`#dataFinal-${s.id}`);
+            const servicoValidado = servicos.find(item => item.id === s.id);
+            if(inputFim && inputDataFinal) {
+                if (!validarTempoServico(servicoValidado)) {
+                    inputFim.classList.add('campo-invalido'); 
+                    inputDataFinal.classList.add('campo-invalido');
+                } else {
+                    inputFim.classList.remove('campo-invalido');
+                    inputDataFinal.classList.remove('campo-invalido');
+                }
+            }
+            
+            detalhes.querySelectorAll('input, select, textarea').forEach(el => { el.addEventListener('change', handleServicoInputChange); el.addEventListener('input', handleServicoInputChange); }); 
+        }
+        
+        // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
+        function handleServicoInputChange(event) { 
+            const el = event.target; 
+            const id = parseInt(el.dataset.id); 
+            const field = el.dataset.field; 
+            const servico = servicos.find(s => s.id === id); 
+            if (!servico) return; 
+            
+            servico[field] = el.value; 
+            el.classList.remove('campo-invalido'); 
+            
+            if (field === 'sistema') { 
+                servico.subsistema = ""; 
+                renderizarServicos(); 
+            } 
+            
+            // NOVO BLOCO: Validação Imediata do Tempo
+            if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
+                const isValid = validarTempoServico(servico);
+                const inputFim = document.getElementById(`fim-${servico.id}`);
+                const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
+                
+                if (inputFim && inputDataFinal) {
+                    if (!isValid) {
+                        inputFim.classList.add('campo-invalido');
+                        inputDataFinal.classList.add('campo-invalido');
+                    } else {
+                        inputFim.classList.remove('campo-invalido');
+                        inputDataFinal.classList.remove('campo-invalido');
+                    }
+                }
+            }
+            
+            const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
+            if (camposQueAtualizamCabecalho.includes(field)) { 
+                const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
+                if (cabecalhoInfo) { 
+                    cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
+                } 
+            } 
+            
+            salvarTudo(); 
+        }
+        function adicionarServico(dadosPreenchidos = null) { 
+            if (!validarCamposTurnoBasicos()) return; 
+            const id = Date.now(); 
+            const novoServico = dadosPreenchidos || { 
+                id, 
+                frota: "", 
+                atividade: "", 
+                sistema: "", 
+                subsistema: "", 
+                descricao: "", 
+                tipo: "CORRETIVA", 
+                parada: "sim", 
+                falha: "não", 
+                data: document.getElementById('dataTurno')?.value || dataHojeInputLocal(), 
+                inicio: "", 
+                dataFinal: document.getElementById('dataTurno')?.value || dataHojeInputLocal(), 
+                fim: "", 
+                texto: "", 
+                oportunidade: "", 
+                isExpanded: true, 
+                foiCompartilhado: false,
+                pecasUtilizadas: [] // NOVO: Inicializa o array de peças
+            }; 
+            servicos.push(novoServico); 
+            renderizarServicos(); 
+            salvarTudo(); 
+            showToast("Novo serviço adicionado.", 'success'); 
+            setTimeout(() => document.getElementById(`servico_${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); 
+        }
         async function removerServico(id) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir Serviço', 'Tem certeza?', resolve)); if (confirmado) { const index = servicos.findIndex(s => s.id === id); if (index > -1) { servicos.splice(index, 1); renderizarServicos(); salvarTudo(); showToast("Serviço removido.", 'success'); } } }
         function toggleDetalhesServico(id) { const servico = servicos.find(s => s.id === id); if (!servico) return; servico.isExpanded = !servico.isExpanded; const article = document.getElementById(`servico_${id}`); if (!article) return; const detalhes = article.querySelector('.servico-detalhes'); const toggler = article.querySelector('.servico-cabecalho-toggler'); detalhes.style.display = servico.isExpanded ? 'block' : 'none'; toggler.innerHTML = servico.isExpanded ? '&#9650;' : '&#9660;'; if (servico.isExpanded) preencherDetalhesServico(servico); }
-        async function processarOS(id) { const servico = servicos.find(s => s.id === id); if (!servico) return; const camposObrigatorios = ['frota', 'atividade', 'sistema', 'subsistema', 'descricao', 'data', 'inicio', 'dataFinal', 'fim']; let camposInvalidos = []; const article = document.getElementById(`servico_${servico.id}`); camposObrigatorios.forEach(field => { const el = article.querySelector(`[data-field="${field}"]`); if (!servico[field] || servico[field].trim() === "") { camposInvalidos.push(field); if (el) el.classList.add('campo-invalido'); } else { if (el) el.classList.remove('campo-invalido'); } }); if (camposInvalidos.length > 0) { showToast('Preencha todos os campos obrigatórios.', 'error'); return; } const dataInicialObj = new Date(`${servico.data}T${servico.inicio}`); const dataFinalObj = new Date(`${servico.dataFinal}T${servico.fim}`); if (dataFinalObj < dataInicialObj) { showToast('A data/hora final não pode ser anterior à inicial.', 'error'); article.querySelector('[data-field="dataFinal"]').classList.add('campo-invalido'); article.querySelector('[data-field="fim"]').classList.add('campo-invalido'); return; } const gerarTextoFinal = () => { const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA"; const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n') : "Equipe não informada."; const dataFormatada = formatarDataParaExibicao(servico.data); const dataFinalFormatada = formatarDataParaExibicao(servico.dataFinal); const txt = `*SOLICITAÇÃO DE O.S*\n\n*Máquina está parada por manutenção:*\n(${servico.parada === "sim" ? "❌" : " "}) sim *(${servico.parada === "não" ? "❌" : " "}) não*\n*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n•Frota afetada: ${servico.frota}\n•Local/frente: ${frente}\n\n•Tipo de manutenção:\n(${servico.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n(${servico.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n(${servico.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n•Descrição serviço\n${servico.descricao}\n(${servico.atividade.split(" - ")[0]} - ${servico.sistema} - ${(servico.subsistema || "").split(" - ")[0]})\n${servico.oportunidade ? `Oportunidade: ${servico.oportunidade}\n\n` : '\n'}•Foi falha operacional?\n(${servico.falha === "sim" ? "❌" : " "}) Sim\n(${servico.falha === "não" ? "❌" : " "}) Não\n\nData inicial: ${dataFormatada}\nHora inicial: ${servico.inicio}\nData final: ${dataFinalFormatada}\nHora fim: ${servico.fim}\n\nSolicitante:\n${equipeTexto}`; servico.texto = txt; servico.isExpanded = true; salvarOSnoHistorico(servico.id); salvarTudo(true); renderizarServicos(); showToast("O.S. gerada/atualizada!", 'success'); setTimeout(() => document.getElementById(`servico_${servico.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }; if (servico.tipo === "CONDICIONAL" || servico.tipo === "MELHORIA") { abrirPopupInput('Informar Oportunidade', 'Para manutenção Condicional/Melhoria, informe a oportunidade:', 'Ex: Refeição, DDS...', servico.oportunidade || '', (oportunidade) => { if (oportunidade !== null) { servico.oportunidade = oportunidade; gerarTextoFinal(); } }); } else { servico.oportunidade = ""; gerarTextoFinal(); } }
+                async function processarOS(id) { 
+            const servico = servicos.find(s => s.id === id); 
+            if (!servico) return; 
+            
+            const camposObrigatorios = ['frota', 'atividade', 'sistema', 'subsistema', 'descricao', 'data', 'inicio', 'dataFinal', 'fim']; 
+            let camposInvalidos = []; 
+            const article = document.getElementById(`servico_${servico.id}`); 
+            
+            // Validação de campos vazios
+            camposObrigatorios.forEach(field => { 
+                const el = article.querySelector(`[data-field="${field}"]`); 
+                if (!servico[field] || servico[field].trim() === "") { 
+                    camposInvalidos.push(field); 
+                    if (el) el.classList.add('campo-invalido'); 
+                } else { 
+                    if (el) el.classList.remove('campo-invalido'); 
+                } 
+            }); 
+            
+            if (camposInvalidos.length > 0) { 
+                showToast('Preencha todos os campos obrigatórios.', 'error'); 
+                return; 
+            } 
+            
+            // Validação de tempo (início vs. fim)
+            if (!validarTempoServico(servico)) {
+                showToast('A data/hora final não pode ser anterior à inicial.', 'error');
+                // Garante que o destaque de erro seja aplicado
+                article.querySelector('[data-field="dataFinal"]').classList.add('campo-invalido');
+                article.querySelector('[data-field="fim"]').classList.add('campo-invalido');
+                return;
+            }
+            
+            const gerarTextoFinal = () => { 
+                const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA"; 
+                const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n') : "Equipe não informada."; 
+                const dataFormatada = formatarDataParaExibicao(servico.data); 
+                const dataFinalFormatada = formatarDataParaExibicao(servico.dataFinal); 
+
+                // MODIFICADO: Geração da seção de Peças
+                let secaoPecas = '';
+                if (servico.pecasUtilizadas && servico.pecasUtilizadas.length > 0) {
+                    const pecasTexto = servico.pecasUtilizadas.map(p => {
+                        const sap = p.codigoSap ? `SAP.[${p.codigoSap}]` : '';
+                        const pn = p.partNumber ? `PartNumber [${p.partNumber}]` : '';
+                        return `- qtd: *(${p.quantidade})* - ${p.descricao} - ${sap} - ${pn}`;
+                    }).join('\n');
+                    
+                    // A seção SÓ É ADICIONADA SE HOUVER PEÇAS
+                    secaoPecas = `\n\n⚙️ *Peças:*\n\n${pecasTexto}`;
+                }
+                
+                const txt = `*SOLICITAÇÃO DE O.S*\n\n*Máquina está parada por manutenção:*\n(${servico.parada === "sim" ? "❌" : " "}) sim *(${servico.parada === "não" ? "❌" : " "}) não*\n*se SIM abre ORDEM*\n*se NÃO abre Pré-Ordem*\n\n•Frota afetada: ${servico.frota}\n•Local/frente: ${frente}\n\n•Tipo de manutenção:\n(${servico.tipo === "CORRETIVA" ? "❌" : " "}) CORRETIVA ORDEM DE MANUTENÇÃO\n(${servico.tipo === "CONDICIONAL" ? "❌" : " "}) CONDICIONAL PRÉ-ORDEM\n(${servico.tipo === "MELHORIA" ? "❌" : " "}) MELHORIA PRÉ-ORDEM\n\n•Descrição serviço\n${servico.descricao}\n(${servico.atividade.split(" - ")[0]} - ${servico.sistema} - ${(servico.subsistema || "").split(" - ")[0]})\n${servico.oportunidade ? `Oportunidade: ${servico.oportunidade}\n\n` : '\n'}•Foi falha operacional?\n(${servico.falha === "sim" ? "❌" : " "}) Sim\n(${servico.falha === "não" ? "❌" : " "}) Não\n\nData inicial: ${dataFormatada}\nHora inicial: ${servico.inicio}\nData final: ${dataFinalFormatada}\nHora fim: ${servico.fim}\n\nSolicitante:\n${equipeTexto}${secaoPecas}`; 
+                
+                servico.texto = txt; 
+                servico.isExpanded = true; 
+                salvarOSnoHistorico(servico.id); 
+                salvarTudo(true); 
+                renderizarServicos(); 
+                showToast("O.S. gerada/atualizada!", 'success'); 
+                setTimeout(() => document.getElementById(`servico_${servico.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); 
+            }; 
+            if (servico.tipo === "CONDICIONAL" || servico.tipo === "MELHORIA") { abrirPopupInput('Informar Oportunidade', 'Para manutenção Condicional/Melhoria, informe a oportunidade:', 'Ex: Refeição, DDS...', servico.oportunidade || '', (oportunidade) => { if (oportunidade !== null) { servico.oportunidade = oportunidade; gerarTextoFinal(); } }); } else { servico.oportunidade = ""; gerarTextoFinal(); } 
+        }
+
         async function copiarTexto(id, button) { const servico = servicos.find(s => s.id === id); if (!servico || !servico.texto) { showToast("Gere a O.S. primeiro.", 'error'); return; } try { await navigator.clipboard.writeText(servico.texto); showToast("Texto da O.S. copiado!", 'success'); button.innerText = 'Copiado!'; setTimeout(() => { minimizarServico(id); button.innerText = 'Copiar'; }, 1000); } catch (err) { showToast("Falha ao copiar texto.", 'error'); } }
         function compartilharWhatsApp(id) { const servico = servicos.find(s => s.id === id); if (!servico || !servico.texto) { showToast("Gere a O.S. primeiro.", 'error'); return; } servico.foiCompartilhado = true; salvarTudo(true); preencherDetalhesServico(servico); window.open(`https://wa.me/?text=${encodeURIComponent(servico.texto)}`, "_blank"); minimizarServico(id); }
-        function adicionarServicoDepois(idReferencia) { const refServico = servicos.find(s => s.id === idReferencia); if (!refServico) return; minimizarServico(idReferencia); const novoServico = { id: Date.now(), frota: refServico.frota, atividade: "", sistema: refServico.sistema, subsistema: "", descricao: "", tipo: "CORRETIVA", parada: "sim", falha: "não", data: refServico.dataFinal, dataFinal: refServico.dataFinal, inicio: refServico.fim, fim: "", texto: "", oportunidade: "", isExpanded: true, foiCompartilhado: false }; const index = servicos.findIndex(s => s.id === idReferencia); servicos.splice(index + 1, 0, novoServico); renderizarServicos(); salvarTudo(); showToast("Novo serviço adicionado abaixo.", 'success'); setTimeout(() => document.getElementById(`servico_${novoServico.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }
+        function adicionarServicoDepois(idReferencia) { const refServico = servicos.find(s => s.id === idReferencia); if (!refServico) return; minimizarServico(idReferencia); const novoServico = { id: Date.now(), frota: refServico.frota, atividade: "", sistema: refServico.sistema, subsistema: "", descricao: "", tipo: "CORRETIVA", parada: "sim", falha: "não", data: refServico.dataFinal, dataFinal: refServico.dataFinal, inicio: refServico.fim, fim: "", texto: "", oportunidade: "", isExpanded: true, foiCompartilhado: false, pecasUtilizadas: [] }; const index = servicos.findIndex(s => s.id === idReferencia); servicos.splice(index + 1, 0, novoServico); renderizarServicos(); salvarTudo(); showToast("Novo serviço adicionado abaixo.", 'success'); setTimeout(() => document.getElementById(`servico_${novoServico.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }
+        
+        // ---------------------------------
+        // NOVAS FUNÇÕES: GESTÃO DE PEÇAS NO SERVIÇO
+        // ---------------------------------
+        function abrirPopupSelecaoPecas(servicoId) {
+            if (catalogoLocal.length === 0) {
+                showToast("Catálogo de peças vazio. Importe ou adicione itens.", 'error', 3000);
+                return;
+            }
+            
+            // Filtro inicial e renderização do catálogo dentro do popup
+            const itensFiltrados = catalogoLocal.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+            
+            let conteudo = `<input type="text" id="popupBuscaPeca" oninput="renderizarPecasParaServico(${servicoId})" placeholder="🔎 Buscar peça por SAP/Descrição..." class="w-full p-2 border border-gray-300 rounded-lg mb-3">
+            <div id="listaPecasPopup" class="max-h-64 overflow-y-auto space-y-2">`;
+            
+            conteudo += renderizarPecasParaServicoHTML(itensFiltrados, servicoId);
+            conteudo += `</div>`;
+
+            abrirPopup('Selecionar Peça', `<div id="popup-content-wrapper">${conteudo}</div>`, [
+                { texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }
+            ]);
+        }
+
+        function renderizarPecasParaServico(servicoId) {
+            const listaDiv = document.getElementById('listaPecasPopup');
+            if (!listaDiv) return;
+
+            const termoBusca = removerAcentos(document.getElementById('popupBuscaPeca').value.toLowerCase());
+
+            const itensFiltrados = catalogoLocal.filter(item => {
+                const codigoSap = removerAcentos(String(item.codigoSap || '').toLowerCase());
+                const partNumber = removerAcentos(String(item.partNumber || '').toLowerCase());
+                const descricaoNormalizada = removerAcentos(String(item.descricao || '').toLowerCase());
+
+                return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricaoNormalizada.includes(termoBusca));
+            });
+
+            listaDiv.innerHTML = renderizarPecasParaServicoHTML(itensFiltrados, servicoId);
+        }
+
+        function renderizarPecasParaServicoHTML(itens, servicoId) {
+            if (itens.length === 0) {
+                return `<p class="text-center text-gray-500 py-4">Nenhum item encontrado.</p>`;
+            }
+
+            return itens.map(item => `
+                <div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-blue-50">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-gray-800 truncate">${item.descricao}</p>
+                        <p class="text-xs text-gray-600">SAP: ${item.codigoSap || 'N/D'} | PN: ${item.partNumber || 'N/D'}</p>
+                    </div>
+                    <button onclick="selecionarPecaParaServico(${servicoId}, '${item.docId}')" class="py-1 px-3 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold ml-2">
+                        Adicionar
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function selecionarPecaParaServico(servicoId, docId) {
+            const peca = catalogoLocal.find(p => p.docId === docId);
+            if (!peca) return;
+
+            abrirPopupInput(
+                `Qtd. para: ${peca.descricao.substring(0, 30)}...`,
+                'Digite a quantidade utilizada (apenas números):',
+                'Ex: 1, 5.5',
+                '1',
+                (quantidade) => {
+                    if (quantidade && !isNaN(parseFloat(quantidade)) && parseFloat(quantidade) > 0) {
+                        adicionarPecaUtilizada(servicoId, peca, parseFloat(quantidade));
+                    } else {
+                        showToast("Quantidade inválida.", "error");
+                    }
+                },
+                'number'
+            );
+        }
+
+        function adicionarPecaUtilizada(servicoId, peca, quantidade) {
+            const servico = servicos.find(s => s.id === servicoId);
+            if (!servico) return;
+
+            servico.pecasUtilizadas.push({
+                ...peca, // Inclui docId, codigoSap, partNumber, descricao
+                quantidade: quantidade
+            });
+
+            fecharPopup();
+            salvarTudo();
+            preencherDetalhesServico(servico); // Renderiza a lista de peças no cartão
+            showToast(`Peça adicionada: ${quantidade}x ${peca.descricao}`, 'success');
+        }
+
+        function removerPecaUtilizada(servicoId, pecaIndex) {
+            const servico = servicos.find(s => s.id === servicoId);
+            if (!servico) return;
+
+            servico.pecasUtilizadas.splice(pecaIndex, 1);
+
+            salvarTudo();
+            preencherDetalhesServico(servico); // Renderiza a lista de peças no cartão
+            showToast(`Peça removida.`, 'success');
+        }
+
         // ---------------------------------
         // MÓDULO: HISTÓRICO
         // ---------------------------------
@@ -700,7 +1154,82 @@ function toggleBotoesHistorico(uniqueId) {
 
         async function renderizarSecaoEstatisticas(container) { const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const totalHorasParadas = calcularHorasParadasCorretivasTotais(); const dmTurnoAtual = calcularDMGeral(maquinasPrincipais, totalHorasParadas); const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); const osPorDia = {}; osHistorico.forEach(item => { const dataKey = item.dataOS.split('-').reverse().join('/'); osPorDia[dataKey] = (osPorDia[dataKey] || 0) + 1; }); const labels = Object.keys(osPorDia).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'))).slice(-15); const data = labels.map(label => osPorDia[label]); container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Estatísticas do Turno</h2><div class="p-4 border border-gray-200 rounded-lg text-center"><h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4><p class="text-4xl font-bold text-green-600">${dmTurnoAtual}%</p><p class="text-sm text-gray-500 mt-1">Base: ${maquinasPrincipais.length} máquinas. Considera paradas corretivas de todas as frotas.</p></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">O.S. Registradas (Últimos 15 dias)</h4><canvas id="graficoHistoricoOS"></canvas></div></div>`; const ctx = document.getElementById('graficoHistoricoOS'); if (graficoOS) graficoOS.destroy(); if (ctx) { graficoOS = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Nº de O.S.', data, backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); } }
         async function renderizarSecaoRelatorio(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><div id="aviso_relatorio_desatualizado" class="hidden p-3 mb-4 text-sm text-yellow-700 bg-yellow-100 rounded-lg" role="alert"><span class="font-medium">Atenção!</span> Existem serviços novos ou alterados desde que este relatório foi gerado. Clique em "Gerar Relatório Final" para o atualizar.</div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Visualização</h4><div id="relatorio_formatado" class="p-3 bg-gray-50 border rounded-md min-h-[100px] whitespace-pre-line"></div><textarea id="relatorio_bruto" class="hidden mt-1 w-full p-2 border rounded-md font-mono h-64"></textarea><input type="hidden" id="relatorio_snapshot"></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Ações</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onclick="gerarRelatorioFinal()" class="py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">Gerar Relatório Final</button><button onclick="compartilharRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-gray-500 hover:bg-gray-600 text-white">Compartilhar</button><button onclick="toggleEdicaoRelatorio(this)" class="py-2 px-4 rounded-md font-semibold bg-yellow-500 hover:bg-yellow-600 text-white">Editar Relatório</button><button onclick="limparRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Limpar Relatório</button></div></div></div>`; try { const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)); const relatorioSalvo = dados?.relatorio || ''; const snapshotSalvo = dados?.relatorioGeradoComServicos || '[]'; if (relatorioSalvo) { document.getElementById('relatorio_bruto').value = relatorioSalvo; document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorioSalvo); document.getElementById('relatorio_snapshot').value = snapshotSalvo; if (snapshotSalvo !== JSON.stringify(servicos)) { document.getElementById('aviso_relatorio_desatualizado').classList.remove('hidden'); } } } catch (e) { console.error("Erro ao carregar relatório salvo:", e); } }
-        async function gerarRelatorioFinal() { if (!validarCamposTurnoBasicos()) return; const data = document.getElementById("dataTurno").value; const fazenda = document.getElementById("fazenda").value.trim().toUpperCase(); const frente = document.getElementById("frente").value.trim().toUpperCase(); const turnoLetra = document.getElementById("turnoLetra").value; const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome.toUpperCase()} - ${item.matricula}`).join('\n') : "EQUIPE NÃO INFORMADA"; const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const horasPlanejadasTotais = maquinasPrincipais.reduce((soma, f) => soma + f.horas, 0); const horasParadasTotais = calcularHorasParadasCorretivasTotais(); const dmGeral = calcularDMGeral(maquinasPrincipais, horasParadasTotais); const mediaHorasPorMaquina = maquinasPrincipais.length > 0 ? (horasPlanejadasTotais / maquinasPrincipais.length) : 0; let relatorio = `*MANUTENÇÃO ${frente} BRACELL*\n\n📅 *DATA:* ${formatarDataParaExibicao(data)}\n*FAZENDA:* ${fazenda}\n*FRENTE:* ${frente}\n*TURNO:* ${turnoLetra}\n*EQUIPE:*\n${equipeTexto}\n\n*QTD DE MÁQUINAS:* ${maquinasPrincipais.length}\n*HORAS PLANEJADAS (por máquina):* ${mediaHorasPorMaquina.toFixed(2).replace('.', ',')}h\n*HORAS PLANEJADAS TOTAIS (máquinas):* ${horasPlanejadasTotais.toFixed(2).replace('.', ',')}h\n*HORAS TOTAIS PARADAS (corretivas):* ${horasParadasTotais.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadasTotais)})\n\n🟢 *DM DO TURNO:* ${dmGeral}%\n\n--- DETALHAMENTO POR FROTA ---\n`; const frotasComServico = [...new Set(servicos.map(s => s.frota))].sort(); frotasComServico.forEach(nomeFrota => { const frota = frotasTurno.find(f => f.nome === nomeFrota); if (!frota) return; const dmFrota = calcularDMFrota(nomeFrota); const horasParadaDaFrota = servicos.filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0); relatorio += `\n🚜 *${frota.nome.toUpperCase()}* ${getTipoTexto(frota.tipo)}\nHoras Planejada: ${frota.horas.toFixed(2).replace('.', ',')}h\nHoras Parada (Corretivas): ${horasParadaDaFrota.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadaDaFrota)})\n*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`; servicos.filter(s => s.frota === nomeFrota).forEach(s => { const duracao = calcularDuracaoServico(s); const codAtiv = (s.atividade || "N/A").split(" - ")[0]; const codSistema = s.sistema || "N/A"; const codSub = (s.subsistema || "N/A").split(" - ")[0]; const emoji = s.tipo === "CORRETIVA" ? "🔧" : (s.tipo === "CONDICIONAL" ? "⏳" : "✨"); relatorio += `${s.descricao.trim()}\n  (${codAtiv} - ${codSistema} - ${codSub}) ${emoji} [${s.tipo}]\n  ⏱️ Duração: ${duracao.texto} (Decimal: ${duracao.horas.toFixed(2).replace('.', ',')}h)\n`; if (s.oportunidade) { relatorio += `Oportunidade: ${s.oportunidade}\n`; } relatorio += '\n'; }); }); document.getElementById('relatorio_bruto').value = relatorio; document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorio); document.getElementById('relatorio_snapshot').value = JSON.stringify(servicos); document.getElementById('aviso_relatorio_desatualizado').classList.add('hidden'); salvarTudo(true); showToast('Relatório gerado e salvo!', 'success'); }
+        async function gerarRelatorioFinal() { 
+    if (!validarCamposTurnoBasicos()) return; 
+
+    const data = document.getElementById("dataTurno").value; 
+    const fazenda = document.getElementById("fazenda").value.trim().toUpperCase(); 
+    const frente = document.getElementById("frente").value.trim().toUpperCase(); 
+    const turnoLetra = document.getElementById("turnoLetra").value; 
+    const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome.toUpperCase()} - ${item.matricula}`).join('\n') : "EQUIPE NÃO INFORMADA"; 
+    
+    // FILTRAGEM DE SERVIÇOS VÁLIDOS/GERADOS (Para Relatório Limpo)
+    const servicosGerados = servicos.filter(s => s.texto && s.texto.trim() !== '');
+
+    // 1. MÁQUINAS PRINCIPAIS (BASE para o DM Geral)
+    const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); 
+    const horasPlanejadasTotaisGeral = maquinasPrincipais.reduce((soma, f) => soma + (f.horas || 0), 0);
+    
+    // 2. HORAS PARADAS TOTAIS (Numerador do DM Geral - Inclui TODAS as frotas)
+    const horasParadasTotais = calcularHorasParadasCorretivasTotais(servicosGerados);
+    
+    // 3. CÁLCULO FINAL DO DM GERAL (Apenas máquinas principais na base)
+    const dmGeral = calcularDMGeral(maquinasPrincipais, horasParadasTotais); 
+    
+    const mediaHorasPorMaquina = maquinasPrincipais.length > 0 ? (horasPlanejadasTotaisGeral / maquinasPrincipais.length) : 0; 
+    
+    // Geração do Cabeçalho
+    let relatorio = `*MANUTENÇÃO ${frente} BRACELL*\n\n📅 *DATA:* ${formatarDataParaExibicao(data)}\n*FAZENDA:* ${fazenda}\n*FRENTE:* ${frente}\n*TURNO:* ${turnoLetra}\n*EQUIPE:*\n${equipeTexto}\n\n*QTD DE MÁQUINAS PRINCIPAIS:* ${maquinasPrincipais.length}\n*HORAS PLANEJADAS (por máquina):* ${mediaHorasPorMaquina.toFixed(2).replace('.', ',')}h\n*HORAS PLANEJADAS TOTAIS (máquinas):* ${horasPlanejadasTotaisGeral.toFixed(2).replace('.', ',')}h\n*HORAS TOTAIS PARADAS (corretivas):* ${horasParadasTotais.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadasTotais)})\n\n🟢 *DM DO TURNO:* ${dmGeral}%\n\n--- DETALHAMENTO POR FROTA ---\n`; 
+    
+    // DETALHAMENTO POR FROTA (Itera sobre todas as frotas que tiveram serviço gerado)
+    const frotasComServico = [...new Set(servicosGerados.map(s => s.frota))].sort(); 
+    
+    frotasComServico.forEach(nomeFrota => { 
+        const frota = frotasTurno.find(f => f.nome === nomeFrota); 
+        if (!frota) return; 
+        
+        const horasPlanejadasFrota = frota.horas || 0;
+        const servicosDaFrotaGerados = servicosGerados.filter(s => s.frota === nomeFrota);
+        
+        const horasParadaDaFrota = servicosDaFrotaGerados.filter(s => s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0);
+        
+        // CÁLCULO DM POR FROTA INDIVIDUAL: 
+        let dmFrota = "100.00"; // Padrão
+
+        if (horasPlanejadasFrota > 0) {
+            // Máquina Principal: Cálculo normal (usa Horas Planejadas como denominador)
+            const horasOperando = Math.max(0, horasPlanejadasFrota - horasParadaDaFrota);
+            dmFrota = ((horasOperando / horasPlanejadasFrota) * 100).toFixed(2); 
+        } else if (horasParadaDaFrota > 0) {
+            // Frota sem H.P. (Implemento/Apoio) que Parou: Forçamos 0.00%
+            dmFrota = "0.00"; 
+        } 
+        // Se horas planejadas = 0 e parada = 0, dmFrota permanece 100.00% (Implícito)
+
+        relatorio += `\n🚜 *${frota.nome.toUpperCase()}* ${getTipoTexto(frota.tipo)}\nHoras Planejada: ${horasPlanejadasFrota.toFixed(2).replace('.', ',')}h\nHoras Parada (Corretivas): ${horasParadaDaFrota.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadaDaFrota)})\n*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`; 
+        
+        servicosDaFrotaGerados.forEach(s => { 
+            const duracao = calcularDuracaoServico(s); 
+            const codAtiv = (s.atividade || "N/A").split(" - ")[0]; 
+            const codSistema = s.sistema || "N/A"; 
+            const codSub = (s.subsistema || "N/A").split(" - ")[0]; 
+            const emoji = s.tipo === "CORRETIVA" ? "🔧" : (s.tipo === "CONDICIONAL" ? "⏳" : "✨"); 
+            
+            relatorio += `${s.descricao.trim()}\n  (${codAtiv} - ${codSistema} - ${codSub}) ${emoji} [${s.tipo}]\n  ⏱️ Duração: ${duracao.texto} (Decimal: ${duracao.horas.toFixed(2).replace('.', ',')}h)\n`; 
+            
+            if (s.oportunidade) { relatorio += `Oportunidade: ${s.oportunidade}\n`; } 
+            relatorio += '\n'; 
+        }); 
+    }); 
+    
+    document.getElementById('relatorio_bruto').value = relatorio; 
+    document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorio); 
+    document.getElementById('relatorio_snapshot').value = JSON.stringify(servicos); 
+    document.getElementById('aviso_relatorio_desatualizado').classList.add('hidden'); 
+    salvarTudo(true); 
+    showToast('Relatório gerado e salvo!', 'successo!'); 
+}
+
         function calcularDuracaoEmHorasMinutos(horasDecimais) { if (isNaN(horasDecimais) || horasDecimais <= 0) return "0min"; const h = Math.floor(horasDecimais); const m = Math.round((horasDecimais - h) * 60); let texto = ""; if (h > 0) texto += `${h}h `; if (m > 0) texto += `${m}min`; return texto.trim() || "0min"; }
         function compartilharRelatorio() { const texto = document.getElementById("relatorio_bruto").value; if (!texto.trim()) { showToast("Gere o relatório primeiro.", "error"); return; } window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); }
         function toggleEdicaoRelatorio(button) { const textarea = document.getElementById("relatorio_bruto"); const div = document.getElementById("relatorio_formatado"); if (textarea.classList.contains('hidden')) { textarea.value = div.innerText; textarea.classList.remove('hidden'); div.classList.add('hidden'); button.innerText = 'Salvar Edição'; button.classList.replace('bg-yellow-500', 'bg-green-500'); } else { div.innerHTML = interpretarMarkdown(textarea.value); textarea.classList.add('hidden'); div.classList.remove('hidden'); button.innerText = 'Editar Relatório'; button.classList.replace('bg-green-500', 'bg-yellow-500'); showToast('Relatório atualizado.', 'success'); } }
@@ -793,9 +1322,17 @@ function toggleBotoesHistorico(uniqueId) {
         function editarItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); if (item) { abrirPopupFormularioItemCatalogo(item); } else { showToast("Item não encontrado para edição.", "error"); } }
         async function excluirItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); const itemIdentifier = item?.descricao || item?.codigoSap || item?.partNumber || docId; const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir Item', `Tem a certeza que deseja excluir o item <strong>${itemIdentifier}</strong>?`, resolve)); if (confirmado) { try { await firestore.collection('catalogo').doc(docId).delete(); showToast("Item excluído com sucesso!", "success"); } catch (error) { console.error("Erro ao excluir item no Firebase:", error); showToast("Erro ao excluir o item.", "error"); } } }
         function calcularDuracaoServico(servico) { if (!servico.inicio || !servico.fim || !servico.data || !servico.dataFinal) return { horas: 0, texto: "0min" }; const inicio = new Date(`${servico.data}T${servico.inicio}`); const fim = new Date(`${servico.dataFinal}T${servico.fim}`); if (isNaN(inicio.getTime()) || isNaN(fim.getTime()) || fim < inicio) return { horas: 0, texto: "Inválido" }; const diffMin = (fim - inicio) / 60000; const h = Math.floor(diffMin / 60); const m = Math.round(diffMin % 60); let texto = ""; if (h > 0) texto += `${h}h `; if (m > 0) texto += `${m}min`; return { horas: diffMin / 60, texto: texto.trim() || "0min" }; }
-        function calcularHorasParadasCorretivasTotais() { return servicos.filter(s => s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0); }
-        function calcularDMFrota(nomeFrota) { const frota = frotasTurno.find(f => f.nome === nomeFrota); if (!frota || !frota.horas || frota.horas <= 0) return "N/A"; const horasParadasDaFrota = servicos.filter(s => s.frota === nomeFrota && s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0); const horasOperando = Math.max(0, frota.horas - horasParadasDaFrota); return ((horasOperando / frota.horas) * 100).toFixed(2); }
-        function calcularDMGeral(maquinas, horasParadasTotais) { const horasPlanejadasTotais = maquinas.reduce((soma, f) => soma + f.horas, 0); if (horasPlanejadasTotais === 0) return maquinas.length > 0 ? "0.00" : "100.00"; const horasOperandoTotais = Math.max(0, horasPlanejadasTotais - horasParadasTotais); return ((horasOperandoTotais / horasPlanejadasTotais) * 100).toFixed(2); }
+        // MODIFICADO: Agora aceita uma lista de serviços como argumento (padrão para todos)
+function calcularHorasParadasCorretivasTotais(listaServicos = servicos) { 
+    return listaServicos.filter(s => s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0); 
+}
+        // MODIFICADO: Chamada para usar a nova versão de calcularHorasParadasCorretivasTotais
+function calcularDMGeral(maquinas, horasParadasTotais) { 
+    const horasPlanejadasTotais = maquinas.reduce((soma, f) => soma + f.horas, 0); 
+    if (horasPlanejadasTotais === 0) return maquinas.length > 0 ? "0.00" : "100.00"; 
+    const horasOperandoTotais = Math.max(0, horasPlanejadasTotais - horasParadasTotais); 
+    return ((horasOperandoTotais / horasPlanejadasTotais) * 100).toFixed(2); 
+}
 
         // =================================================================================
         // 8. SINCRONIZAÇÃO COM FIREBASE
@@ -814,6 +1351,8 @@ function toggleBotoesHistorico(uniqueId) {
                 tx.oncomplete = async () => {
                     if (houveMudanca) {
                         catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
+                        // NOVO: Feedback visual
+                        showToast("Catálogo de Peças atualizado (via nuvem).", 'info', 1500); 
                         if (document.getElementById('catalogo')?.classList.contains('hidden') === false) {
                             renderizarCatalogo();
                         }
@@ -836,6 +1375,8 @@ function toggleBotoesHistorico(uniqueId) {
                 tx.oncomplete = async () => {
                     if (houveMudanca) {
                         catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll());
+                        // NOVO: Feedback visual
+                        showToast("Catálogo de Frotas atualizado (via nuvem).", 'info', 1500);
                         if (document.getElementById('frotas')?.classList.contains('hidden') === false) {
                             renderizarCatalogoFrotas();
                         }
