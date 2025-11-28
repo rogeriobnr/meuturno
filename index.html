@@ -357,7 +357,7 @@
 </div>
          </div>        
 
-        <div class="pt-4 mt-4 border-t border-gray-200">
+<div class="pt-4 mt-4 border-t border-gray-200">
     <div class="grid grid-cols-3 gap-2">
         
         <button onclick="gerarPreviewApontamento()" 
@@ -374,20 +374,19 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span class="text-[10px] font-bold uppercase leading-tight">Baixar JPG</span>
+            <span class="text-[10px] font-bold uppercase leading-tight">Salvar JPG</span>
         </button>
 
-        <button onclick="baixarApontamento('pdf')" 
-            class="flex items-center justify-center gap-1 py-3 px-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow active:scale-95 transition-all flex-col">
+        <button onclick="baixarOuCompartilharPDF()" 
+            class="flex flex-col items-center justify-center py-3 px-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow active:scale-95 transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            <span class="text-[10px] font-bold uppercase leading-tight">Baixar PDF</span>
+            <span class="text-[10px] font-bold uppercase leading-tight">PDF / Enviar</span>
         </button>
         
     </div>
 </div>
-
 
         <div class="overflow-auto border border-gray-300 rounded mt-4 bg-gray-200 flex justify-center p-2">
             <canvas id="canvasApontamento" class="max-w-full h-auto shadow-lg bg-white"></canvas>
@@ -1243,33 +1242,40 @@ const COORD_FORM = {
 
 // Inicializa a tela de apontamento
 function renderizarSecaoApontamento() {
-    // 1. Preencher Cabeçalho
+    // 1. Preencher Cabeçalho (Colaborador)
     const sel = document.getElementById('apontamentoColaborador');
-    sel.innerHTML = equipe.length 
-        ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
-        : '<option>Sem equipe definida</option>';
+    if (sel) {
+        sel.innerHTML = equipe.length 
+            ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
+            : '<option>Sem equipe definida</option>';
+    }
     
-    document.getElementById('apontamentoData').value = document.getElementById('dataTurno').value;
+    // 2. Sincronizar Data
+    const dataTurno = document.getElementById('dataTurno');
+    const dataApont = document.getElementById('apontamentoData');
+    if (dataTurno && dataApont) {
+        dataApont.value = dataTurno.value;
+    }
 
-    // 2. Inicializar Linhas (Se vazio, cria o DDS padrão)
+    // 3. Inicializar Linhas (Se vazio, cria o DDS padrão)
     if (linhasApontamento.length === 0) {
-        // Adiciona DDS como primeira linha padrão
         linhasApontamento.push({
             id: Date.now(),
             tipo: 'manual',
-            atividade: 'H02 - DDS',
+            atividade: 'H02 - DDS', // Garante que o texto está exato com o da lista 'atividades'
             inicio: '07:00',
             fim: '07:20',
             os: '', frota: '', sistema: '', subsistema: ''
         });
     }
+    
+    // 4. Renderizar a lista
     renderizarListaLinhas();
 }
-
-// Renderiza a lista editável na tela (HTML)
-// Substitua a função antiga por esta versão moderna
 function renderizarListaLinhas() {
     const container = document.getElementById('listaLinhasApontamento');
+    if (!container) return;
+    
     container.innerHTML = '';
 
     if (linhasApontamento.length === 0) {
@@ -1283,87 +1289,120 @@ function renderizarListaLinhas() {
 
     linhasApontamento.forEach((linha, index) => {
         const isServico = linha.tipo === 'servico';
-        
-        // Cores e Estilos baseados no tipo
-        const borderClass = isServico ? 'border-l-4 border-blue-500' : 'border-l-4 border-orange-400';
-        const badgeColor = isServico ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
-        const badgeText = isServico ? 'SERVIÇO' : 'MANUAL';
-        
-        // Input da Atividade
-        let inputAtividade = '';
+        let html = '';
+
         if (isServico) {
-            // Se for serviço, mostra texto fixo com ícone de cadeado (visual)
-            inputAtividade = `
-                <div class="relative">
-                    <input type="text" value="${linha.atividade.split(' - ')[0]}" 
-                        class="w-full p-2.5 pl-3 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-bold" 
-                        readonly>
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <span class="text-gray-400 text-xs">🔒</span>
-                    </div>
-                </div>`;
-        } else {
-            // Se for manual, Select estilizado
-            const opsH = atividades.filter(a => a.startsWith('H')).map(a => `<option value="${a}" ${linha.atividade === a ? 'selected' : ''}>${a}</option>`).join('');
-            inputAtividade = `
-                <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
-                    class="w-full p-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 shadow-sm">
-                    ${opsH}
-                </select>`;
-        }
-
-        // HTML do Cartão
-        const html = `
-        <div class="bg-white rounded-lg shadow-sm p-3 mb-3 border border-gray-200 ${borderClass} transition-all duration-200">
+            // ============================================================
+            // CARTÃO DE SERVIÇO
+            // ============================================================
             
-            <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-                <div class="flex items-center gap-2">
-                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-xs font-bold text-gray-600">
-                        ${index + 1}º
-                    </span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${badgeColor}">
-                        ${badgeText}
-                    </span>
-                    ${isServico ? `<span class="text-[10px] text-gray-500 font-mono bg-gray-100 px-1 rounded">Frota: ${linha.frota}</span>` : ''}
+            // Tratamento de segurança para textos
+            const ativTexto = linha.atividade || '';
+            const codAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[0] : ativTexto;
+            const descAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[1] : '';
+            
+            const sist = linha.sistema || '?';
+            const subRaw = linha.subsistema || '?';
+            const sub = subRaw.includes(' - ') ? subRaw.split(' - ')[0] : subRaw;
+            
+            const infoTecnica = `${codAtiv} - ${sist} - ${sub} (${descAtiv})`;
+
+            html = `
+            <div class="bg-white rounded-lg shadow-sm mb-3 border-l-4 border-blue-600 overflow-hidden">
+                
+                <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
+                    <div class="flex items-center gap-2">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm">
+                            ${index + 1}
+                        </span>
+                        <span class="font-black text-gray-700 text-sm tracking-tight uppercase">
+                            FROTA: ${linha.frota || 'N/A'}
+                        </span>
+                    </div>
+                    <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
+                        <span class="text-xl font-bold">&times;</span>
+                    </button>
                 </div>
-                <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-500 transition-colors p-1">
-                    <span class="text-lg font-bold">&times;</span>
-                </button>
-            </div>
 
-            <div class="mb-3">
-                <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Atividade</label>
-                ${inputAtividade}
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Início</label>
-                    <input type="time" value="${linha.inicio}" 
-                        onchange="atualizarLinha(${index}, 'inicio', this.value)" 
-                        class="w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+                <div class="px-3 py-2 border-b border-gray-50">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Atividade</div>
+                    <div class="text-xs font-bold text-gray-800 leading-snug">
+                        ⚙️ ${infoTecnica}
+                    </div>
                 </div>
-                <div>
-                    <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Fim</label>
-                    <input type="time" value="${linha.fim}" 
-                        onchange="atualizarLinha(${index}, 'fim', this.value)" 
-                        class="w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+
+                <div class="px-3 py-2 bg-blue-50 flex items-center justify-between gap-2">
+                    <div class="text-xs font-bold text-gray-700">
+                        📄 O.S: <span class="bg-white px-1 py-0.5 rounded border border-blue-100 text-blue-800">${linha.os || 'PEND'}</span>
+                    </div>
+                    
+                    <div class="flex items-center bg-white rounded border border-blue-200 px-1 shadow-sm h-8">
+                        <input type="time" value="${linha.inicio}" 
+                            onchange="atualizarLinha(${index}, 'inicio', this.value)" 
+                            class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                        <span class="text-blue-300 font-bold mx-0.5">-</span>
+                        <input type="time" value="${linha.fim}" 
+                            onchange="atualizarLinha(${index}, 'fim', this.value)" 
+                            class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                    </div>
                 </div>
-            </div>
+            </div>`;
 
-            ${isServico ? `
-            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-500">
-                <span>OS: <strong>${linha.os || 'N/A'}</strong></span>
-                <span>Sist: ${linha.sistema}.${linha.subsistema.split(' - ')[0]}</span>
-            </div>
-            ` : ''}
+        } else {
+            // ============================================================
+            // CARTÃO MANUAL (ATUALIZADO PARA FICAR IGUAL AO DE SERVIÇO)
+            // ============================================================
+            
+            const opsH = atividades.filter(a => a.startsWith('H')).map(a => {
+                const isSelected = linha.atividade === a ? 'selected' : '';
+                return `<option value="${a}" ${isSelected}>${a}</option>`;
+            }).join('');
+            
+            html = `
+            <div class="bg-white rounded-lg shadow-sm mb-3 border-l-4 border-orange-400 overflow-hidden">
+                
+                <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
+                    <div class="flex items-center gap-2">
+                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-gray-500 text-white text-xs font-bold shadow-sm">
+                            ${index + 1}
+                        </span>
+                        <span class="font-black text-gray-700 text-xs uppercase tracking-tight">
+                            ATIVIDADE NÃO PRODUTIVA
+                        </span>
+                    </div>
+                    <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
+                        <span class="text-xl font-bold">&times;</span>
+                    </button>
+                </div>
 
-        </div>`;
+                <div class="p-3 bg-orange-50/30 flex flex-col gap-2">
+                    
+                    <div>
+                        <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
+                            class="w-full p-2 text-xs font-bold text-gray-800 bg-white border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 outline-none shadow-sm">
+                            ${opsH}
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end pt-1">
+                        <div class="flex items-center bg-white rounded border border-orange-200 px-1 shadow-sm h-8">
+                            <input type="time" value="${linha.inicio}" 
+                                onchange="atualizarLinha(${index}, 'inicio', this.value)" 
+                                class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                            <span class="text-orange-300 font-bold mx-0.5">-</span>
+                            <input type="time" value="${linha.fim}" 
+                                onchange="atualizarLinha(${index}, 'fim', this.value)" 
+                                class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                        </div>
+                    </div>
+                </div>
+
+            </div>`;
+        }
         
         container.innerHTML += html;
     });
 }
-
 
 // Atualiza dados da memória quando o usuário edita os inputs
 function atualizarLinha(index, campo, valor) {
@@ -1384,6 +1423,8 @@ function adicionarLinhaManual() {
         os: '', frota: '', sistema: '', subsistema: ''
     });
     renderizarListaLinhas();
+    // ADICIONE ESTA LINHA:
+    rolarParaUltimoItemApontamento(); 
 }
 
 function removerLinhaApontamento(index) {
@@ -1392,23 +1433,141 @@ function removerLinhaApontamento(index) {
 }
 
 // Popup para escolher qual serviço importar
-function abrirPopupImportarServico() {
-    if(servicos.length === 0) { showToast("Nenhum serviço registrado.", "error"); return; }
-    
-    // Filtra serviços que já foram importados (opcional, removi para permitir re-importar se precisar)
-    // const idsJaNaLista = linhasApontamento.filter(l => l.idOriginal).map(l => l.idOriginal);
+async function abrirPopupImportarServico() {
+    if (servicos.length === 0) { 
+        showToast("Nenhum serviço registrado para importar.", "error"); 
+        return; 
+    }
+
+    let historico = [];
+    try {
+        historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
+    } catch (e) { console.error(e); }
     
     const listaHtml = servicos.map(s => {
-        const txt = `${s.frota} | ${s.atividade.split(' - ')[0]} | ${s.inicio}-${s.fim}`;
-        return `<div onclick="importarServico(${s.id})" class="p-2 border-b hover:bg-blue-50 cursor-pointer flex justify-between">
-                    <span class="text-sm font-bold text-gray-700">${txt}</span>
-                    <span class="text-xs text-blue-600">Importar</span>
-                </div>`;
+        const itemHist = historico.find(h => h.id === s.id);
+        const temOS = itemHist && itemHist.osNumero && itemHist.osNumero.trim() !== "";
+        const numeroOS = temOS ? itemHist.osNumero : "";
+
+        // Dados formatados
+        const codAtiv = s.atividade.split(' - ')[0]; 
+        const nomeAtiv = s.atividade.split(' - ')[1] || ''; 
+        const sist = s.sistema || '?'; 
+        const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
+        const infoTecnica = `${codAtiv} - ${sist} - ${sub}`;
+        
+        // --- LÓGICA VISUAL E DE AÇÃO ---
+        
+        // Ação do Clique: Importar OU Explicar Erro
+        const action = temOS ? `importarServico(${s.id})` : `explicarFaltaOS()`;
+        
+        // Estilos: Verde/Azul (Ok) vs Laranja (Atenção)
+        const borderClass = temOS ? "border-green-200 hover:border-green-500" : "border-orange-300 bg-orange-50";
+        const badgeFrota = temOS ? "bg-blue-100 text-blue-800" : "bg-orange-200 text-orange-800";
+        const iconColor = temOS ? "text-green-600 bg-green-50" : "text-orange-500 bg-white border border-orange-200";
+        
+        // Badge de Status
+        const statusHTML = temOS 
+            ? `<span class="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded border border-green-200">OS: ${numeroOS}</span>`
+            : `<span class="text-[10px] font-bold text-orange-700 bg-white px-1.5 py-0.5 rounded border border-orange-300 flex items-center gap-1">⚠️ PENDENTE</span>`;
+
+        return `
+        <div onclick="${action}" 
+             class="group relative border rounded-xl p-3 mb-3 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${borderClass}">
+            
+            <div class="flex-1 min-w-0 pr-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="${badgeFrota} text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
+                        ${s.frota}
+                    </span>
+                    ${statusHTML}
+                </div>
+
+                <div class="text-sm font-black text-gray-800 leading-tight">
+                    ⚙️ ${infoTecnica}
+                </div>
+                
+                <div class="flex justify-between items-end mt-1">
+                    <div class="text-xs text-gray-500 truncate max-w-[60%]">${nomeAtiv}</div>
+                    <span class="text-[10px] text-gray-700 font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded">
+                        🕒 ${s.inicio} - ${s.fim}
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex-shrink-0 p-2 rounded-full ${iconColor}">
+                ${temOS 
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>` 
+                    : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`
+                }
+            </div>
+        </div>`;
     }).join('');
 
-    abrirPopup("Selecione o Serviço", `<div class="max-h-60 overflow-y-auto">${listaHtml}</div>`);
+    const conteudoFinal = `
+        <div class="bg-gray-50 -m-5 p-4 mb-0">
+            <p class="text-xs text-gray-500 mb-3 uppercase font-bold tracking-wider text-center">Toque para importar</p>
+            <div class="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                ${listaHtml}
+            </div>
+        </div>
+    `;
+
+    abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
 }
 
+//explica o.s pendente 
+function explicarFaltaOS() {
+    // Fecha o popup de seleção atual para abrir o de alerta
+    fecharPopup();
+
+    setTimeout(() => {
+        const conteudo = `
+            <div class="text-center p-2">
+                <div class="bg-orange-100 text-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    ⚠️
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Falta o Número da O.S.</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Para garantir a qualidade do apontamento, você precisa primeiro 
+                    <strong>finalizar a O.S.</strong> no histórico.
+                </p>
+                <div class="bg-gray-100 p-3 rounded text-left text-xs text-gray-700 mb-4">
+                    <strong>Passo a passo:</strong><br>
+                    1. Vá na aba <b>Histórico</b>.<br>
+                    2. Encontre este serviço.<br>
+                    3. Digite o número e clique em <b>Finalizar</b>.
+                </div>
+            </div>
+        `;
+
+        const botoes = [
+            { 
+                texto: 'Ir para o Histórico Agora', 
+                classe: 'bg-blue-600 text-white hover:bg-blue-700 w-full mb-2 shadow-lg', 
+                acao: irParaAbaHistorico // Chama a navegação
+            },
+            { 
+                texto: 'Voltar', 
+                classe: 'bg-gray-200 text-gray-700 hover:bg-gray-300 w-full', 
+                acao: abrirPopupImportarServico // Reabre a lista
+            }
+        ];
+
+        abrirPopup('Atenção Necessária', conteudo, botoes);
+    }, 200); // Pequeno delay para transição suave
+}
+
+//direcionar ao histórico 
+function irParaAbaHistorico() {
+    fecharPopup();
+    // Usa a sua função 'abrir' existente para trocar a tela
+    abrir('historico');
+    showToast("Localize o serviço e finalize a O.S.", "info", 4000);
+}
+
+
+// importar serviço 
 async function importarServico(servicoId) {
     const s = servicos.find(x => x.id === servicoId);
     
@@ -1446,9 +1605,31 @@ async function importarServico(servicoId) {
         
         const msg = numeroOS ? `Serviço importado (OS: ${numeroOS})` : "Serviço importado (Sem OS)";
         showToast(msg, "success");
+        
+        // ADICIONE ESTA LINHA:
+    rolarParaUltimoItemApontamento(); 
     }
 }
 
+// Função auxiliar para rolar até o novo item
+function rolarParaUltimoItemApontamento() {
+    // Pequeno delay para garantir que o HTML foi desenhado
+    setTimeout(() => {
+        const container = document.getElementById('listaLinhasApontamento');
+        if (container && container.lastElementChild) {
+            container.lastElementChild.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // Opcional: Um flash visual para destacar
+            container.lastElementChild.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
+            setTimeout(() => {
+                container.lastElementChild.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2');
+            }, 1000);
+        }
+    }, 150);
+}
 
 // =================================================================================
 // GERAÇÃO DA IMAGEM (CANVAS)
@@ -1551,7 +1732,6 @@ async function gerarPreviewApontamento() {
 function baixarApontamento(tipo) {
     const canvas = document.getElementById('canvasApontamento');
     
-    // Validação: Se o canvas estiver vazio (width < 100), avisa o usuário
     if (!canvas || canvas.width < 100) { 
         showToast("Gere o preview primeiro!", "error"); 
         return; 
@@ -1561,44 +1741,71 @@ function baixarApontamento(tipo) {
     const nomeArquivo = `Apontamento_${dataInput || 'sem_data'}`;
 
     if (tipo === 'jpg') {
-        // Download direto como imagem
         const link = document.createElement('a');
         link.download = `${nomeArquivo}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.href = canvas.toDataURL('image/jpeg', 0.9); 
         link.click();
-    } else if (tipo === 'pdf') {
-        // Geração de PDF (Requer biblioteca jsPDF)
-        if (!window.jspdf) {
-            showToast("Erro: Biblioteca PDF não carregada.", "error");
-            return;
-        }
+    }
+    
+}
 
+async function baixarOuCompartilharPDF() {
+    const canvas = document.getElementById('canvasApontamento');
+    if (!canvas || canvas.width < 100) { 
+        showToast("Gere o preview primeiro!", "error"); 
+        return; 
+    }
+
+    const dataInput = document.getElementById('apontamentoData').value;
+    const nomeArquivo = `Apontamento_${dataInput || 'hoje'}.pdf`;
+
+    showToast("Gerando PDF...", "info");
+
+    try {
+        // 1. Gerar o PDF
+        if (!window.jspdf) throw new Error("Biblioteca PDF ausente");
         const { jsPDF } = window.jspdf;
-        // Cria PDF Paisagem (Landscape) A4
         const doc = new jsPDF('p', 'mm', 'a4');
-
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = doc.internal.pageSize.getHeight();
         const imgData = canvas.toDataURL('image/jpeg', 0.9);
-
-        // Cálculo de Proporção para não distorcer a imagem
         const ratio = canvas.height / canvas.width;
         const finalHeight = pdfWidth * ratio;
 
         if (finalHeight <= pdfHeight) {
-            // Se couber na altura, usa a largura total
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, finalHeight);
         } else {
-            // Se for muito alta, ajusta pela altura da página
             const finalWidth = pdfHeight / ratio;
             const xOffset = (pdfWidth - finalWidth) / 2;
             doc.addImage(imgData, 'JPEG', xOffset, 0, finalWidth, pdfHeight);
         }
 
-        doc.save(`${nomeArquivo}.pdf`);
+        // 2. Verificar se é possível compartilhar (Android/iOS)
+        if (navigator.share && navigator.canShare) {
+            const pdfBlob = doc.output('blob');
+            const file = new File([pdfBlob], nomeArquivo, { type: "application/pdf" });
+            
+            if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Apontamento',
+                    text: `Segue apontamento do dia ${formatarDataParaExibicao(dataInput)}`
+                });
+                showToast("Compartilhado!", "success");
+                return; // Sucesso, para por aqui
+            }
+        }
+
+        // 3. Fallback: Se não der pra compartilhar (PC), apenas baixa
+        doc.save(nomeArquivo);
+        showToast("PDF Baixado!", "success");
+
+    } catch (error) {
+        console.error(error);
+        // Se cancelou o share, não é erro
+        if (error.name !== 'AbortError') showToast("Erro ao processar PDF", "error");
     }
 }
-
 
 
         // ---------------------------------
