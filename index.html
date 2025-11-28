@@ -7,6 +7,8 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -179,12 +181,16 @@
                 data-secao="servicos">Serviços</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
                 data-secao="frotas">Frotas</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="catalogo">Catálogo de Peças</a>
+            
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
                 data-secao="relatorio">Relatório</a>
+            
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
                 data-secao="historico">Histórico</a>
+            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
+   data-secao="apontamento">Apontamento Diário</a>
+            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
+                data-secao="catalogo">Catálogo de Peças</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
                 data-secao="estatisticas">Estatísticas</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
@@ -250,6 +256,146 @@
         <section id="relatorio" class="hidden"></section>
         <section id="historico" class="hidden"></section>
         <section id="config" class="hidden"></section>
+        
+        <section id="apontamento" class="hidden">
+    <div class="bg-white p-4 rounded-lg shadow space-y-6">
+        <h2 class="text-xl font-bold text-blue-800 border-b pb-2">Apontamento Diário (Bracell)</h2>
+
+        <div class="space-y-4">
+    
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+        <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+            <span class="text-lg">📋</span>
+            <h3 class="font-bold text-gray-800 text-sm uppercase tracking-wide">Dados do Formulário</h3>
+        </div>
+
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
+                    <span>🏭</span> Tipo de Oficina
+                </label>
+                <select id="apontamentoTipoOficina" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium">
+                    <option value="externa">Oficina Externa (Campo)</option>
+                    <option value="interna">Oficina Interna (Automotiva)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
+                    <span>👤</span> Colaborador
+                </label>
+                <select id="apontamentoColaborador" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none font-medium"></select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Setor</label>
+                    <input type="text" id="apontamentoSetor" value="Manutenção Silvicultura" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Data</label>
+                    <input type="date" id="apontamentoData" class="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 cursor-not-allowed" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+ <!--   <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-yellow-800 uppercase flex items-center gap-1">
+                <span>📏</span> Calibração Fina
+            </h3>
+            <span class="text-[10px] text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Ajuste de Impressão</span>
+        </div>
+        
+        <div class="flex space-x-3">
+            <div class="flex-1">
+                <label class="block text-[10px] font-bold text-yellow-700 mb-1">Horizontal (X)</label>
+                <input type="number" id="ajusteXGlobal" value="0" class="w-full p-2 border border-yellow-300 rounded-lg text-sm bg-white text-center font-bold text-gray-700 placeholder-gray-300" placeholder="0">
+            </div>
+            <div class="flex-1">
+                <label class="block text-[10px] font-bold text-yellow-700 mb-1">Vertical (Y)</label>
+                <input type="number" id="ajusteYGlobal" value="0" class="w-full p-2 border border-yellow-300 rounded-lg text-sm bg-white text-center font-bold text-gray-700 placeholder-gray-300" placeholder="0">
+            </div>
+        </div>
+    </div>
+
+</div> -->
+
+            <div class="mt-6">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+            <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg">🕒</span>
+            Linha do Tempo
+        </h3>
+        <span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+            Sequência do Dia
+        </span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <button onclick="adicionarLinhaManual()" 
+            class="flex flex-col items-center justify-center p-3 bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-all group shadow-sm">
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">☕</span>
+            <span class="text-xs font-bold text-gray-600 group-hover:text-orange-600">Atividades (H..)</span>
+            <span class="text-[10px] text-gray-400">Refeição, Organização, Outros...</span>
+        </button>
+
+        <button onclick="abrirPopupImportarServico()" 
+            class="flex flex-col items-center justify-center p-3 bg-blue-50 border-2 border-blue-100 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm">
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🔧</span>
+            <span class="text-xs font-bold text-blue-700">Importar Serviço</span>
+            <span class="text-[10px] text-blue-400"> Não esqueça de adicionar as o.s...</span>
+        </button>
+    </div>
+
+    <div id="listaLinhasApontamento" class="space-y-3 min-h-[100px]">
+        <div class="text-center py-8 text-gray-400 text-sm italic">
+            Nenhuma atividade registrada ainda.
+        </div>
+    </div>
+</div>
+         </div>        
+
+        <div class="pt-4 mt-4 border-t border-gray-200">
+    <div class="grid grid-cols-3 gap-2">
+        
+        <button onclick="gerarPreviewApontamento()" 
+            class="flex flex-col items-center justify-center py-3 px-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow active:scale-95 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase leading-tight">Atualizar</span>
+        </button>
+
+        <button onclick="baixarApontamento('jpg')" 
+            class="flex flex-col items-center justify-center py-3 px-1 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow active:scale-95 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase leading-tight">Baixar JPG</span>
+        </button>
+
+        <button onclick="baixarApontamento('pdf')" 
+            class="flex items-center justify-center gap-1 py-3 px-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow active:scale-95 transition-all flex-col">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase leading-tight">Baixar PDF</span>
+        </button>
+        
+    </div>
+</div>
+
+
+        <div class="overflow-auto border border-gray-300 rounded mt-4 bg-gray-200 flex justify-center p-2">
+            <canvas id="canvasApontamento" class="max-w-full h-auto shadow-lg bg-white"></canvas>
+        </div>
+    </div>
+</section>
+
+
 
         <button id="fabAddFrotaCatalogo" onclick="abrirPopupTipoFrota()"
             class="fixed bottom-12 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-50"
@@ -1059,6 +1205,401 @@ function adicionarFrotasSelecionadasAoTurno() {
             preencherDetalhesServico(servico); // Renderiza a lista de peças no cartão
             showToast(`Peça removida.`, 'success');
         }
+// =================================================================================
+// MÓDULO: APONTAMENTO (NOVA LÓGICA DE EDIÇÃO)
+// =================================================================================
+
+let linhasApontamento = []; // Armazena as linhas que serão impressas
+
+// Configuração das coordenadas (Mantida, ajuste fino se necessário)
+const COORD_FORM = {
+    imagemBase: 'fundo_apontamento.jpg',
+    cabecalho: {
+        oficinaInterna: { x: 323, y: 230 }, // Checkbox Interna
+        oficinaExterna: { x: 1420, y: 230 }, // Checkbox Externa
+        colaborador: { x: 280, y: 400 },
+        id: { x: 280, y: 440}, // Ajustado X para ID não sobrepor nome longo
+        setor: { x: 900, y: 410 },
+        dataDia: { x: 1720, y: 400 },
+        dataMes: { x: 1780, y: 400},
+        dataAno: { x: 1850, y: 400}
+    },
+    grid: {
+        inicioY: 630, 
+        alturaLinha: 90, 
+        colunas: {
+            os: 210,
+            frota: 425,
+            operacao: 620,
+            atividade: 990,
+            sistema: 1370,
+            subsistema: 1570,
+            inicio: 1748,
+            fim: 1888,
+            local: 2250
+        }
+    }
+};
+
+// Inicializa a tela de apontamento
+function renderizarSecaoApontamento() {
+    // 1. Preencher Cabeçalho
+    const sel = document.getElementById('apontamentoColaborador');
+    sel.innerHTML = equipe.length 
+        ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
+        : '<option>Sem equipe definida</option>';
+    
+    document.getElementById('apontamentoData').value = document.getElementById('dataTurno').value;
+
+    // 2. Inicializar Linhas (Se vazio, cria o DDS padrão)
+    if (linhasApontamento.length === 0) {
+        // Adiciona DDS como primeira linha padrão
+        linhasApontamento.push({
+            id: Date.now(),
+            tipo: 'manual',
+            atividade: 'H02 - DDS',
+            inicio: '07:00',
+            fim: '07:20',
+            os: '', frota: '', sistema: '', subsistema: ''
+        });
+    }
+    renderizarListaLinhas();
+}
+
+// Renderiza a lista editável na tela (HTML)
+// Substitua a função antiga por esta versão moderna
+function renderizarListaLinhas() {
+    const container = document.getElementById('listaLinhasApontamento');
+    container.innerHTML = '';
+
+    if (linhasApontamento.length === 0) {
+        container.innerHTML = `
+            <div class="text-center p-6 text-gray-400 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <p>Nenhuma atividade adicionada.</p>
+                <p class="text-xs">Use os botões acima para começar.</p>
+            </div>`;
+        return;
+    }
+
+    linhasApontamento.forEach((linha, index) => {
+        const isServico = linha.tipo === 'servico';
+        
+        // Cores e Estilos baseados no tipo
+        const borderClass = isServico ? 'border-l-4 border-blue-500' : 'border-l-4 border-orange-400';
+        const badgeColor = isServico ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
+        const badgeText = isServico ? 'SERVIÇO' : 'MANUAL';
+        
+        // Input da Atividade
+        let inputAtividade = '';
+        if (isServico) {
+            // Se for serviço, mostra texto fixo com ícone de cadeado (visual)
+            inputAtividade = `
+                <div class="relative">
+                    <input type="text" value="${linha.atividade.split(' - ')[0]}" 
+                        class="w-full p-2.5 pl-3 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-bold" 
+                        readonly>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span class="text-gray-400 text-xs">🔒</span>
+                    </div>
+                </div>`;
+        } else {
+            // Se for manual, Select estilizado
+            const opsH = atividades.filter(a => a.startsWith('H')).map(a => `<option value="${a}" ${linha.atividade === a ? 'selected' : ''}>${a}</option>`).join('');
+            inputAtividade = `
+                <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
+                    class="w-full p-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 shadow-sm">
+                    ${opsH}
+                </select>`;
+        }
+
+        // HTML do Cartão
+        const html = `
+        <div class="bg-white rounded-lg shadow-sm p-3 mb-3 border border-gray-200 ${borderClass} transition-all duration-200">
+            
+            <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                <div class="flex items-center gap-2">
+                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-xs font-bold text-gray-600">
+                        ${index + 1}º
+                    </span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${badgeColor}">
+                        ${badgeText}
+                    </span>
+                    ${isServico ? `<span class="text-[10px] text-gray-500 font-mono bg-gray-100 px-1 rounded">Frota: ${linha.frota}</span>` : ''}
+                </div>
+                <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                    <span class="text-lg font-bold">&times;</span>
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Atividade</label>
+                ${inputAtividade}
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Início</label>
+                    <input type="time" value="${linha.inicio}" 
+                        onchange="atualizarLinha(${index}, 'inicio', this.value)" 
+                        class="w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs font-medium text-gray-500 uppercase">Fim</label>
+                    <input type="time" value="${linha.fim}" 
+                        onchange="atualizarLinha(${index}, 'fim', this.value)" 
+                        class="w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            ${isServico ? `
+            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-500">
+                <span>OS: <strong>${linha.os || 'N/A'}</strong></span>
+                <span>Sist: ${linha.sistema}.${linha.subsistema.split(' - ')[0]}</span>
+            </div>
+            ` : ''}
+
+        </div>`;
+        
+        container.innerHTML += html;
+    });
+}
+
+
+// Atualiza dados da memória quando o usuário edita os inputs
+function atualizarLinha(index, campo, valor) {
+    linhasApontamento[index][campo] = valor;
+}
+
+function adicionarLinhaManual() {
+    // Pega o horário final da última linha para sugerir como início desta
+    const ultima = linhasApontamento[linhasApontamento.length - 1];
+    const inicioSugerido = ultima ? ultima.fim : '07:00';
+
+    linhasApontamento.push({
+        id: Date.now(),
+        tipo: 'manual',
+        atividade: 'H03 - Refeição', // Padrão, usuário muda
+        inicio: inicioSugerido,
+        fim: '',
+        os: '', frota: '', sistema: '', subsistema: ''
+    });
+    renderizarListaLinhas();
+}
+
+function removerLinhaApontamento(index) {
+    linhasApontamento.splice(index, 1);
+    renderizarListaLinhas();
+}
+
+// Popup para escolher qual serviço importar
+function abrirPopupImportarServico() {
+    if(servicos.length === 0) { showToast("Nenhum serviço registrado.", "error"); return; }
+    
+    // Filtra serviços que já foram importados (opcional, removi para permitir re-importar se precisar)
+    // const idsJaNaLista = linhasApontamento.filter(l => l.idOriginal).map(l => l.idOriginal);
+    
+    const listaHtml = servicos.map(s => {
+        const txt = `${s.frota} | ${s.atividade.split(' - ')[0]} | ${s.inicio}-${s.fim}`;
+        return `<div onclick="importarServico(${s.id})" class="p-2 border-b hover:bg-blue-50 cursor-pointer flex justify-between">
+                    <span class="text-sm font-bold text-gray-700">${txt}</span>
+                    <span class="text-xs text-blue-600">Importar</span>
+                </div>`;
+    }).join('');
+
+    abrirPopup("Selecione o Serviço", `<div class="max-h-60 overflow-y-auto">${listaHtml}</div>`);
+}
+
+async function importarServico(servicoId) {
+    const s = servicos.find(x => x.id === servicoId);
+    
+    if (s) {
+        let numeroOS = "";
+
+        try {
+            // Busca no histórico para ver se esse serviço já foi finalizado e tem número
+            const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
+            const itemHist = historico.find(h => h.id === s.id);
+
+            if (itemHist && itemHist.osNumero) {
+                numeroOS = itemHist.osNumero;
+            }
+        } catch (e) {
+            console.error("Erro ao buscar O.S. no histórico", e);
+        }
+
+        // Adiciona à linha do tempo
+        linhasApontamento.push({
+            id: Date.now(),
+            idOriginal: s.id,
+            tipo: 'servico',
+            atividade: s.atividade, // A descrição completa vem aqui, mas o preview corta só o código
+            inicio: s.inicio,
+            fim: s.fim,
+            frota: s.frota,
+            os: numeroOS, // Número da O.S. recuperado
+            sistema: s.sistema,
+            subsistema: s.subsistema
+        });
+
+        renderizarListaLinhas();
+        fecharPopup();
+        
+        const msg = numeroOS ? `Serviço importado (OS: ${numeroOS})` : "Serviço importado (Sem OS)";
+        showToast(msg, "success");
+    }
+}
+
+
+// =================================================================================
+// GERAÇÃO DA IMAGEM (CANVAS)
+// =================================================================================
+async function gerarPreviewApontamento() {
+    const canvas = document.getElementById('canvasApontamento');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const elAjuste = document.getElementById('ajusteYGlobal');
+    const ajusteY = elAjuste ? parseFloat(elAjuste.value) || 0 : 0;
+
+    const img = new Image();
+    img.src = COORD_FORM.imagemBase;
+
+    try {
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+    } catch (e) { 
+        showToast("ERRO: Imagem 'fundo_apontamento.jpg' não encontrada!", "error"); 
+        return; 
+    }
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    ctx.font = "28px Arial"; 
+    ctx.fillStyle = "#000000"; 
+    ctx.textBaseline = "middle";
+
+    // --- CABEÇALHO ---
+    const tipoOficina = document.getElementById('apontamentoTipoOficina')?.value || 'externa';
+    const dadosColab = document.getElementById('apontamentoColaborador')?.value || ' - ';
+    const [nome, matricula] = dadosColab.split(' - ');
+    const setor = document.getElementById('apontamentoSetor')?.value || '';
+    const dataRaw = document.getElementById('apontamentoData')?.value || '';
+
+    if (tipoOficina === 'externa') {
+        ctx.fillText("X", COORD_FORM.cabecalho.oficinaExterna.x, COORD_FORM.cabecalho.oficinaExterna.y);
+    } else {
+        ctx.fillText("X", COORD_FORM.cabecalho.oficinaInterna.x, COORD_FORM.cabecalho.oficinaInterna.y);
+    }
+
+    ctx.fillText(nome.toUpperCase(), COORD_FORM.cabecalho.colaborador.x, COORD_FORM.cabecalho.colaborador.y);
+    ctx.fillText(matricula, COORD_FORM.cabecalho.id.x, COORD_FORM.cabecalho.id.y);
+    ctx.fillText(setor.toUpperCase(), COORD_FORM.cabecalho.setor.x, COORD_FORM.cabecalho.setor.y);
+
+    if (dataRaw) {
+        const [ano, mes, dia] = dataRaw.split('-');
+        ctx.fillText(dia, COORD_FORM.cabecalho.dataDia.x, COORD_FORM.cabecalho.dataDia.y);
+        ctx.fillText(mes, COORD_FORM.cabecalho.dataMes.x, COORD_FORM.cabecalho.dataMes.y);
+        ctx.fillText(ano.slice(-2), COORD_FORM.cabecalho.dataAno.x, COORD_FORM.cabecalho.dataAno.y);
+    }
+
+    // --- LINHAS ---
+    linhasApontamento.forEach((linha, i) => {
+        if (i > 19) return; 
+
+        const y = COORD_FORM.grid.inicioY + (i * COORD_FORM.grid.alturaLinha) + ajusteY;
+        const x = COORD_FORM.grid.colunas;
+
+        const numOS = linha.os || '';
+        const frota = linha.frota || '';
+        
+        // Pega apenas o código (Ex: "P030")
+        const codAtiv = linha.atividade ? linha.atividade.split(' - ')[0] : ''; 
+        
+        const sist = linha.sistema || '';
+        const sub = linha.subsistema ? linha.subsistema.split(' - ')[0] : '';
+
+        // --- DESENHO DAS COLUNAS ---
+        
+        // 1. O.S.
+        ctx.fillText(numOS, x.os, y); 
+
+        // 2. Frota
+        ctx.fillText(frota, x.frota, y);
+
+        // 3. Nº Operação (Vazio)
+        // ctx.fillText(codAtiv, x.operacao, y); 
+        
+        // 4. Atividade (Código Curto)
+        ctx.fillText(codAtiv, x.atividade, y);
+
+        // 5. Sistema e Subsistema
+        ctx.fillText(sist, x.sistema, y);
+        ctx.fillText(sub, x.subsistema, y);
+
+        // 6. Horários
+        ctx.fillText(linha.inicio, x.inicio, y);
+        ctx.fillText(linha.fim, x.fim, y);
+        
+        // 7. Localização (Vazio)
+        // ctx.fillText(localPadrao, x.local, y);
+    });
+
+    showToast("Preview gerado com sucesso!", "success");
+}
+
+function baixarApontamento(tipo) {
+    const canvas = document.getElementById('canvasApontamento');
+    
+    // Validação: Se o canvas estiver vazio (width < 100), avisa o usuário
+    if (!canvas || canvas.width < 100) { 
+        showToast("Gere o preview primeiro!", "error"); 
+        return; 
+    }
+
+    const dataInput = document.getElementById('apontamentoData').value;
+    const nomeArquivo = `Apontamento_${dataInput || 'sem_data'}`;
+
+    if (tipo === 'jpg') {
+        // Download direto como imagem
+        const link = document.createElement('a');
+        link.download = `${nomeArquivo}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    } else if (tipo === 'pdf') {
+        // Geração de PDF (Requer biblioteca jsPDF)
+        if (!window.jspdf) {
+            showToast("Erro: Biblioteca PDF não carregada.", "error");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        // Cria PDF Paisagem (Landscape) A4
+        const doc = new jsPDF('l', 'mm', 'a4');
+
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = doc.internal.pageSize.getHeight();
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+
+        // Cálculo de Proporção para não distorcer a imagem
+        const ratio = canvas.height / canvas.width;
+        const finalHeight = pdfWidth * ratio;
+
+        if (finalHeight <= pdfHeight) {
+            // Se couber na altura, usa a largura total
+            doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, finalHeight);
+        } else {
+            // Se for muito alta, ajusta pela altura da página
+            const finalWidth = pdfHeight / ratio;
+            const xOffset = (pdfWidth - finalWidth) / 2;
+            doc.addImage(imgData, 'JPEG', xOffset, 0, finalWidth, pdfHeight);
+        }
+
+        doc.save(`${nomeArquivo}.pdf`);
+    }
+}
+
+
 
         // ---------------------------------
         // MÓDULO: HISTÓRICO
