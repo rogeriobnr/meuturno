@@ -1,6 +1,5 @@
 'use strict';
 
-// 1. INCREMENTE A VERSÃO
 const CACHE_NAME = 'meuturno-cache-v8.4';
 
 const urlsToCache = [
@@ -10,7 +9,6 @@ const urlsToCache = [
   './logo.png',
   './icon-192.png', 
   './icon-512.png',
-  // 2. MELHORIA: Garante que a imagem do PDF funcione sem internet
   './fundo_apontamento.jpg',
   
   // CDNs
