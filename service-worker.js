@@ -11,6 +11,7 @@ const urlsToCache = [
   './logo.png',
   './icon-192.png', 
   './icon-512.png',
+  './fundo_apontamento.jpg',
   // CDNs para performance offline (AGORA INCLUI FIREBASE E SHEETJS)
   'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js',
