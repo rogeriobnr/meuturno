@@ -1126,50 +1126,46 @@ async function salvarNovoColaborador() {
     const nome = document.getElementById('newColabNome').value.trim().toUpperCase();
     const matricula = document.getElementById('newColabMat').value.trim();
 
-    // 1. Validação de Campos Vazios
+    // 1. Validação
     if (!nome || !matricula) {
         showToast("Preencha nome e matrícula.", "error");
         return;
     }
 
-    // 2. TRAVA DE DUPLICIDADE (A Lógica Nova)
-    // Verifica se algum colaborador na lista cache já tem essa matrícula
+    // 2. Trava de Duplicidade
     const jaExiste = listaEquipeCache.some(colab => colab.matricula === matricula);
-
     if (jaExiste) {
-        // Encontra o nome de quem já tem essa matrícula para avisar
         const dono = listaEquipeCache.find(c => c.matricula === matricula).nome;
         showToast(`Erro: Matrícula já usada por ${dono}.`, "error");
-        
-        // Dá um foco e efeito visual no campo de matrícula para alertar
-        const inputMat = document.getElementById('newColabMat');
-        inputMat.classList.add('campo-invalido');
-        inputMat.focus();
-        setTimeout(() => inputMat.classList.remove('campo-invalido'), 2000);
-        
-        return; // Pára a execução aqui. Não salva no banco.
+        document.getElementById('newColabMat').focus();
+        return;
     }
 
-    // 3. Salvar no Firebase (Se passou pela trava)
+    // 3. Salvar e Atualizar
     try {
+        // Adiciona ao banco
         await firestore.collection('lista_equipe').add({ nome, matricula });
         
-        // Fecha modal
-        fecharModalNovoColaborador('modal-novo-colab');
+        // Remove o modal de cadastro da tela
+        const modal = document.getElementById('modal-novo-colab');
+        if (modal) modal.remove();
         
         showToast("Colaborador cadastrado!", "success");
         
-        // Não precisa recarregar lista manualmente, o onSnapshot faz isso.
-        // Apenas garantimos que o popup de seleção esteja visível.
+        // --- A CORREÇÃO ESTÁ AQUI ---
+        // Em vez de apenas mostrar o popup antigo (que estaria desatualizado),
+        // chamamos a função principal novamente para gerar o HTML novo com o membro novo.
         setTimeout(() => {
-            document.getElementById('popupGenerico').style.display = 'block';
-        }, 300);
+            // Garante que o overlay de fundo esteja visível
+            document.getElementById('overlayGenerico').style.display = 'block';
+            // Reconstrói a lista
+            abrirPopupSelecaoEquipe(); 
+        }, 200); // Pequeno delay para garantir que o dado local foi atualizado
 
     } catch (e) {
         showToast("Erro ao salvar: " + e.message, "error");
     }
 }
-
 
 function removerColaboradorDoBanco(docId, nome) {
     if(confirm(`Tem certeza que deseja apagar ${nome} do BANCO DE DADOS? Isso sumirá para todos.`)) {
