@@ -76,7 +76,7 @@
             z-index: 9999;
             width: 90%;
             max-width: 400px;
-            display: none;
+            display: none;       max-height: 90vh;       max-height: 90vh;
         }
 
         .menu-open #menu-lateral {
@@ -985,53 +985,48 @@ function iniciarSincronizacaoEquipe() {
     });
 }
 
-// 2. POPUP DE SELEÇÃO E CADASTRO
 function abrirPopupSelecaoEquipe() {
-    // Filtra e ordena
     listaEquipeCache.sort((a, b) => a.nome.localeCompare(b.nome));
 
-    // Gera lista com checkboxes
-    // Marca como 'checked' quem JÁ está no turno atual (variavel 'equipe')
     const listaHTML = listaEquipeCache.map(colab => {
         const jaNoTurno = equipe.some(e => e.matricula === colab.matricula);
         const checked = jaNoTurno ? 'checked' : '';
         const style = jaNoTurno ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
         
         return `
-        <div class="flex items-center justify-between p-2 mb-2 border rounded-md ${style} hover:bg-gray-50 transition-colors">
+        <div class="flex items-center justify-between p-3 mb-2 border rounded-md ${style} hover:bg-gray-50 transition-colors">
             <label class="flex items-center flex-grow cursor-pointer gap-3">
-                <input type="checkbox" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 checkbox-equipe" 
+                <input type="checkbox" class="w-6 h-6 text-blue-600 rounded focus:ring-blue-500 checkbox-equipe" 
                     value="${colab.matricula}" data-nome="${colab.nome}" ${checked}>
                 <div class="flex flex-col">
                     <span class="font-bold text-gray-800 text-sm">${colab.nome}</span>
                     <span class="text-xs text-gray-500">Mat: ${colab.matricula}</span>
                 </div>
             </label>
-            <button onclick="removerColaboradorDoBanco('${colab.docId}', '${colab.nome}')" class="text-gray-300 hover:text-red-500 p-2" title="Apagar do Banco">🗑️</button>
+            <button onclick="removerColaboradorDoBanco('${colab.docId}', '${colab.nome}')" class="text-gray-300 hover:text-red-500 p-2 text-lg" title="Apagar do Banco">🗑️</button>
         </div>`;
     }).join('');
 
+    // --- CONTEÚDO CORRIGIDO COM ALTURA FIXA ---
     const conteudo = `
-        <div class="mb-4 flex gap-2">
-            <button onclick="abrirPopupNovoColaborador()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md font-bold text-sm shadow-sm flex items-center justify-center gap-2">
+        <div class="space-y-3 mb-4">
+            <button onclick="abrirPopupNovoColaborador()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-md font-bold text-sm shadow-sm flex items-center justify-center gap-2">
                 <span>+</span> Novo Colaborador
             </button>
-        </div>
-        
-        <div class="mb-2">
-            <input type="text" id="filtroEquipe" oninput="filtrarListaEquipe()" placeholder="🔎 Buscar nome..." class="w-full p-2 border rounded text-sm">
+            <input type="text" id="filtroEquipe" oninput="filtrarListaEquipe()" placeholder="🔎 Buscar nome..." class="w-full p-2 border rounded text-sm bg-gray-50">
         </div>
 
-        <div id="listaCheckboxesEquipe" class="max-h-[50vh] overflow-y-auto pr-1">
+        <div id="listaCheckboxesEquipe" class="max-h-80 overflow-y-auto border border-gray-200 rounded p-2 space-y-1">
             ${listaHTML || '<p class="text-center text-gray-500 text-sm py-4">Nenhum colaborador cadastrado.</p>'}
         </div>
     `;
 
     abrirPopup('Gerir Equipe do Turno', conteudo, [
-        { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup },
-        { texto: 'Confirmar Seleção', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: confirmarSelecaoEquipe }
+        { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400 py-3 rounded-lg font-bold', acao: fecharPopup },
+        { texto: 'Confirmar Seleção', classe: 'bg-blue-600 text-white hover:bg-blue-700 py-3 rounded-lg font-bold shadow-lg', acao: confirmarSelecaoEquipe }
     ]);
 }
+
 
 // Filtro rápido no popup
 function filtrarListaEquipe() {
@@ -1057,11 +1052,20 @@ function filtrarListaEquipe() {
 // CORREÇÃO: MODAL DE NOVO COLABORADOR (COM Z-INDEX ALTO)
 // ============================================================
 
+// Função auxiliar para fechar este modal e RESTAURAR o anterior
+function fecharModalNovoColaborador(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+    
+    // 3. REABRE O POPUP E A SOMBRA ANTERIORES
+    document.getElementById('popupGenerico').style.display = 'block';
+    document.getElementById('overlayGenerico').style.display = 'block';
+}
+
 function abrirPopupNovoColaborador() {
     // 1. ESCONDE O POPUP ANTERIOR COMPLETO (Conteúdo + Sombra)
-    // Isso evita que o novo modal fique "preso" atrás da sombra antiga
     document.getElementById('popupGenerico').style.display = 'none';
-    document.getElementById('overlayGenerico').style.display = 'none';
+    document.getElementById('overlayGenerico').style.display = 'none'; // CRUCIAL para evitar conflitos de Z-Index/sombra
 
     const htmlForm = `
         <div class="space-y-4">
@@ -1082,7 +1086,7 @@ function abrirPopupNovoColaborador() {
 
     const modalId = 'modal-novo-colab';
     
-    // 2. CRIA O NOVO MODAL COM Z-INDEX EXPLÍCITO (99999)
+    // 2. CRIA O NOVO MODAL COM Z-INDEX MUITO ALTO (FORÇADO)
     const modalHTML = `
     <div id="${modalId}" style="z-index: 99999;" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-5 w-full max-w-sm border border-gray-100 transform transition-all scale-100 relative">
@@ -1111,18 +1115,7 @@ function abrirPopupNovoColaborador() {
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    // Foca no input
     setTimeout(() => document.getElementById('newColabNome').focus(), 100);
-}
-
-// Função auxiliar para fechar este modal e RESTAURAR o anterior
-function fecharModalNovoColaborador(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.remove();
-    
-    // 3. REABRE O POPUP E A SOMBRA ANTERIORES
-    document.getElementById('popupGenerico').style.display = 'block';
-    document.getElementById('overlayGenerico').style.display = 'block';
 }
 
 
@@ -1130,27 +1123,50 @@ async function salvarNovoColaborador() {
     const nome = document.getElementById('newColabNome').value.trim().toUpperCase();
     const matricula = document.getElementById('newColabMat').value.trim();
 
+    // 1. Validação de Campos Vazios
     if (!nome || !matricula) {
-        alert("Preencha nome e matrícula.");
+        showToast("Preencha nome e matrícula.", "error");
         return;
     }
 
+    // 2. TRAVA DE DUPLICIDADE (A Lógica Nova)
+    // Verifica se algum colaborador na lista cache já tem essa matrícula
+    const jaExiste = listaEquipeCache.some(colab => colab.matricula === matricula);
+
+    if (jaExiste) {
+        // Encontra o nome de quem já tem essa matrícula para avisar
+        const dono = listaEquipeCache.find(c => c.matricula === matricula).nome;
+        showToast(`Erro: Matrícula já usada por ${dono}.`, "error");
+        
+        // Dá um foco e efeito visual no campo de matrícula para alertar
+        const inputMat = document.getElementById('newColabMat');
+        inputMat.classList.add('campo-invalido');
+        inputMat.focus();
+        setTimeout(() => inputMat.classList.remove('campo-invalido'), 2000);
+        
+        return; // Pára a execução aqui. Não salva no banco.
+    }
+
+    // 3. Salvar no Firebase (Se passou pela trava)
     try {
         await firestore.collection('lista_equipe').add({ nome, matricula });
-        // Fecha modal e reabre o anterior
-        document.getElementById('modal-novo-colab').remove();
         
-        // Aguarda um pouco o sync e reabre a seleção
+        // Fecha modal
+        fecharModalNovoColaborador('modal-novo-colab');
+        
         showToast("Colaborador cadastrado!", "success");
+        
+        // Não precisa recarregar lista manualmente, o onSnapshot faz isso.
+        // Apenas garantimos que o popup de seleção esteja visível.
         setTimeout(() => {
             document.getElementById('popupGenerico').style.display = 'block';
-            abrirPopupSelecaoEquipe(); // Recarrega a lista
-        }, 500);
+        }, 300);
 
     } catch (e) {
-        alert("Erro ao salvar: " + e.message);
+        showToast("Erro ao salvar: " + e.message, "error");
     }
 }
+
 
 function removerColaboradorDoBanco(docId, nome) {
     if(confirm(`Tem certeza que deseja apagar ${nome} do BANCO DE DADOS? Isso sumirá para todos.`)) {
