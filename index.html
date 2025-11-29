@@ -398,8 +398,8 @@
 <div class="pt-4 mt-4 border-t border-gray-200">
     <div class="grid grid-cols-3 gap-2">
         
-        <button onclick="gerarPreviewApontamento()" 
-            class="flex flex-col items-center justify-center py-3 px-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow active:scale-95 transition-all">
+        <button id="btnGerarPreview" onclick="gerarPreviewApontamento()" 
+    class="flex flex-col items-center justify-center py-3 px-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow active:scale-95 transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -1908,6 +1908,7 @@ function renderizarSecaoApontamento() {
     
     // 3. Renderizar
     renderizarListaLinhas();
+    iniciarMonitoramentoFormulario();
 }
 
 function renderizarListaLinhas() {
@@ -2071,6 +2072,7 @@ function renderizarListaLinhas() {
 // Atualiza dados da memória quando o usuário edita os inputs
 function atualizarLinha(index, campo, valor) {
     linhasApontamento[index][campo] = valor;
+    marcarComoDesatualizado(); 
 }
 
 function adicionarLinhaManual() {
@@ -2089,11 +2091,13 @@ function adicionarLinhaManual() {
     renderizarListaLinhas();
     // ADICIONE ESTA LINHA:
     rolarParaUltimoItemApontamento(); 
+    marcarComoDesatualizado(); 
 }
 
 function removerLinhaApontamento(index) {
     linhasApontamento.splice(index, 1);
     renderizarListaLinhas();
+    marcarComoDesatualizado(); 
 }
 
 // Popup para escolher qual serviço importar
@@ -2254,6 +2258,7 @@ function importarServicoFinalizado(originalId, frota, atividade, sistema, subsis
     fecharPopup();
     showToast(`Serviço ${os} importado!`, "success");
     rolarParaUltimoItemApontamento();
+    marcarComoDesatualizado();
 }
 
 //explica o.s pendente 
@@ -2432,6 +2437,7 @@ function trocarOrdem(index) {
     indiceOrigemTroca = null;
     renderizarListaLinhas();
     showToast("Ordem atualizada!", "success");
+    marcarComoDesatualizado();
 }
 
 
@@ -2531,18 +2537,33 @@ async function gerarPreviewApontamento() {
     });
 
     showToast("Preview gerado com sucesso!", "success");
+    marcarComoAtualizado(); // O botão volta a ficar azul
 }
 
 function baixarApontamento(tipo) {
-    const canvas = document.getElementById('canvasApontamento');
-    
-    if (!canvas || canvas.width < 100) { 
-        showToast("Gere o preview primeiro!", "error"); 
-        return; 
+    // 1. TRAVA DE SEGURANÇA
+    if (previewEstaDesatualizado) {
+        showToast("⚠️ Dados alterados! Clique em 'ATUALIZAR!' antes de baixar.", "error", 4000);
+        return;
     }
 
-    const dataInput = document.getElementById('apontamentoData').value;
-    const nomeArquivo = `Apontamento_${dataInput || 'sem_data'}`;
+    const canvas = document.getElementById('canvasApontamento');
+    if (!canvas || canvas.width < 100) { 
+        showToast("Gere o preview primeiro!", "error"); return; 
+    }
+
+    // 2. LÓGICA SIMPLIFICADA
+    const inputData = document.getElementById('apontamentoData');
+    const selectColab = document.getElementById('apontamentoColaborador');
+    
+    const dataFormatada = inputData.value ? inputData.value.split('-').reverse().join('-') : 'SemData';
+    
+    let nomeColab = "Geral";
+    if (selectColab && selectColab.value) {
+        nomeColab = selectColab.value.split('-')[0].trim();
+    }
+
+    const nomeArquivo = `Apontamento_${nomeColab}_${dataFormatada}`;
 
     if (tipo === 'jpg') {
         const link = document.createElement('a');
@@ -2550,23 +2571,41 @@ function baixarApontamento(tipo) {
         link.href = canvas.toDataURL('image/jpeg', 0.9); 
         link.click();
     }
-    
 }
 
+
 async function baixarOuCompartilharPDF() {
-    const canvas = document.getElementById('canvasApontamento');
-    if (!canvas || canvas.width < 100) { 
-        showToast("Gere o preview primeiro!", "error"); 
-        return; 
+    // 1. A TRAVA DE SEGURANÇA (MANTIDA)
+    if (previewEstaDesatualizado) {
+        showToast("⚠️ Dados alterados! Clique em 'ATUALIZAR!' para regenerar a imagem.", "error", 4000);
+        document.getElementById('btnGerarPreview')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
     }
 
-    const dataInput = document.getElementById('apontamentoData').value;
-    const nomeArquivo = `Apontamento_${dataInput || 'hoje'}.pdf`;
+    const canvas = document.getElementById('canvasApontamento');
+    if (!canvas || canvas.width < 100) { 
+        showToast("Gere o preview primeiro!", "error"); return; 
+    }
+
+    // 2. LÓGICA SIMPLIFICADA (Lê direto dos Inputs)
+    const inputData = document.getElementById('apontamentoData');
+    const selectColab = document.getElementById('apontamentoColaborador');
+    
+    // Formata a data (YYYY-MM-DD -> DD-MM-YYYY)
+    const dataFormatada = inputData.value ? inputData.value.split('-').reverse().join('-') : 'SemData';
+    
+    // Pega o nome limpo
+    let nomeColab = "Geral";
+    if (selectColab && selectColab.value) {
+        nomeColab = selectColab.value.split('-')[0].trim();
+    }
+
+    const nomeArquivo = `Apontamento_${nomeColab}_${dataFormatada}.pdf`;
+    // ---------------------------------------------------------
 
     showToast("Gerando PDF...", "info");
 
     try {
-        // 1. Gerar o PDF
         if (!window.jspdf) throw new Error("Biblioteca PDF ausente");
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
@@ -2584,7 +2623,6 @@ async function baixarOuCompartilharPDF() {
             doc.addImage(imgData, 'JPEG', xOffset, 0, finalWidth, pdfHeight);
         }
 
-        // 2. Verificar se é possível compartilhar (Android/iOS)
         if (navigator.share && navigator.canShare) {
             const pdfBlob = doc.output('blob');
             const file = new File([pdfBlob], nomeArquivo, { type: "application/pdf" });
@@ -2593,24 +2631,72 @@ async function baixarOuCompartilharPDF() {
                 await navigator.share({
                     files: [file],
                     title: 'Apontamento',
-                    text: `Segue apontamento do dia ${formatarDataParaExibicao(dataInput)}`
+                    text: `Segue apontamento de ${nomeColab} do dia ${dataFormatada}`
                 });
                 showToast("Compartilhado!", "success");
-                return; // Sucesso, para por aqui
+                return; 
             }
         }
 
-        // 3. Fallback: Se não der pra compartilhar (PC), apenas baixa
         doc.save(nomeArquivo);
         showToast("PDF Baixado!", "success");
 
     } catch (error) {
         console.error(error);
-        // Se cancelou o share, não é erro
         if (error.name !== 'AbortError') showToast("Erro ao processar PDF", "error");
     }
 }
 
+
+// Variável global para controlar se a imagem está velha
+let previewEstaDesatualizado = true; 
+
+// Função que avisa visualmente que precisa atualizar
+function marcarComoDesatualizado() {
+    previewEstaDesatualizado = true;
+    
+    const btn = document.getElementById('btnGerarPreview');
+    if (btn) {
+        btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+        btn.classList.add('bg-yellow-600', 'hover:bg-yellow-700', 'animate-pulse'); // Laranja e pulsando
+        btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase leading-tight">Atualizar!</span>
+        `;
+    }
+}
+
+// Função para resetar o botão ao estado normal (Azul)
+function marcarComoAtualizado() {
+    previewEstaDesatualizado = false;
+    
+    const btn = document.getElementById('btnGerarPreview');
+    if (btn) {
+        btn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'animate-pulse');
+        btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+        btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase leading-tight">Atualizar</span>
+        `;
+    }
+}
+
+// Inicia os ouvintes nos campos do formulário
+function iniciarMonitoramentoFormulario() {
+    const ids = ['apontamentoTipoOficina', 'apontamentoColaborador', 'apontamentoSetor', 'apontamentoData'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', marcarComoDesatualizado);
+            el.addEventListener('input', marcarComoDesatualizado);
+        }
+    });
+}
 
         // ---------------------------------
         // MÓDULO: HISTÓRICO
