@@ -310,9 +310,12 @@
                     <input type="text" id="apontamentoSetor" value="Manutenção Silvicultura" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-1">Data</label>
-                    <input type="date" id="apontamentoData" class="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 cursor-not-allowed" readonly>
-                </div>
+    <label class="block text-xs font-bold text-gray-500 mb-1">Data do Apontamento</label>
+    <input type="date" id="apontamentoData" 
+           class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+           onchange="atualizarPreviewSeNecessario()">
+</div>
+
             </div>
         </div>
     </div>
@@ -1772,39 +1775,39 @@ const COORD_FORM = {
         }
     }
 };
-
 // Inicializa a tela de apontamento
 function renderizarSecaoApontamento() {
-    // 1. Preencher Cabeçalho (Colaborador)
     const sel = document.getElementById('apontamentoColaborador');
+    const dataTurno = document.getElementById('dataTurno');
+    const dataApont = document.getElementById('apontamentoData');
+
     if (sel) {
         sel.innerHTML = equipe.length 
             ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
             : '<option>Sem equipe definida</option>';
     }
     
-    // 2. Sincronizar Data
-    const dataTurno = document.getElementById('dataTurno');
-    const dataApont = document.getElementById('apontamentoData');
+    // 1. SINCRONIZAÇÃO DE DATAS: O apontamento usa a data do turno principal
     if (dataTurno && dataApont) {
         dataApont.value = dataTurno.value;
     }
 
-    // 3. Inicializar Linhas (Se vazio, cria o DDS padrão)
+    // 2. Inicializar Linhas (DDS Padrão)
     if (linhasApontamento.length === 0) {
         linhasApontamento.push({
             id: Date.now(),
             tipo: 'manual',
-            atividade: 'H02 - DDS', // Garante que o texto está exato com o da lista 'atividades'
+            atividade: 'H02 - DDS',
             inicio: '07:00',
             fim: '07:20',
             os: '', frota: '', sistema: '', subsistema: ''
         });
     }
     
-    // 4. Renderizar a lista
+    // 3. Renderizar
     renderizarListaLinhas();
 }
+
 function renderizarListaLinhas() {
     const container = document.getElementById('listaLinhasApontamento');
     if (!container) return;
@@ -1966,43 +1969,76 @@ function removerLinhaApontamento(index) {
 }
 
 // Popup para escolher qual serviço importar
+// ============================================================
+// IMPORTAÇÃO DE SERVIÇOS (FILTRADA POR DATA SELECIONADA)
+// ============================================================
+
 async function abrirPopupImportarServico() {
-    if (servicos.length === 0) { 
-        showToast("Nenhum serviço registrado para importar.", "error"); 
-        return; 
+    // 1. Pega a data que o usuário selecionou no formulário de Apontamento
+    const inputData = document.getElementById('apontamentoData');
+    const dataAlvo = inputData ? inputData.value : dataHojeInputLocal();
+
+    if (!dataAlvo) {
+        showToast("Selecione uma data no formulário primeiro.", "error");
+        return;
     }
 
-    let historico = [];
+    // Feedback visual de carregamento
+    showToast(`Buscando serviços de ${formatarDataParaExibicao(dataAlvo)}...`, "info", 1500);
+
+    let listaCombinada = [];
+
     try {
-        historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
-    } catch (e) { console.error(e); }
-    
-    const listaHtml = servicos.map(s => {
-        const itemHist = historico.find(h => h.id === s.id);
-        const temOS = itemHist && itemHist.osNumero && itemHist.osNumero.trim() !== "";
-        const numeroOS = temOS ? itemHist.osNumero : "";
+        // A. Busca no Histórico (Serviços Finalizados / Dias Anteriores)
+        const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
+        const doHistorico = historico.filter(h => h.dataOS === dataAlvo);
+
+        // B. Busca na Memória Atual (Serviços do dia que ainda não foram pro histórico ou acabaram de ser feitos)
+        // Filtramos para não duplicar o que já veio do histórico (pelo ID)
+        const idsNoHistorico = new Set(doHistorico.map(h => String(h.id)));
+        const daMemoria = servicos.filter(s => s.data === dataAlvo && !idsNoHistorico.has(String(s.id)));
+
+        // C. Combina as duas listas
+        // Prioridade: Histórico (pois tem o número da O.S.) + Memória (pendentes)
+        listaCombinada = [...doHistorico, ...daMemoria];
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao ler banco de dados.", "error");
+        return;
+    }
+
+    // 2. TRAVA: Se não achou nada nesta data, avisa e PARA.
+    if (listaCombinada.length === 0) {
+        showToast(`📅 Nenhum serviço encontrado na data ${formatarDataParaExibicao(dataAlvo)}.`, "error", 4000);
+        return; // Não abre o popup
+    }
+
+    // 3. Ordena por horário
+    listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+    // 4. Gera o HTML
+    const listaHtml = listaCombinada.map(s => {
+        const temOS = s.osNumero && s.osNumero.trim() !== "";
+        const numeroOS = temOS ? s.osNumero : "PENDENTE";
 
         // Dados formatados
-        const codAtiv = s.atividade.split(' - ')[0]; 
-        const nomeAtiv = s.atividade.split(' - ')[1] || ''; 
-        const sist = s.sistema || '?'; 
+        const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
+        const nomeAtiv = s.atividade ? (s.atividade.split(' - ')[1] || '') : '';
+        const sist = s.sistema || '?';
         const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
         const infoTecnica = `${codAtiv} - ${sist} - ${sub}`;
         
-        // --- LÓGICA VISUAL E DE AÇÃO ---
+        // Ação: Se tem OS, importa direto. Se não, pede para gerar.
+        // Nota: Se veio do histórico sem OS, forçamos a explicação.
+        const action = temOS 
+            ? `importarServicoFinalizado('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
+            : `explicarFaltaOS()`;
         
-        // Ação do Clique: Importar OU Explicar Erro
-        const action = temOS ? `importarServico(${s.id})` : `explicarFaltaOS()`;
-        
-        // Estilos: Verde/Azul (Ok) vs Laranja (Atenção)
-        const borderClass = temOS ? "border-green-200 hover:border-green-500" : "border-orange-300 bg-orange-50";
-        const badgeFrota = temOS ? "bg-blue-100 text-blue-800" : "bg-orange-200 text-orange-800";
-        const iconColor = temOS ? "text-green-600 bg-green-50" : "text-orange-500 bg-white border border-orange-200";
-        
-        // Badge de Status
-        const statusHTML = temOS 
-            ? `<span class="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded border border-green-200">OS: ${numeroOS}</span>`
-            : `<span class="text-[10px] font-bold text-orange-700 bg-white px-1.5 py-0.5 rounded border border-orange-300 flex items-center gap-1">⚠️ PENDENTE</span>`;
+        // Estilos visuais
+        const borderClass = temOS ? "border-green-200 hover:border-green-500 bg-white" : "border-orange-300 bg-orange-50";
+        const badgeColor = temOS ? "bg-green-100 text-green-700 border-green-200" : "bg-orange-100 text-orange-700 border-orange-300";
+        const icon = temOS ? "✅" : "⚠️";
 
         return `
         <div onclick="${action}" 
@@ -2010,10 +2046,12 @@ async function abrirPopupImportarServico() {
             
             <div class="flex-1 min-w-0 pr-3">
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="${badgeFrota} text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
-                        ${s.frota}
+                    <span class="bg-blue-100 text-blue-800 text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
+                        ${s.frota || 'N/D'}
                     </span>
-                    ${statusHTML}
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">
+                        OS: ${numeroOS}
+                    </span>
                 </div>
 
                 <div class="text-sm font-black text-gray-800 leading-tight">
@@ -2022,24 +2060,22 @@ async function abrirPopupImportarServico() {
                 
                 <div class="flex justify-between items-end mt-1">
                     <div class="text-xs text-gray-500 truncate max-w-[60%]">${nomeAtiv}</div>
-                    <span class="text-[10px] text-gray-700 font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded">
+                    <span class="text-[10px] text-gray-700 font-bold bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
                         🕒 ${s.inicio} - ${s.fim}
                     </span>
                 </div>
             </div>
 
-            <div class="flex-shrink-0 p-2 rounded-full ${iconColor}">
-                ${temOS 
-                    ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>` 
-                    : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`
-                }
-            </div>
+            <div class="text-lg">${icon}</div>
         </div>`;
     }).join('');
 
     const conteudoFinal = `
         <div class="bg-gray-50 -m-5 p-4 mb-0">
-            <p class="text-xs text-gray-500 mb-3 uppercase font-bold tracking-wider text-center">Toque para importar</p>
+            <div class="flex justify-between items-center mb-3 px-1">
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Data: ${formatarDataParaExibicao(dataAlvo)}</p>
+                <span class="text-xs bg-blue-100 text-blue-800 px-2 rounded-full font-bold">${listaCombinada.length} itens</span>
+            </div>
             <div class="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                 ${listaHtml}
             </div>
@@ -2048,6 +2084,15 @@ async function abrirPopupImportarServico() {
 
     abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
 }
+
+// Função auxiliar para evitar erro no HTML
+function atualizarPreviewSeNecessario() {
+    // Se já houver linhas desenhadas, avisa que a data mudou
+    if (linhasApontamento.length > 1) { // >1 porque o DDS padrão sempre existe
+        showToast("Atenção: A data do formulário mudou. Verifique se as linhas de tempo conferem.", "info", 4000);
+    }
+}
+
 
 //explica o.s pendente 
 function explicarFaltaOS() {
@@ -2108,27 +2153,35 @@ async function importarServico(servicoId) {
         let numeroOS = "";
 
         try {
-            // Busca no histórico para ver se esse serviço já foi finalizado e tem número
             const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
-            const itemHist = historico.find(h => h.id === s.id);
-
-            if (itemHist && itemHist.osNumero) {
-                numeroOS = itemHist.osNumero;
+            
+            // --- CORREÇÃO DE TIPO DE DADO AQUI ---
+            const itemHist = historico.find(h => h.id == s.id); // <- Usando ==
+            
+            if (!itemHist || !itemHist.osNumero || itemHist.osNumero.trim() === "") {
+                showToast("Erro: Finalize a O.S. no Histórico antes de importar!", "error");
+                fecharPopup(); 
+                return; 
             }
+
+            numeroOS = itemHist.osNumero;
+
         } catch (e) {
-            console.error("Erro ao buscar O.S. no histórico", e);
+            console.error("Erro ao buscar O.S.", e);
+            showToast("Erro ao validar O.S.", "error");
+            return;
         }
 
-        // Adiciona à linha do tempo
+        // Se passou, adiciona:
         linhasApontamento.push({
             id: Date.now(),
             idOriginal: s.id,
             tipo: 'servico',
-            atividade: s.atividade, // A descrição completa vem aqui, mas o preview corta só o código
+            atividade: s.atividade, 
             inicio: s.inicio,
             fim: s.fim,
             frota: s.frota,
-            os: numeroOS, // Número da O.S. recuperado
+            os: numeroOS,
             sistema: s.sistema,
             subsistema: s.subsistema
         });
@@ -2139,10 +2192,10 @@ async function importarServico(servicoId) {
         const msg = numeroOS ? `Serviço importado (OS: ${numeroOS})` : "Serviço importado (Sem OS)";
         showToast(msg, "success");
         
-        // ADICIONE ESTA LINHA:
-    rolarParaUltimoItemApontamento(); 
+        rolarParaUltimoItemApontamento(); 
     }
 }
+
 
 // Função auxiliar para rolar até o novo item
 function rolarParaUltimoItemApontamento() {
