@@ -493,7 +493,6 @@
         await initDB();
         
         // 1. Inicia todas as sincronizações do Firebase (Nuvem)
-        sincronizarCatalogoFrotas();
         iniciarSincronizacaoAuxiliares();
         iniciarSincronizacaoEquipe();
         
@@ -646,6 +645,12 @@ function initDB() {
             sincronizarCatalogoPecas();
             renderizarCatalogo(); // Renderiza o que já tem no cache local enquanto baixa
         }
+        
+        // --- NOVA LÓGICA DE ECONOMIA DE FROTAS ---
+    if (secaoId === 'frotas') {
+        sincronizarCatalogoFrotas(); 
+        renderizarCatalogoFrotas();
+    }
         // --------------------------------------
                 
                 const renderFunc = window[`renderizarSecao${secaoId.charAt(0).toUpperCase() + secaoId.slice(1)}`];
@@ -1225,9 +1230,10 @@ function confirmarSelecaoEquipe() {
         async function removerFrotaCatalogo(docId) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir do Catálogo', `Deseja remover esta frota permanentemente do catálogo?`, resolve)); if (confirmado) { try { await firestore.collection('catalogoFrotas').doc(docId).delete(); showToast('Frota removida do catálogo.', 'success'); } catch (error) { showToast('Erro ao remover a frota.', 'error'); } } }
         // MODIFICADO: Adiciona campo de busca e renderiza o catálogo ordenado
 // MODIFICADO: Inclui botão "Cancelar" explícito na lista de botões
-function abrirPopupSelecaoFrota() { 
+function abrirPopupSelecaoFrota() {
+sincronizarCatalogoFrotas(); 
     if (catalogoFrotas.length === 0) { 
-        showToast("Catálogo de frotas vazio. Adicione frotas na secção 'Frotas'.", 'error', 3000); 
+        showToast("Carregando catálogo de frotas... Aguarde um momento.", 'info', 4000); 
         return; 
     } 
     
@@ -2636,29 +2642,43 @@ function sincronizarCatalogoPecas() {
 }
 
 
-        function sincronizarCatalogoFrotas() {
-            firestore.collection('catalogoFrotas').onSnapshot(async (snapshot) => {
-                const tx = db.transaction(STORE_FROTAS, 'readwrite');
-                const store = tx.objectStore(STORE_FROTAS);
-                let houveMudanca = false;
-                for (const change of snapshot.docChanges()) {
-                    houveMudanca = true;
-                    const item = { ...change.doc.data(), docId: change.doc.id };
-                    if (change.type === 'added' || change.type === 'modified') { store.put(item); }
-                    if (change.type === 'removed') { store.delete(item.docId); }
-                }
-                tx.oncomplete = async () => {
-                    if (houveMudanca) {
-                        catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll());
-                        // NOVO: Feedback visual
-                        showToast("Catálogo de Frotas atualizado (via nuvem).", 'info', 1500);
-                        if (document.getElementById('frotas')?.classList.contains('hidden') === false) {
-                            renderizarCatalogoFrotas();
-                        }
-                    }
-                };
-            }, (error) => { console.error("Erro ao sincronizar catálogo de frotas:", error); showToast("Falha ao sincronizar frotas.", "error"); });
+        let monitoramentoFrotasIniciado = false; // Nova variável de controle
+
+function sincronizarCatalogoFrotas() {
+    // Se já iniciou, para aqui (Economia!)
+    if (monitoramentoFrotasIniciado) return;
+
+    console.log("Iniciando download do catálogo de frotas...");
+    monitoramentoFrotasIniciado = true;
+
+    firestore.collection('catalogoFrotas').onSnapshot(async (snapshot) => {
+        const tx = db.transaction(STORE_FROTAS, 'readwrite');
+        const store = tx.objectStore(STORE_FROTAS);
+        let houveMudanca = false;
+        
+        if (snapshot.metadata.fromCache) console.log("Frotas: Lendo do cache local");
+
+        for (const change of snapshot.docChanges()) {
+            houveMudanca = true;
+            const item = { ...change.doc.data(), docId: change.doc.id };
+            if (change.type === 'added' || change.type === 'modified') { store.put(item); }
+            if (change.type === 'removed') { store.delete(item.docId); }
         }
+        tx.oncomplete = async () => {
+            if (houveMudanca) {
+                catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll());
+                // Atualiza a lista visual se a tela de frotas estiver aberta
+                if (document.getElementById('frotas')?.classList.contains('hidden') === false) {
+                    renderizarCatalogoFrotas();
+                }
+            }
+        };
+    }, (error) => { 
+        console.error("Erro Frotas:", error); 
+        monitoramentoFrotasIniciado = false; // Reseta em caso de erro
+    });
+}
+
     </script>
 </body>
 
