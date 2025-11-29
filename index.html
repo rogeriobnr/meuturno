@@ -159,7 +159,8 @@
     </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-50 text-gray-800">
+
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
         <button id="hamburger-btn"
             class="text-2xl p-2 rounded-full hover:bg-blue-700 transition-colors">&#9776;</button>
@@ -204,68 +205,85 @@
 
     <main class="p-4">
         <section id="turno">
-            <div class="p-4 border border-gray-200 rounded-lg">
-    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Dados do Turno</h4>
-    
-    <div>
-        <label for="dataTurno" class="block text-sm font-medium text-gray-700"><strong>Data</strong></label>
-        <input id="dataTurno" type="date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" onchange="salvarDadosParciaisTurno()" required>
-    </div>
+    <div class="space-y-6">
 
-    <div class="mt-4">
-        <label for="fazenda" class="block text-sm font-medium text-gray-700"><strong>Fazenda</strong></label>
-        <div class="flex gap-2">
-            <select id="fazenda" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white shadow-sm" onchange="salvarDadosParciaisTurno()" required>
-                <option value="">Carregando...</option>
-            </select>
-            <button onclick="adicionarNovaFazenda()" class="mt-1 bg-green-600 hover:bg-green-700 text-white px-3 rounded-md font-bold text-xl shadow-sm" title="Adicionar Fazenda">+</button>
-            <button onclick="removerFazendaSelecionada()" class="mt-1 bg-red-100 hover:bg-red-200 text-red-600 px-3 rounded-md font-bold shadow-sm" title="Apagar Selecionada">🗑️</button>
-        </div>
-    </div>
+        <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
+            <h4 class="text-lg font-bold text-blue-800 mb-4 border-b border-gray-100 pb-2 flex items-center gap-2">
+                <span>📅</span> Dados do Turno
+            </h4>
+            
+            <div>
+                <label for="dataTurno" class="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
+                <input id="dataTurno" type="date" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+            </div>
 
-    <div class="mt-4">
-        <label for="frente" class="block text-sm font-medium text-gray-700"><strong>Frente</strong></label>
-        <div class="flex gap-2">
-            <select id="frente" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white shadow-sm" onchange="salvarDadosParciaisTurno()" required>
-                <option value="">Carregando...</option>
-            </select>
-            <button onclick="adicionarNovaFrente()" class="mt-1 bg-green-600 hover:bg-green-700 text-white px-3 rounded-md font-bold text-xl shadow-sm" title="Adicionar Frente">+</button>
-            <button onclick="removerFrenteSelecionada()" class="mt-1 bg-red-100 hover:bg-red-200 text-red-600 px-3 rounded-md font-bold shadow-sm" title="Apagar Selecionada">🗑️</button>
-        </div>
-    </div>
-
-    <div class="mt-4">
-        <label for="turnoLetra" class="block text-sm font-medium text-gray-700"><strong>Turno</strong></label>
-        <select id="turnoLetra" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" onchange="salvarDadosParciaisTurno()">
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-        </select>
-    </div>
-</div>
-
-                <div class="p-4 border border-gray-200 rounded-lg">
-    <div class="flex justify-between items-center border-b pb-2 mb-3">
-        <h4 class="text-lg font-semibold text-blue-700">Equipe do Turno</h4>
-        <button onclick="abrirPopupSelecaoEquipe()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded-md font-bold shadow-sm flex items-center gap-1">
-            <span>👥</span> Selecionar / Cadastrar
-        </button>
-    </div>
-    
-    <div id="boxEquipe" class="space-y-2">
-        <p class="text-sm text-gray-400 italic text-center py-2">Ninguém adicionado ao turno ainda.</p>
-    </div>
-</div>
-
-                <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Frotas do Turno</h4>
-                    <button onclick="abrirPopupSelecaoFrota()"
-                        class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md mb-4">Adicionar
-                        Frota do Catálogo</button>
-                    <div id="listaFrotas" class="mt-3 space-y-2"></div>
+            <div class="mt-4">
+                <label for="fazenda" class="block text-xs font-bold text-gray-500 uppercase mb-1">Fazenda</label>
+                <div class="flex gap-2">
+                    <select id="fazenda" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    <button onclick="adicionarNovaFazenda()" class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg font-bold text-xl shadow-md transition-transform active:scale-95" title="Adicionar Fazenda">+</button>
+                    <button onclick="removerFazendaSelecionada()" class="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded-lg font-bold shadow-sm transition-colors" title="Apagar Selecionada">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                 </div>
             </div>
-        </section>
+
+            <div class="mt-4">
+                <label for="frente" class="block text-xs font-bold text-gray-500 uppercase mb-1">Frente</label>
+                <div class="flex gap-2">
+                    <select id="frente" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    <button onclick="adicionarNovaFrente()" class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg font-bold text-xl shadow-md transition-transform active:scale-95" title="Adicionar Frente">+</button>
+                    <button onclick="removerFrenteSelecionada()" class="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded-lg font-bold shadow-sm transition-colors" title="Apagar Selecionada">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label for="turnoLetra" class="block text-xs font-bold text-gray-500 uppercase mb-1">Turno</label>
+                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()">
+                    <option value="A">TURNO A</option>
+                    <option value="B">TURNO B</option>
+                    <option value="C">TURNO C</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
+                <h4 class="text-lg font-bold text-blue-800 flex items-center gap-2">
+                    <span>👷</span> Equipe
+                </h4>
+                <button onclick="abrirPopupSelecaoEquipe()" class="bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs py-2 px-3 rounded-lg font-bold shadow-sm border border-blue-200 flex items-center gap-1 transition-colors">
+                    <span>⚙️</span> Gerir
+                </button>
+            </div>
+            
+            <div id="boxEquipe" class="space-y-3">
+                </div>
+        </div>
+
+        <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
+                <h4 class="text-lg font-bold text-blue-800 flex items-center gap-2">
+                    <span>🚜</span> Frotas
+                </h4>
+                <button onclick="abrirPopupSelecaoFrota()" class="bg-green-50 text-green-700 hover:bg-green-100 text-xs py-2 px-3 rounded-lg font-bold shadow-sm border border-green-200 flex items-center gap-1 transition-colors">
+                    <span>+</span> Adicionar
+                </button>
+            </div>
+
+            <div id="listaFrotas" class="space-y-3">
+                </div>
+        </div>
+
+    </div>
+</section>
+
         <section id="servicos" class="hidden"></section>
         <section id="frotas" class="hidden"></section>
         <section id="catalogo" class="hidden"></section>
@@ -771,9 +789,94 @@ function initDB() {
         // ---------------------------------
         function renderizarSecaoTurno(container) { renderizarEquipe(); renderizarFrotasDoTurno(); }
         function adicionarEquipe() { if (!validarCamposTurnoBasicos()) return; const nomeEl = document.getElementById('nomeEquipe'); const matEl = document.getElementById('matriculaEquipe'); if (nomeEl.value.trim() && matEl.value.trim()) { equipe.push({ nome: nomeEl.value.trim(), matricula: matEl.value.trim() }); renderizarEquipe(); salvarTudo(); nomeEl.value = matEl.value = ''; nomeEl.focus(); showToast('Membro adicionado!', 'success'); } else { showToast('Preencha nome e matrícula.', 'error'); } }
-        function removerEquipe(index) { equipe.splice(index, 1); renderizarEquipe(); salvarTudo(); showToast('Membro removido.', 'success'); }
-        function renderizarEquipe() { const box = document.getElementById('boxEquipe'); if (!box) return; if (equipe.length === 0) { box.innerHTML = '<p class="text-sm text-gray-500">Nenhum membro na equipe.</p>'; return; } box.innerHTML = equipe.map((item, i) => `<div class="flex justify-between items-center p-2 border-b text-sm"><span><strong>${item.nome}</strong> - ${item.matricula}</span><button onclick="removerEquipe(${i})" class="text-red-500 hover:text-red-700 text-xl font-bold px-2" title="Remover membro">&times;</button></div>`).join(''); }
-        function renderizarFrotasDoTurno() { const div = document.getElementById('listaFrotas'); if (!div) return; if (frotasTurno.length === 0) { div.innerHTML = '<p class="text-sm text-gray-500">Nenhuma frota adicionada a este turno.</p>'; return; } frotasTurno.sort((a, b) => a.nome.localeCompare(b.nome)); div.innerHTML = frotasTurno.map((f, i) => `<div class="flex justify-between items-center p-2 border-b text-sm"><span><strong class="font-semibold">${f.nome}</strong> <span class="text-xs font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</span> - <input type="number" step="0.1" value="${f.horas}" onchange="atualizarHorasFrotaTurno(${i}, this.value)" class="w-20 p-1 border rounded">h</span><button onclick="removerFrotaDoTurno(${i})" class="text-red-500 hover:text-red-700 text-xl font-bold px-2" title="Remover frota do turno">&times;</button></div>`).join(''); }
+        function removerEquipe(index) { equipe.splice(index, 1); renderizarEquipe(); salvarTudo(); showToast('Membro removido.', 'success'); 
+   }
+        
+        
+function renderizarEquipe() { 
+    const box = document.getElementById('boxEquipe'); 
+    if (!box) return; 
+    
+    if (equipe.length === 0) { 
+        box.innerHTML = '<div class="text-center py-8 bg-white border border-gray-100 rounded-xl shadow-sm"><p class="text-sm text-gray-400">Nenhum membro adicionado.</p></div>'; 
+        return; 
+    } 
+    
+    box.innerHTML = equipe.map((item, i) => `
+        <div class="flex items-center justify-between p-4 mb-4 bg-white rounded-xl shadow-sm border-l-4 border-blue-500 transition-all hover:shadow-md">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base">
+                    ${item.nome.charAt(0)}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-base font-bold text-gray-800 leading-tight">${item.nome}</span>
+                    <span class="text-xs text-gray-500 font-medium mt-0.5">Mat: ${item.matricula}</span>
+                </div>
+            </div>
+            <button onclick="removerEquipe(${i})" class="text-gray-300 hover:text-red-500 p-2 transition-colors bg-gray-50 rounded-full hover:bg-red-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+        </div>
+    `).join(''); 
+}
+
+
+        function renderizarFrotasDoTurno() { 
+    const div = document.getElementById('listaFrotas'); 
+    if (!div) return; 
+    
+    if (frotasTurno.length === 0) { 
+        div.innerHTML = '<div class="text-center py-6 bg-white border border-gray-200 rounded-lg shadow-sm"><p class="text-sm text-gray-400">Nenhuma frota no turno.</p></div>'; 
+        return; 
+    } 
+    
+    frotasTurno.sort((a, b) => a.nome.localeCompare(b.nome)); 
+    
+    div.innerHTML = frotasTurno.map((f, i) => {
+        // CORES PADRÃO (Seguras para TrebEdit/CDN)
+        // Usando classes comuns: blue-500, green-500, gray-400
+        let corBorda = 'border-blue-500'; 
+
+        if (f.tipo === 'caminhao') {
+            corBorda = 'border-green-500';
+        } else if (f.tipo === 'implemento') {
+            corBorda = 'border-gray-400';
+        }
+
+        return `
+        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-4 ${corBorda}">
+            
+            <div class="flex flex-col min-w-0 pr-2">
+                <span class="text-base font-bold text-gray-800 truncate">
+                    ${f.nome}
+                </span>
+                <span class="text-xs font-bold uppercase tracking-wide w-max px-2 py-0.5 rounded mt-1 text-gray-500 bg-gray-100">
+                    ${getTipoTexto(f.tipo)}
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex items-center bg-gray-50 border border-gray-300 rounded px-2 py-1">
+                    <input type="number" step="0.1" value="${f.horas}" 
+                        onchange="atualizarHorasFrotaTurno(${i}, this.value)" 
+                        class="w-10 bg-transparent text-center text-sm font-bold text-gray-700 outline-none p-0" 
+                        placeholder="0">
+                    <span class="text-xs text-gray-400 font-bold ml-1">h</span>
+                </div>
+
+                <button onclick="removerFrotaDoTurno(${i})" class="text-gray-400 hover:text-red-600 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+        </div>`;
+    }).join(''); 
+}
+
         async function removerFrotaDoTurno(index) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Remover Frota do Turno', 'Tem certeza?', resolve)); if (confirmado) { frotasTurno.splice(index, 1); renderizarFrotasDoTurno(); salvarTudo(); showToast('Frota removida do turno.', 'success'); } }
         function atualizarHorasFrotaTurno(index, novasHoras) { const horas = parseFloat(novasHoras); if (!isNaN(horas) && horas > 0) { frotasTurno[index].horas = horas; salvarTudo(); showToast('Horas da frota atualizadas.', 'success'); } else { showToast('Valor de horas inválido.', 'error'); renderizarFrotasDoTurno(); } }
         
@@ -1741,6 +1844,9 @@ function adicionarFrotasSelecionadasAoTurno() {
 // =================================================================================
 
 let linhasApontamento = []; // Armazena as linhas que serão impressas
+// Variável para controlar a reordenação
+let indiceOrigemTroca = null; 
+
 
 // Configuração das coordenadas (Mantida, ajuste fino se necessário)
 const COORD_FORM = {
@@ -1821,39 +1927,64 @@ function renderizarListaLinhas() {
 
     linhasApontamento.forEach((linha, index) => {
         const isServico = linha.tipo === 'servico';
+        
+        // LÓGICA VISUAL DA TROCA
+        const isSelecionadoParaTroca = (indiceOrigemTroca === index);
+        
+        // Se selecionado: Borda amarela e fundo amarelo claro
+        // Se normal (Serviço): Azul
+        // Se normal (Manual): Laranja
+        let borderClass = isServico ? 'border-blue-600' : 'border-orange-400';
+        let bgClass = 'bg-white';
+
+        if (isSelecionadoParaTroca) {
+            borderClass = 'border-yellow-400 ring-2 ring-yellow-200'; // Destaque
+            bgClass = 'bg-yellow-50';
+        }
+
+        // Ícone do botão de troca (Muda de cor se estiver ativo)
+        const iconTrocaColor = isSelecionadoParaTroca ? 'text-yellow-600 bg-yellow-200' : 'text-gray-400 hover:text-blue-600';
+
         let html = '';
 
+        // --- BOTÃO DE TROCA (Comum aos dois tipos) ---
+        const btnTroca = `
+            <button onclick="trocarOrdem(${index})" class="p-1.5 rounded-full transition-colors ${iconTrocaColor} mr-1" title="Trocar Ordem">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            </button>
+        `;
+
         if (isServico) {
-            // ============================================================
-            // CARTÃO DE SERVIÇO
-            // ============================================================
-            
-            // Tratamento de segurança para textos
+            // === CARD DE SERVIÇO ===
             const ativTexto = linha.atividade || '';
             const codAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[0] : ativTexto;
             const descAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[1] : '';
-            
             const sist = linha.sistema || '?';
             const subRaw = linha.subsistema || '?';
             const sub = subRaw.includes(' - ') ? subRaw.split(' - ')[0] : subRaw;
-            
             const infoTecnica = `${codAtiv} - ${sist} - ${sub} (${descAtiv})`;
 
             html = `
-            <div class="bg-white rounded-lg shadow-sm mb-3 border-l-4 border-blue-600 overflow-hidden">
+            <div class="${bgClass} rounded-lg shadow-sm mb-3 border-l-4 ${borderClass} overflow-hidden transition-all duration-200">
                 
                 <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
                     <div class="flex items-center gap-2">
                         <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm">
                             ${index + 1}
                         </span>
-                        <span class="font-black text-gray-700 text-sm tracking-tight uppercase">
-                            FROTA: ${linha.frota || 'N/A'}
+                        <span class="font-black text-gray-700 text-sm tracking-tight uppercase truncate max-w-[150px]">
+                            ${linha.frota || 'N/A'}
                         </span>
                     </div>
-                    <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
-                        <span class="text-xl font-bold">&times;</span>
-                    </button>
+                    
+                    <div class="flex items-center">
+                        ${btnTroca}
+                        <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
+                            <span class="text-xl font-bold">&times;</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="px-3 py-2 border-b border-gray-50">
@@ -1881,17 +2012,14 @@ function renderizarListaLinhas() {
             </div>`;
 
         } else {
-            // ============================================================
-            // CARTÃO MANUAL (ATUALIZADO PARA FICAR IGUAL AO DE SERVIÇO)
-            // ============================================================
-            
+            // === CARD MANUAL ===
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => {
                 const isSelected = linha.atividade === a ? 'selected' : '';
                 return `<option value="${a}" ${isSelected}>${a}</option>`;
             }).join('');
             
             html = `
-            <div class="bg-white rounded-lg shadow-sm mb-3 border-l-4 border-orange-400 overflow-hidden">
+            <div class="${bgClass} rounded-lg shadow-sm mb-3 border-l-4 ${borderClass} overflow-hidden transition-all duration-200">
                 
                 <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
                     <div class="flex items-center gap-2">
@@ -1899,12 +2027,15 @@ function renderizarListaLinhas() {
                             ${index + 1}
                         </span>
                         <span class="font-black text-gray-700 text-xs uppercase tracking-tight">
-                            ATIVIDADE NÃO PRODUTIVA
+                            NÃO PRODUTIVA
                         </span>
                     </div>
-                    <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
-                        <span class="text-xl font-bold">&times;</span>
-                    </button>
+                     <div class="flex items-center">
+                        ${btnTroca}
+                        <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
+                            <span class="text-xl font-bold">&times;</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="p-3 bg-orange-50/30 flex flex-col gap-2">
@@ -1935,6 +2066,7 @@ function renderizarListaLinhas() {
         container.innerHTML += html;
     });
 }
+
 
 // Atualiza dados da memória quando o usuário edita os inputs
 function atualizarLinha(index, campo, valor) {
@@ -1970,7 +2102,6 @@ function removerLinhaApontamento(index) {
 // ============================================================
 
 async function abrirPopupImportarServico() {
-    // 1. Pega a data que o usuário selecionou no formulário de Apontamento
     const inputData = document.getElementById('apontamentoData');
     const dataAlvo = inputData ? inputData.value : dataHojeInputLocal();
 
@@ -1979,23 +2110,20 @@ async function abrirPopupImportarServico() {
         return;
     }
 
-    // Feedback visual de carregamento
     showToast(`Buscando serviços de ${formatarDataParaExibicao(dataAlvo)}...`, "info", 1500);
 
     let listaCombinada = [];
 
     try {
-        // A. Busca no Histórico (Serviços Finalizados / Dias Anteriores)
+        // A. Busca no Histórico
         const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
         const doHistorico = historico.filter(h => h.dataOS === dataAlvo);
 
-        // B. Busca na Memória Atual (Serviços do dia que ainda não foram pro histórico ou acabaram de ser feitos)
-        // Filtramos para não duplicar o que já veio do histórico (pelo ID)
+        // B. Busca na Memória Atual
         const idsNoHistorico = new Set(doHistorico.map(h => String(h.id)));
         const daMemoria = servicos.filter(s => s.data === dataAlvo && !idsNoHistorico.has(String(s.id)));
 
-        // C. Combina as duas listas
-        // Prioridade: Histórico (pois tem o número da O.S.) + Memória (pendentes)
+        // C. Combina
         listaCombinada = [...doHistorico, ...daMemoria];
 
     } catch (e) {
@@ -2004,19 +2132,20 @@ async function abrirPopupImportarServico() {
         return;
     }
 
-    // 2. TRAVA: Se não achou nada nesta data, avisa e PARA.
     if (listaCombinada.length === 0) {
         showToast(`📅 Nenhum serviço encontrado na data ${formatarDataParaExibicao(dataAlvo)}.`, "error", 4000);
-        return; // Não abre o popup
+        return;
     }
 
-    // 3. Ordena por horário
     listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
-    // 4. Gera o HTML
+    // --- GERAÇÃO DO HTML LIMPO ---
     const listaHtml = listaCombinada.map(s => {
         const temOS = s.osNumero && s.osNumero.trim() !== "";
         const numeroOS = temOS ? s.osNumero : "PENDENTE";
+        
+        // Verifica se já está na linha do tempo
+        const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
 
         // Dados formatados
         const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
@@ -2025,54 +2154,69 @@ async function abrirPopupImportarServico() {
         const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
         const infoTecnica = `${codAtiv} - ${sist} - ${sub}`;
         
-        // Ação: Se tem OS, importa direto. Se não, pede para gerar.
-        // Nota: Se veio do histórico sem OS, forçamos a explicação.
+        // Ação
         const action = temOS 
-            ? `importarServicoFinalizado('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
+            ? `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
             : `explicarFaltaOS()`;
         
-        // Estilos visuais
-        const borderClass = temOS ? "border-green-200 hover:border-green-500 bg-white" : "border-orange-300 bg-orange-50";
-        const badgeColor = temOS ? "bg-green-100 text-green-700 border-green-200" : "bg-orange-100 text-orange-700 border-orange-300";
-        const icon = temOS ? "✅" : "⚠️";
+        // Estilos
+        let cardClass = "bg-white border-green-200 hover:border-green-500";
+        let badgeColor = "bg-green-100 text-green-700 border-green-200";
+        // Ícone padrão (+)
+        let iconHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>`;
+
+        if (!temOS) {
+            cardClass = "bg-orange-50 border-orange-300";
+            badgeColor = "bg-orange-100 text-orange-700 border-orange-300";
+            iconHTML = "⚠️";
+        } 
+        
+        // SE JÁ FOI IMPORTADO (TICADO) - VISUAL DIFERENTE
+        if (jaImportado) {
+            cardClass = "bg-blue-50 border-blue-300 shadow-inner opacity-90"; 
+            // Ícone de Check (Ticado)
+            iconHTML = `<div class="bg-blue-600 text-white rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></div>`;
+        }
 
         return `
         <div onclick="${action}" 
-             class="group relative border rounded-xl p-3 mb-3 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${borderClass}">
+             class="group relative border rounded-xl p-3 mb-2 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${cardClass}">
             
             <div class="flex-1 min-w-0 pr-3">
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="bg-blue-100 text-blue-800 text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
+                    <span class="bg-white border border-gray-200 text-gray-700 text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
                         ${s.frota || 'N/D'}
                     </span>
                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">
-                        OS: ${numeroOS}
+                        ${jaImportado ? 'IMPORTADO' : `OS: ${numeroOS}`}
                     </span>
                 </div>
 
                 <div class="text-sm font-black text-gray-800 leading-tight">
-                    ⚙️ ${infoTecnica}
+                   ⚙️ ${infoTecnica}
                 </div>
                 
                 <div class="flex justify-between items-end mt-1">
                     <div class="text-xs text-gray-500 truncate max-w-[60%]">${nomeAtiv}</div>
-                    <span class="text-[10px] text-gray-700 font-bold bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                    <span class="text-[10px] text-gray-700 font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded">
                         🕒 ${s.inicio} - ${s.fim}
                     </span>
                 </div>
             </div>
 
-            <div class="text-lg">${icon}</div>
+            <div class="flex-shrink-0 pl-2">
+                ${iconHTML}
+            </div>
         </div>`;
     }).join('');
 
     const conteudoFinal = `
         <div class="bg-gray-50 -m-5 p-4 mb-0">
-            <div class="flex justify-between items-center mb-3 px-1">
+            <div class="flex justify-between items-center mb-3 px-1 border-b pb-2">
                 <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Data: ${formatarDataParaExibicao(dataAlvo)}</p>
-                <span class="text-xs bg-blue-100 text-blue-800 px-2 rounded-full font-bold">${listaCombinada.length} itens</span>
+                <span class="text-xs bg-white border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full font-bold">${listaCombinada.length} itens</span>
             </div>
-            <div class="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+            <div class="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar space-y-2">
                 ${listaHtml}
             </div>
         </div>
@@ -2080,6 +2224,7 @@ async function abrirPopupImportarServico() {
 
     abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
 }
+
 
 // Função auxiliar para evitar erro no HTML
 function atualizarPreviewSeNecessario() {
@@ -2233,6 +2378,62 @@ function rolarParaUltimoItemApontamento() {
         }
     }, 150);
 }
+
+// --- NOVA FUNÇÃO: VERIFICA DUPLICIDADE ANTES DE IMPORTAR ---
+function tentarImportarServico(id, frota, atividade, sistema, subsistema, inicio, fim, os) {
+    // Verifica se este ID Original já existe nas linhas do apontamento atual
+    const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(id));
+
+    if (jaImportado) {
+        // Se já existe, abre o popup de confirmação
+        abrirPopupConfirmar(
+            '⚠️ Serviço Duplicado', 
+            'Este serviço <strong>já foi importado</strong> para o apontamento.<br>Deseja importá-lo novamente (duplicar)?', 
+            (confirmado) => {
+                if (confirmado) {
+                    // Se o usuário confirmar, importa mesmo assim
+                    importarServicoFinalizado(id, frota, atividade, sistema, subsistema, inicio, fim, os);
+                }
+            }
+        );
+    } else {
+        // Se não existe, importa direto
+        importarServicoFinalizado(id, frota, atividade, sistema, subsistema, inicio, fim, os);
+    }
+}
+
+function trocarOrdem(index) {
+    // 1. Se ninguém estiver selecionado, seleciona o atual
+    if (indiceOrigemTroca === null) {
+        indiceOrigemTroca = index;
+        renderizarListaLinhas(); // Re-renderiza para mostrar o destaque visual
+        showToast("Selecione outro card para trocar de posição.", "info");
+        return;
+    }
+
+    // 2. Se clicou no mesmo item, cancela a seleção
+    if (indiceOrigemTroca === index) {
+        indiceOrigemTroca = null;
+        renderizarListaLinhas();
+        return;
+    }
+
+    // 3. Se clicou em outro item, realiza a troca (Swap)
+    const itemOrigem = linhasApontamento[indiceOrigemTroca];
+    
+    // Remove o item da posição antiga
+    linhasApontamento.splice(indiceOrigemTroca, 1);
+    
+    // Insere na nova posição
+    // (Precisamos ajustar o índice se o movimento for de baixo para cima)
+    linhasApontamento.splice(index, 0, itemOrigem);
+
+    // Reseta e atualiza
+    indiceOrigemTroca = null;
+    renderizarListaLinhas();
+    showToast("Ordem atualizada!", "success");
+}
+
 
 // =================================================================================
 // GERAÇÃO DA IMAGEM (CANVAS)
