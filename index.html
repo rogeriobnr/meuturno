@@ -2093,6 +2093,27 @@ function atualizarPreviewSeNecessario() {
     }
 }
 
+// --- FUNÇÃO NECESSÁRIA PARA IMPORTAR DO HISTÓRICO ---
+function importarServicoFinalizado(originalId, frota, atividade, sistema, subsistema, inicio, fim, os) {
+    // Adiciona o item na timeline diretamente, pois já foi validado
+    linhasApontamento.push({
+        id: Date.now(),
+        idOriginal: originalId, // Mantém o vínculo
+        tipo: 'servico',
+        atividade: atividade, 
+        inicio: inicio,
+        fim: fim,
+        frota: frota,
+        os: os, // Já vem com o número da O.S.
+        sistema: sistema,
+        subsistema: subsistema
+    });
+
+    renderizarListaLinhas();
+    fecharPopup();
+    showToast(`Serviço ${os} importado!`, "success");
+    rolarParaUltimoItemApontamento();
+}
 
 //explica o.s pendente 
 function explicarFaltaOS() {
