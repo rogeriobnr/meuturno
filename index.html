@@ -204,42 +204,59 @@
 
     <main class="p-4">
         <section id="turno">
-            <div class="bg-white p-4 rounded-lg shadow space-y-6">
+            <div class="p-4 border border-gray-200 rounded-lg">
+    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Dados do Turno</h4>
+    
+    <div>
+        <label for="dataTurno" class="block text-sm font-medium text-gray-700"><strong>Data</strong></label>
+        <input id="dataTurno" type="date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" onchange="salvarDadosParciaisTurno()" required>
+    </div>
+
+    <div class="mt-4">
+        <label for="fazenda" class="block text-sm font-medium text-gray-700"><strong>Fazenda</strong></label>
+        <div class="flex gap-2">
+            <select id="fazenda" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white shadow-sm" onchange="salvarDadosParciaisTurno()" required>
+                <option value="">Carregando...</option>
+            </select>
+            <button onclick="adicionarNovaFazenda()" class="mt-1 bg-green-600 hover:bg-green-700 text-white px-3 rounded-md font-bold text-xl shadow-sm" title="Adicionar Fazenda">+</button>
+            <button onclick="removerFazendaSelecionada()" class="mt-1 bg-red-100 hover:bg-red-200 text-red-600 px-3 rounded-md font-bold shadow-sm" title="Apagar Selecionada">🗑️</button>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <label for="frente" class="block text-sm font-medium text-gray-700"><strong>Frente</strong></label>
+        <div class="flex gap-2">
+            <select id="frente" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-white shadow-sm" onchange="salvarDadosParciaisTurno()" required>
+                <option value="">Carregando...</option>
+            </select>
+            <button onclick="adicionarNovaFrente()" class="mt-1 bg-green-600 hover:bg-green-700 text-white px-3 rounded-md font-bold text-xl shadow-sm" title="Adicionar Frente">+</button>
+            <button onclick="removerFrenteSelecionada()" class="mt-1 bg-red-100 hover:bg-red-200 text-red-600 px-3 rounded-md font-bold shadow-sm" title="Apagar Selecionada">🗑️</button>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <label for="turnoLetra" class="block text-sm font-medium text-gray-700"><strong>Turno</strong></label>
+        <select id="turnoLetra" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" onchange="salvarDadosParciaisTurno()">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+        </select>
+    </div>
+</div>
+
                 <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Dados do Turno</h4>
-                    <div><label for="dataTurno"
-                            class="block text-sm font-medium text-gray-700"><strong>Data</strong></label><input
-                            id="dataTurno" type="date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                            onchange="salvarDadosParciaisTurno()" required></div>
-                    <div class="mt-4"><label for="fazenda"
-                            class="block text-sm font-medium text-gray-700"><strong>Fazenda</strong></label><input
-                            id="fazenda" type="text" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                            placeholder="Digite o nome da fazenda" onblur="salvarDadosParciaisTurno()" required></div>
-                    <div class="mt-4"><label for="frente"
-                            class="block text-sm font-medium text-gray-700"><strong>Frente</strong></label><input
-                            id="frente" type="text" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                            placeholder="Digite a frente de trabalho" onblur="salvarDadosParciaisTurno()" required>
-                    </div>
-                    <div class="mt-4"><label for="turnoLetra"
-                            class="block text-sm font-medium text-gray-700"><strong>Turno</strong></label><select
-                            id="turnoLetra" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                            onchange="salvarDadosParciaisTurno()">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                        </select></div>
-                </div>
-                <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Equipe</h4>
-                    <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 mb-2"><input
-                            id="nomeEquipe" type="text" class="flex-1 p-2 border border-gray-300 rounded-md"
-                            placeholder="Nome"><input id="matriculaEquipe" type="text"
-                            class="flex-1 p-2 border border-gray-300 rounded-md" placeholder="Matrícula"></div>
-                    <button onclick="adicionarEquipe()"
-                        class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-3 rounded-md font-semibold">Adicionar
-                        Membro</button>
-                    <div id="boxEquipe" class="mt-3"></div>
-                </div>
+    <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h4 class="text-lg font-semibold text-blue-700">Equipe do Turno</h4>
+        <button onclick="abrirPopupSelecaoEquipe()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded-md font-bold shadow-sm flex items-center gap-1">
+            <span>👥</span> Selecionar / Cadastrar
+        </button>
+    </div>
+    
+    <div id="boxEquipe" class="space-y-2">
+        <p class="text-sm text-gray-400 italic text-center py-2">Ninguém adicionado ao turno ainda.</p>
+    </div>
+</div>
+
                 <div class="p-4 border border-gray-200 rounded-lg">
                     <h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Frotas do Turno</h4>
                     <button onclick="abrirPopupSelecaoFrota()"
@@ -471,43 +488,75 @@
         // 2. INICIALIZAÇÃO E LÓGICA DO PWA
         // =================================================================================
         async function main() {
-            try {
-                registrarServiceWorker();
-                await initDB();
-                sincronizarCatalogoPecas();
-                sincronizarCatalogoFrotas();
-                await carregarDadosIniciais();
-                renderizarLayoutInicial();
-                inicializarMenuHamburguer();
+    try {
+        registrarServiceWorker();
+        await initDB();
+        
+        // 1. Inicia todas as sincronizações do Firebase (Nuvem)
+        sincronizarCatalogoFrotas();
+        iniciarSincronizacaoAuxiliares();
+        iniciarSincronizacaoEquipe();
+        
+       // <--- MELHOR LUGAR (Logo após o banco abrir)
 
-                // MODIFICADO: Carrega a seção salva no LocalStorage, ou 'turno' como padrão
-                const secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
-                abrir(secaoInicial);
-            } catch (err) { console.error("Erro fatal ao inicializar:", err); showToast("Erro grave ao iniciar. Tente recarregar.", 'error'); }
-        }
+        // 2. Carrega dados do turno (Local)
+        await carregarDadosIniciais();
+        
+        // 3. Desenha a tela (já com as listas carregando ou carregadas)
+        renderizarLayoutInicial();
+        
+        inicializarMenuHamburguer();
+
+        // 4. Navegação
+        const secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+        abrir(secaoInicial);
+        
+    } catch (err) { 
+        console.error("Erro fatal ao inicializar:", err); 
+        showToast("Erro grave ao iniciar. Tente recarregar.", 'error'); 
+    }
+}
+
 
         function registrarServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js').then(reg => { reg.onupdatefound = () => { const newWorker = reg.installing; newWorker.onstatechange = () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) { document.getElementById('update-popup')?.classList.remove('hidden'); } }; }; }).catch(err => console.error('Erro no SW:', err)); } }
 
         // =================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
         // =================================================================================
-        function initDB() {
-            return new Promise((resolve, reject) => {
-                if (db) return resolve(db);
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = e => {
-                    const currentDb = e.target.result;
-                    if (!currentDb.objectStoreNames.contains(STORE_TURNO)) { currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' }); }
-                    if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true }); hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false }); }
-                    if (currentDb.objectStoreNames.contains('catalogo')) { currentDb.deleteObjectStore('catalogo'); }
-                    currentDb.createObjectStore('catalogo', { keyPath: 'docId' });
-                    if (currentDb.objectStoreNames.contains(STORE_FROTAS)) { currentDb.deleteObjectStore(STORE_FROTAS); }
-                    currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
-                };
-                request.onsuccess = e => { db = e.target.result; resolve(db); };
-                request.onerror = e => { console.error("Erro IndexedDB:", e.target.error); reject(e.target.error); };
-            });
-        }
+       const STORE_FAZENDAS = 'lista_fazendas';
+const STORE_FRENTES = 'lista_frentes';
+const STORE_EQUIPE = 'lista_equipe';
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        
+        // INCREMENTEI A VERSÃO PARA 10
+        const request = indexedDB.open(DB_NAME, 10); 
+        
+        request.onupgradeneeded = e => {
+            const currentDb = e.target.result;
+            
+            // Stores Antigas (Mantidas)
+            if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
+            if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { 
+                const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true }); 
+                hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false }); 
+            }
+            if (!currentDb.objectStoreNames.contains('catalogo')) currentDb.createObjectStore('catalogo', { keyPath: 'docId' });
+            if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
+            if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
+            if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
+
+            // --- NOVA STORE EQUIPE ---
+            if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) {
+                currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
+            }
+        };
+        request.onsuccess = e => { db = e.target.result; resolve(db); };
+        request.onerror = e => { console.error("Erro DB:", e); reject(e); };
+    });
+}
 
         async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
 
@@ -540,7 +589,47 @@
         // =================================================================================
         // 5. RENDERIZAÇÃO E UI
         // =================================================================================
-        async function renderizarLayoutInicial() { try { const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); document.getElementById("fazenda").value = d.fazenda || ""; document.getElementById("frente").value = d.frente || ""; document.getElementById("turnoLetra").value = d.turno || "A"; } catch (e) { console.error("Erro ao renderizar layout inicial", e); } }
+        async function renderizarLayoutInicial() { 
+    try { 
+        // 1. Carrega as listas do cache local primeiro (Offline-first)
+        // Isso garante que o <select> tenha opções antes de tentar selecionar o valor
+        await carregarFazendasDoCache();
+        await carregarFrentesDoCache();
+
+        // 2. Carrega os dados salvos do turno atual
+        const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
+        
+        document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
+        
+        // 3. Define os valores nos selects de FAZENDA
+        if (d.fazenda) {
+            const el = document.getElementById("fazenda");
+            el.value = d.fazenda;
+            
+            // Lógica de Segurança:
+            // Se o valor salvo (ex: "FAZENDA X") não estiver na lista carregada,
+            // guardamos ele num atributo escondido. A função 'atualizarSelectGenerico'
+            // vai ler isso depois e criar a opção visualmente para não perder o dado.
+            if (!el.value) {
+                el.setAttribute('data-temp-value', d.fazenda);
+            }
+        }
+
+        // 4. Define os valores nos selects de FRENTE
+        if (d.frente) {
+            const el = document.getElementById("frente");
+            el.value = d.frente;
+            if (!el.value) {
+                el.setAttribute('data-temp-value', d.frente);
+            }
+        }
+
+        document.getElementById("turnoLetra").value = d.turno || "A"; 
+    } catch (e) { 
+        console.error("Erro render inicial", e); 
+    } 
+}
+
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
         function abrir(secaoId) {
             // Esconde todas as secções
@@ -550,6 +639,15 @@
             const secaoAtiva = document.getElementById(secaoId);
             if (secaoAtiva) {
                 secaoAtiva.classList.remove('hidden');
+                
+                  // --- LÓGICA INTELIGENTE DE ECONOMIA ---
+        if (secaoId === 'catalogo') {
+            // Só baixa o catálogo se o usuário entrar nesta tela!
+            sincronizarCatalogoPecas();
+            renderizarCatalogo(); // Renderiza o que já tem no cache local enquanto baixa
+        }
+        // --------------------------------------
+                
                 const renderFunc = window[`renderizarSecao${secaoId.charAt(0).toUpperCase() + secaoId.slice(1)}`];
                 if (typeof renderFunc === 'function') {
                     renderFunc(secaoAtiva);
@@ -670,6 +768,414 @@
         function renderizarFrotasDoTurno() { const div = document.getElementById('listaFrotas'); if (!div) return; if (frotasTurno.length === 0) { div.innerHTML = '<p class="text-sm text-gray-500">Nenhuma frota adicionada a este turno.</p>'; return; } frotasTurno.sort((a, b) => a.nome.localeCompare(b.nome)); div.innerHTML = frotasTurno.map((f, i) => `<div class="flex justify-between items-center p-2 border-b text-sm"><span><strong class="font-semibold">${f.nome}</strong> <span class="text-xs font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</span> - <input type="number" step="0.1" value="${f.horas}" onchange="atualizarHorasFrotaTurno(${i}, this.value)" class="w-20 p-1 border rounded">h</span><button onclick="removerFrotaDoTurno(${i})" class="text-red-500 hover:text-red-700 text-xl font-bold px-2" title="Remover frota do turno">&times;</button></div>`).join(''); }
         async function removerFrotaDoTurno(index) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Remover Frota do Turno', 'Tem certeza?', resolve)); if (confirmado) { frotasTurno.splice(index, 1); renderizarFrotasDoTurno(); salvarTudo(); showToast('Frota removida do turno.', 'success'); } }
         function atualizarHorasFrotaTurno(index, novasHoras) { const horas = parseFloat(novasHoras); if (!isNaN(horas) && horas > 0) { frotasTurno[index].horas = horas; salvarTudo(); showToast('Horas da frota atualizadas.', 'success'); } else { showToast('Valor de horas inválido.', 'error'); renderizarFrotasDoTurno(); } }
+        
+// ============================================================
+// GESTÃO DE FAZENDAS E FRENTES (Sincronizado)
+// ============================================================
+
+let listaFazendas = [];
+let listaFrentes = [];
+
+// 1. Inicia a escuta do Firebase (Chamar no main)
+function iniciarSincronizacaoAuxiliares() {
+    // Sincronizar FAZENDAS
+    firestore.collection('lista_fazendas').orderBy('nome').onSnapshot(snapshot => {
+        const tx = db.transaction(STORE_FAZENDAS, 'readwrite');
+        const store = tx.objectStore(STORE_FAZENDAS);
+        
+        snapshot.docChanges().forEach(change => {
+            const item = { ...change.doc.data(), docId: change.doc.id };
+            if (change.type === 'added' || change.type === 'modified') store.put(item);
+            if (change.type === 'removed') store.delete(item.docId);
+        });
+
+        tx.oncomplete = () => carregarFazendasDoCache();
+    });
+
+    // Sincronizar FRENTES
+    firestore.collection('lista_frentes').orderBy('nome').onSnapshot(snapshot => {
+        const tx = db.transaction(STORE_FRENTES, 'readwrite');
+        const store = tx.objectStore(STORE_FRENTES);
+        
+        snapshot.docChanges().forEach(change => {
+            const item = { ...change.doc.data(), docId: change.doc.id };
+            if (change.type === 'added' || change.type === 'modified') store.put(item);
+            if (change.type === 'removed') store.delete(item.docId);
+        });
+
+        tx.oncomplete = () => carregarFrentesDoCache();
+    });
+}
+
+// 2. Carrega do IndexedDB para a Tela
+async function carregarFazendasDoCache() {
+    try {
+        listaFazendas = await dbExec(STORE_FAZENDAS, 'readonly', s => s.getAll());
+        atualizarSelectGenerico('fazenda', listaFazendas);
+    } catch(e) { console.error(e); }
+}
+
+async function carregarFrentesDoCache() {
+    try {
+        listaFrentes = await dbExec(STORE_FRENTES, 'readonly', s => s.getAll());
+        atualizarSelectGenerico('frente', listaFrentes);
+    } catch(e) { console.error(e); }
+}
+
+// Função auxiliar para preencher os selects
+function atualizarSelectGenerico(elementId, dados) {
+    const select = document.getElementById(elementId);
+    if (!select) return;
+
+    // Tenta preservar o valor que já estava selecionado ou salvo
+    const valorAtual = select.value || select.getAttribute('data-temp-value');
+
+    select.innerHTML = '<option value="">Selecione...</option>';
+    
+    // Ordenação alfabética
+    dados.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    dados.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.nome;
+        option.textContent = item.nome;
+        option.dataset.docId = item.docId; // ID do Firebase para exclusão
+        select.appendChild(option);
+    });
+
+    // Restaura a seleção
+    if (valorAtual) {
+        select.value = valorAtual;
+        // Se o valor salvo não existe na lista (foi apagado por outro usuário), cria visualmente
+        if (!select.value) {
+            const opt = document.createElement('option');
+            opt.value = valorAtual;
+            opt.text = valorAtual + " (Arquivado)";
+            opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
+}
+
+// 3. Funções de CRUD (Adicionar / Remover)
+
+function adicionarNovaFazenda() {
+    abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', async (nome) => {
+        if (!nome) return;
+        const nomeUpper = nome.trim().toUpperCase();
+        
+        if (listaFazendas.some(f => f.nome === nomeUpper)) {
+            showToast("Esta fazenda já existe.", "error");
+            return;
+        }
+
+        try {
+            await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
+            showToast("Fazenda adicionada!", "success");
+            // Força seleção imediata
+            setTimeout(() => {
+                const el = document.getElementById('fazenda');
+                el.value = nomeUpper;
+                salvarDadosParciaisTurno();
+            }, 500);
+        } catch (e) { showToast("Erro ao salvar: " + e.message, "error"); }
+    });
+}
+
+function removerFazendaSelecionada() {
+    const select = document.getElementById('fazenda');
+    const nome = select.value;
+    const option = select.options[select.selectedIndex];
+    const docId = option.dataset.docId;
+
+    if (!nome || !docId) {
+        showToast("Selecione uma fazenda da lista para remover.", "error");
+        return;
+    }
+
+    abrirPopupConfirmar("Apagar Fazenda", `Deseja remover <b>${nome}</b>? <br>Isso afetará todos os usuários.`, async (ok) => {
+        if (ok) {
+            try {
+                await firestore.collection('lista_fazendas').doc(docId).delete();
+                showToast("Fazenda removida.", "success");
+                select.value = "";
+                salvarDadosParciaisTurno();
+            } catch (e) { showToast("Erro ao remover.", "error"); }
+        }
+    });
+}
+
+function adicionarNovaFrente() {
+    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', async (nome) => {
+        if (!nome) return;
+        const nomeUpper = nome.trim().toUpperCase();
+        
+        if (listaFrentes.some(f => f.nome === nomeUpper)) {
+            showToast("Esta frente já existe.", "error");
+            return;
+        }
+
+        try {
+            await firestore.collection('lista_frentes').add({ nome: nomeUpper });
+            showToast("Frente adicionada!", "success");
+            setTimeout(() => {
+                const el = document.getElementById('frente');
+                el.value = nomeUpper;
+                salvarDadosParciaisTurno();
+            }, 500);
+        } catch (e) { showToast("Erro ao salvar.", "error"); }
+    });
+}
+
+function removerFrenteSelecionada() {
+    const select = document.getElementById('frente');
+    const nome = select.value;
+    const option = select.options[select.selectedIndex];
+    const docId = option.dataset.docId;
+
+    if (!nome || !docId) {
+        showToast("Selecione uma frente da lista para remover.", "error");
+        return;
+    }
+
+    abrirPopupConfirmar("Apagar Frente", `Deseja remover <b>${nome}</b>?`, async (ok) => {
+        if (ok) {
+            try {
+                await firestore.collection('lista_frentes').doc(docId).delete();
+                showToast("Frente removida.", "success");
+                select.value = "";
+                salvarDadosParciaisTurno();
+            } catch (e) { showToast("Erro ao remover.", "error"); }
+        }
+    });
+}
+
+// ============================================================
+// GESTÃO DE EQUIPE (FIREBASE + LOCAL)
+// ============================================================
+
+let listaEquipeCache = [];
+
+// 1. SINCRONIZAÇÃO (Firebase -> App)
+// Chamar no main()
+function iniciarSincronizacaoEquipe() {
+    firestore.collection('lista_equipe').orderBy('nome').onSnapshot(snapshot => {
+        const tx = db.transaction(STORE_EQUIPE, 'readwrite');
+        const store = tx.objectStore(STORE_EQUIPE);
+        
+        listaEquipeCache = []; // Limpa RAM
+
+        snapshot.docChanges().forEach(change => {
+            const item = { ...change.doc.data(), docId: change.doc.id };
+            if (change.type === 'added' || change.type === 'modified') store.put(item);
+            if (change.type === 'removed') store.delete(item.docId);
+        });
+
+        // Atualiza cache em memória
+        tx.oncomplete = async () => {
+            listaEquipeCache = await dbExec(STORE_EQUIPE, 'readonly', s => s.getAll());
+            // Atualiza também o select do apontamento se estiver aberto
+            renderizarSecaoApontamento(); 
+        };
+    });
+}
+
+// 2. POPUP DE SELEÇÃO E CADASTRO
+function abrirPopupSelecaoEquipe() {
+    // Filtra e ordena
+    listaEquipeCache.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Gera lista com checkboxes
+    // Marca como 'checked' quem JÁ está no turno atual (variavel 'equipe')
+    const listaHTML = listaEquipeCache.map(colab => {
+        const jaNoTurno = equipe.some(e => e.matricula === colab.matricula);
+        const checked = jaNoTurno ? 'checked' : '';
+        const style = jaNoTurno ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
+        
+        return `
+        <div class="flex items-center justify-between p-2 mb-2 border rounded-md ${style} hover:bg-gray-50 transition-colors">
+            <label class="flex items-center flex-grow cursor-pointer gap-3">
+                <input type="checkbox" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 checkbox-equipe" 
+                    value="${colab.matricula}" data-nome="${colab.nome}" ${checked}>
+                <div class="flex flex-col">
+                    <span class="font-bold text-gray-800 text-sm">${colab.nome}</span>
+                    <span class="text-xs text-gray-500">Mat: ${colab.matricula}</span>
+                </div>
+            </label>
+            <button onclick="removerColaboradorDoBanco('${colab.docId}', '${colab.nome}')" class="text-gray-300 hover:text-red-500 p-2" title="Apagar do Banco">🗑️</button>
+        </div>`;
+    }).join('');
+
+    const conteudo = `
+        <div class="mb-4 flex gap-2">
+            <button onclick="abrirPopupNovoColaborador()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md font-bold text-sm shadow-sm flex items-center justify-center gap-2">
+                <span>+</span> Novo Colaborador
+            </button>
+        </div>
+        
+        <div class="mb-2">
+            <input type="text" id="filtroEquipe" oninput="filtrarListaEquipe()" placeholder="🔎 Buscar nome..." class="w-full p-2 border rounded text-sm">
+        </div>
+
+        <div id="listaCheckboxesEquipe" class="max-h-[50vh] overflow-y-auto pr-1">
+            ${listaHTML || '<p class="text-center text-gray-500 text-sm py-4">Nenhum colaborador cadastrado.</p>'}
+        </div>
+    `;
+
+    abrirPopup('Gerir Equipe do Turno', conteudo, [
+        { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup },
+        { texto: 'Confirmar Seleção', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: confirmarSelecaoEquipe }
+    ]);
+}
+
+// Filtro rápido no popup
+function filtrarListaEquipe() {
+    const termo = removerAcentos(document.getElementById('filtroEquipe').value.toLowerCase());
+    const container = document.getElementById('listaCheckboxesEquipe');
+    const items = container.querySelectorAll('div'); // Pega as divs das linhas
+
+    items.forEach(div => {
+        const nome = removerAcentos(div.querySelector('span.font-bold').innerText.toLowerCase());
+        const mat = div.querySelector('span.text-xs').innerText.toLowerCase();
+        
+        if (nome.includes(termo) || mat.includes(termo)) {
+            div.style.display = 'flex';
+        } else {
+            div.style.display = 'none';
+        }
+    });
+}
+
+// 3. AÇÕES DE CADASTRO (GLOBAL) - VERSÃO VISUAL CORRIGIDA
+
+// ============================================================
+// CORREÇÃO: MODAL DE NOVO COLABORADOR (COM Z-INDEX ALTO)
+// ============================================================
+
+function abrirPopupNovoColaborador() {
+    // 1. ESCONDE O POPUP ANTERIOR COMPLETO (Conteúdo + Sombra)
+    // Isso evita que o novo modal fique "preso" atrás da sombra antiga
+    document.getElementById('popupGenerico').style.display = 'none';
+    document.getElementById('overlayGenerico').style.display = 'none';
+
+    const htmlForm = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Nome Completo *</label>
+                <input type="text" id="newColabNome" 
+                    class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none uppercase font-semibold text-gray-800 transition-colors" 
+                    placeholder="DIGITE O NOME">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Matrícula *</label>
+                <input type="text" id="newColabMat" 
+                    class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none font-semibold text-gray-800 transition-colors" 
+                    placeholder="00000">
+            </div>
+        </div>
+    `;
+
+    const modalId = 'modal-novo-colab';
+    
+    // 2. CRIA O NOVO MODAL COM Z-INDEX EXPLÍCITO (99999)
+    const modalHTML = `
+    <div id="${modalId}" style="z-index: 99999;" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-5 w-full max-w-sm border border-gray-100 transform transition-all scale-100 relative">
+            
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold text-blue-800 flex items-center gap-2">
+                    <span>👤</span> Novo Colaborador
+                </h3>
+                <button onclick="fecharModalNovoColaborador('${modalId}')" class="text-gray-400 hover:text-red-500 text-3xl leading-none">&times;</button>
+            </div>
+
+            ${htmlForm}
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="fecharModalNovoColaborador('${modalId}')" 
+                    class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors border border-gray-300">
+                    Voltar
+                </button>
+                <button onclick="salvarNovoColaborador()" 
+                    class="px-4 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-md transition-transform active:scale-95 flex items-center gap-2">
+                    <span>💾</span> Salvar
+                </button>
+            </div>
+        </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Foca no input
+    setTimeout(() => document.getElementById('newColabNome').focus(), 100);
+}
+
+// Função auxiliar para fechar este modal e RESTAURAR o anterior
+function fecharModalNovoColaborador(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+    
+    // 3. REABRE O POPUP E A SOMBRA ANTERIORES
+    document.getElementById('popupGenerico').style.display = 'block';
+    document.getElementById('overlayGenerico').style.display = 'block';
+}
+
+
+async function salvarNovoColaborador() {
+    const nome = document.getElementById('newColabNome').value.trim().toUpperCase();
+    const matricula = document.getElementById('newColabMat').value.trim();
+
+    if (!nome || !matricula) {
+        alert("Preencha nome e matrícula.");
+        return;
+    }
+
+    try {
+        await firestore.collection('lista_equipe').add({ nome, matricula });
+        // Fecha modal e reabre o anterior
+        document.getElementById('modal-novo-colab').remove();
+        
+        // Aguarda um pouco o sync e reabre a seleção
+        showToast("Colaborador cadastrado!", "success");
+        setTimeout(() => {
+            document.getElementById('popupGenerico').style.display = 'block';
+            abrirPopupSelecaoEquipe(); // Recarrega a lista
+        }, 500);
+
+    } catch (e) {
+        alert("Erro ao salvar: " + e.message);
+    }
+}
+
+function removerColaboradorDoBanco(docId, nome) {
+    if(confirm(`Tem certeza que deseja apagar ${nome} do BANCO DE DADOS? Isso sumirá para todos.`)) {
+        firestore.collection('lista_equipe').doc(docId).delete();
+        // Atualiza a lista visualmente
+        setTimeout(abrirPopupSelecaoEquipe, 500);
+    }
+}
+
+// 4. CONFIRMAR SELEÇÃO (ATUALIZA O TURNO)
+function confirmarSelecaoEquipe() {
+    const checkboxes = document.querySelectorAll('.checkbox-equipe:checked');
+    
+    // Limpa a equipe atual e reconstrói baseada na seleção
+    equipe = [];
+    
+    checkboxes.forEach(cb => {
+        equipe.push({
+            nome: cb.getAttribute('data-nome'),
+            matricula: cb.value
+        });
+    });
+
+    renderizarEquipe(); // Atualiza a tela principal
+    salvarTudo(); // Salva no turno
+    fecharPopup();
+    showToast("Equipe do turno atualizada!", "success");
+}
+
+
         // ---------------------------------
         // MÓDULO: CATÁLOGO DE FROTAS (ONLINE)
         // ---------------------------------
@@ -1104,25 +1610,30 @@ function adicionarFrotasSelecionadasAoTurno() {
         // ---------------------------------
         // NOVAS FUNÇÕES: GESTÃO DE PEÇAS NO SERVIÇO
         // ---------------------------------
-        function abrirPopupSelecaoPecas(servicoId) {
-            if (catalogoLocal.length === 0) {
-                showToast("Catálogo de peças vazio. Importe ou adicione itens.", 'error', 3000);
-                return;
-            }
-            
-            // Filtro inicial e renderização do catálogo dentro do popup
-            const itensFiltrados = catalogoLocal.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
-            
-            let conteudo = `<input type="text" id="popupBuscaPeca" oninput="renderizarPecasParaServico(${servicoId})" placeholder="🔎 Buscar peça por SAP/Descrição..." class="w-full p-2 border border-gray-300 rounded-lg mb-3">
-            <div id="listaPecasPopup" class="max-h-64 overflow-y-auto space-y-2">`;
-            
-            conteudo += renderizarPecasParaServicoHTML(itensFiltrados, servicoId);
-            conteudo += `</div>`;
+        
+    function abrirPopupSelecaoPecas(servicoId) {
+    // 1. Inicia o download (se ainda não foi feito)
+    sincronizarCatalogoPecas();
 
-            abrirPopup('Selecionar Peça', `<div id="popup-content-wrapper">${conteudo}</div>`, [
-                { texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }
-            ]);
-        }
+    // 2. Se a lista ainda estiver vazia, provavelmente está baixando
+    if (catalogoLocal.length === 0) {
+        showToast("Carregando catálogo... Aguarde alguns segundos e tente novamente.", 'info', 4000);
+        return;
+    }
+    
+    // Filtro inicial e renderização do catálogo dentro do popup
+    const itensFiltrados = catalogoLocal.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+    
+    let conteudo = `<input type="text" id="popupBuscaPeca" oninput="renderizarPecasParaServico(${servicoId})" placeholder="🔎 Buscar peça por SAP/Descrição..." class="w-full p-2 border border-gray-300 rounded-lg mb-3">
+    <div id="listaPecasPopup" class="max-h-64 overflow-y-auto space-y-2">`;
+    
+    conteudo += renderizarPecasParaServicoHTML(itensFiltrados, servicoId);
+    conteudo += `</div>`;
+
+    abrirPopup('Selecionar Peça', `<div id="popup-content-wrapper">${conteudo}</div>`, [
+        { texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }
+    ]);
+}
 
         function renderizarPecasParaServico(servicoId) {
             const listaDiv = document.getElementById('listaPecasPopup');
@@ -2085,29 +2596,45 @@ function calcularDMGeral(maquinas, horasParadasTotais) {
         // =================================================================================
         // 8. SINCRONIZAÇÃO COM FIREBASE
         // =================================================================================
-        function sincronizarCatalogoPecas() {
-            firestore.collection('catalogo').onSnapshot(async (snapshot) => {
-                const tx = db.transaction('catalogo', 'readwrite');
-                const store = tx.objectStore('catalogo');
-                let houveMudanca = false;
-                for (const change of snapshot.docChanges()) {
-                    houveMudanca = true;
-                    const item = { ...change.doc.data(), docId: change.doc.id };
-                    if (change.type === 'added' || change.type === 'modified') { store.put(item); }
-                    if (change.type === 'removed') { store.delete(item.docId); }
-                }
-                tx.oncomplete = async () => {
-                    if (houveMudanca) {
-                        catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
-                        // NOVO: Feedback visual
-                        showToast("Catálogo de Peças atualizado (via nuvem).", 'info', 1500); 
-                        if (document.getElementById('catalogo')?.classList.contains('hidden') === false) {
-                            renderizarCatalogo();
-                        }
-                    }
-                };
-            }, (error) => { console.error("Erro ao sincronizar catálogo de peças:", error); showToast("Falha ao sincronizar peças.", "error"); });
+        let monitoramentoCatalogoIniciado = false; // Variável de controle global
+
+function sincronizarCatalogoPecas() {
+    // SE já estiver monitorando, NÃO faz nada (Economiza leituras!)
+    if (monitoramentoCatalogoIniciado) return;
+
+    console.log("Iniciando download do catálogo de peças...");
+    monitoramentoCatalogoIniciado = true; // Marca como iniciado
+
+    firestore.collection('catalogo').onSnapshot(async (snapshot) => {
+        // ... (seu código existente de salvar no IndexedDB) ...
+        const tx = db.transaction('catalogo', 'readwrite');
+        const store = tx.objectStore('catalogo');
+        let houveMudanca = false;
+        
+        // Dica de economia: Se for apenas metadados (fromCache), não conta leitura
+        if (snapshot.metadata.fromCache) console.log("Lendo do cache local");
+
+        for (const change of snapshot.docChanges()) {
+            houveMudanca = true;
+            const item = { ...change.doc.data(), docId: change.doc.id };
+            if (change.type === 'added' || change.type === 'modified') { store.put(item); }
+            if (change.type === 'removed') { store.delete(item.docId); }
         }
+        tx.oncomplete = async () => {
+            if (houveMudanca) {
+                catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
+                // Só renderiza se a tela de catálogo estiver visível
+                if (document.getElementById('catalogo')?.classList.contains('hidden') === false) {
+                    renderizarCatalogo();
+                }
+            }
+        };
+    }, (error) => { 
+        console.error("Erro catalogo:", error); 
+        monitoramentoCatalogoIniciado = false; // Reseta em caso de erro para tentar de novo
+    });
+}
+
 
         function sincronizarCatalogoFrotas() {
             firestore.collection('catalogoFrotas').onSnapshot(async (snapshot) => {
