@@ -597,6 +597,7 @@ firestore.enablePersistence({ synchronizeTabs: true })
         renderizarLayoutInicial();
         inicializarMenuHamburguer();
         verificarOnboarding(); 
+        iniciarMonitoramentoConexao();
         // --- NOVAS CHAMADAS DE LÓGICA ---
         migrarDadosLocaisParaNuvem();     // Salva o legado
         iniciarSincronizacaoHistorico();  // Baixa o novo
@@ -3738,6 +3739,39 @@ function sincronizarCatalogoFrotas() {
         console.error("Erro Frotas:", error); 
         monitoramentoFrotasIniciado = false; // Reseta em caso de erro
     });
+}
+// ============================================================
+// MONITORAMENTO DE CONEXÃO
+// ============================================================
+function iniciarMonitoramentoConexao() {
+    // Cria o indicador visual no Header
+    const tituloContainer = document.querySelector('.flex.items-center.gap-x-3');
+    if (!tituloContainer) return;
+
+    const divStatus = document.createElement('div');
+    divStatus.id = 'status-conexao';
+    divStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded ml-2 hidden';
+    tituloContainer.appendChild(divStatus);
+
+    function atualizarStatus() {
+        if (navigator.onLine) {
+            divStatus.textContent = 'ONLINE 🟢';
+            divStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded ml-2 bg-green-100 text-green-800 border border-green-300';
+            // Tenta reconectar o histórico se voltar a internet
+            if (document.getElementById('historico')?.classList.contains('hidden') === false) {
+                iniciarSincronizacaoHistorico();
+            }
+        } else {
+            divStatus.textContent = 'OFFLINE 🔴';
+            divStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded ml-2 bg-red-100 text-red-800 border border-red-300';
+        }
+        divStatus.classList.remove('hidden');
+    }
+
+    window.addEventListener('online', () => { atualizarStatus(); showToast("Conexão restaurada!", "success"); });
+    window.addEventListener('offline', () => { atualizarStatus(); showToast("Você está OFFLINE.", "warning"); });
+    
+    atualizarStatus();
 }
 
 
