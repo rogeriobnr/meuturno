@@ -233,7 +233,7 @@
             <div class="mt-4">
                 <label for="frente" class="block text-xs font-bold text-gray-500 uppercase mb-1">Frente</label>
                 <div class="flex gap-2">
-                    <select id="frente" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+                    <select id="frente" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
                         <option value="">Carregando...</option>
                     </select>
                     <button onclick="adicionarNovaFrente()" class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg font-bold text-xl shadow-md transition-transform active:scale-95" title="Adicionar Frente">+</button>
@@ -245,7 +245,7 @@
 
             <div class="mt-4">
                 <label for="turnoLetra" class="block text-xs font-bold text-gray-500 uppercase mb-1">Turno</label>
-                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()">
+                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()">
                     <option value="A">TURNO A</option>
                     <option value="B">TURNO B</option>
                     <option value="C">TURNO C</option>
@@ -371,21 +371,29 @@
         </span>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="grid grid-cols-3 gap-2 mb-3">
+        
         <button onclick="adicionarLinhaManual()" 
-            class="flex flex-col items-center justify-center p-3 bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-all group shadow-sm">
-            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">☕</span>
-            <span class="text-xs font-bold text-gray-600 group-hover:text-orange-600">Atividades (H..)</span>
-            <span class="text-[10px] text-gray-400">Refeição, Organização, Outros...</span>
+            class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all group shadow-sm h-12">
+            <span class="text-base group-hover:scale-110 transition-transform">☕</span>
+            <span class="text-[8px] font-bold text-gray-700 group-hover:text-orange-600 uppercase leading-tight text-center">Adicionar<br>Manual</span>
+        </button>
+
+        <button onclick="abrirPopupAddPreventiva()" 
+            class="flex items-center justify-center gap-1 py-2 px-1 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all group shadow-sm h-12">
+            <span class="text-base group-hover:scale-110 transition-transform">📋</span>
+            <span class="text-[10px] font-bold text-purple-700 uppercase leading-tight text-center">Adicionar<br>Preventiva</span>
         </button>
 
         <button onclick="abrirPopupImportarServico()" 
-            class="flex flex-col items-center justify-center p-3 bg-blue-50 border-2 border-blue-100 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm">
-            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🔧</span>
-            <span class="text-xs font-bold text-blue-700">Importar Serviço</span>
-            <span class="text-[10px] text-blue-400"> Não esqueça de adicionar as o.s...</span>
+            class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm h-12">
+            <span class="text-base group-hover:scale-110 transition-transform">🔧</span>
+            <span class="text-[8px] font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
         </button>
+
     </div>
+
+
 
     <div id="listaLinhasApontamento" class="space-y-3 min-h-[100px]">
         <div class="text-center py-8 text-gray-400 text-sm italic">
@@ -483,6 +491,58 @@
     </template>
 
     <script>
+    // ============================================================
+// LÓGICA DO TUTORIAL (ONBOARDING)
+// ============================================================
+
+// Verifica se o usuário já viu o tutorial
+function verificarOnboarding() {
+    const versaoTutorial = localStorage.getItem('tutorial_v2_visto');
+    if (versaoTutorial !== 'true') {
+        document.getElementById('modalOnboarding').classList.remove('hidden');
+    }
+}
+
+// Navegação entre slides
+function proximoSlide(numero) {
+    // Esconde todos
+    document.getElementById('slide1').classList.add('hidden');
+    document.getElementById('slide2').classList.add('hidden');
+    document.getElementById('slide3').classList.add('hidden');
+    
+    // Mostra o atual
+    document.getElementById(`slide${numero}`).classList.remove('hidden');
+}
+
+// Ativa o botão final apenas se o checkbox for marcado
+document.addEventListener('DOMContentLoaded', () => {
+    const check = document.getElementById('checkTermos');
+    const btn = document.getElementById('btnConcluirOnboarding');
+    
+    if(check && btn) {
+        check.addEventListener('change', function() {
+            if(this.checked) {
+                btn.disabled = false;
+                btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'hover:bg-green-700', 'shadow-lg');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('bg-gray-300', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-700', 'shadow-lg');
+            }
+        });
+    }
+});
+
+// Salva que o usuário já viu e fecha
+function concluirOnboarding() {
+    localStorage.setItem('tutorial_v2_visto', 'true');
+    document.getElementById('modalOnboarding').classList.add('hidden');
+    showToast("Configuração concluída! Bom trabalho.", "success");
+}
+
+    
+    
         'use strict';
         const SENHA_LIMPEZA_CATALOGO = 'mudar1234';
         document.addEventListener("DOMContentLoaded", main);
@@ -500,10 +560,26 @@
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
         const sistemas = { "Tratores": [{ cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" }, { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" }, { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio" }], "Implementos": [{ cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" }, { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }] };
         const subsistemas = { "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"], "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"], "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"], "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"], "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"], "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"], "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"], "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"], "9": ["9.1 - Freio", "9.2 - Acumulador"], "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"], "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"], "12": ["12.1 - Caixa de Adubo"], "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"], "14": ["14.1 - Sensores", "14.2 - Chicote"], "15": ["15.1 - Lamina", "15.2 - Ball"] };
+        
         const firebaseConfig = { apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok", authDomain: "meu-turno-app.firebaseapp.com", projectId: "meu-turno-app", storageBucket: "meu-turno-app.firebasestorage.app", messagingSenderId: "967200929614", appId: "1:967200929614:web:3acbf1049a10cdbf87501f" };
-        const firebaseApp = firebase.initializeApp(firebaseConfig);
-        const firestore = firebase.firestore();
-        firestore.enablePersistence().catch((err) => { console.warn('Falha na persistência do Firestore:', err.code); });
+        // 1. Inicializa o App
+const firebaseApp = firebase.initializeApp(firebaseConfig);
+
+// 2. Cria a instância do Firestore
+const firestore = firebase.firestore();
+
+// ============================================================
+// 3. AQUI ENTRA A CONFIGURAÇÃO DE CONEXÃO (O ESCOPO É GLOBAL)
+// ============================================================
+firestore.settings({
+    experimentalForceLongPolling: true, // <--- A MÁGICA ESTÁ AQUI
+    merge: true
+});
+// ============================================================
+
+// 4. Depois ativa a persistência e continua o resto...
+firestore.enablePersistence({ synchronizeTabs: true })
+    .catch((err) => { console.warn('Falha na persistência:', err.code); });
 
         // =================================================================================
         // 2. INICIALIZAÇÃO E LÓGICA DO PWA
@@ -513,28 +589,23 @@
         registrarServiceWorker();
         await initDB();
         
-        // 1. Inicia todas as sincronizações do Firebase (Nuvem)
+        sincronizarCatalogoFrotas();
         iniciarSincronizacaoAuxiliares();
         iniciarSincronizacaoEquipe();
         
-       // <--- MELHOR LUGAR (Logo após o banco abrir)
-
-        // 2. Carrega dados do turno (Local)
         await carregarDadosIniciais();
-        
-        // 3. Desenha a tela (já com as listas carregando ou carregadas)
         renderizarLayoutInicial();
-        
         inicializarMenuHamburguer();
+        verificarOnboarding(); 
+        // --- NOVAS CHAMADAS DE LÓGICA ---
+        migrarDadosLocaisParaNuvem();     // Salva o legado
+        iniciarSincronizacaoHistorico();  // Baixa o novo
+        // -------------------------------
 
-        // 4. Navegação
         const secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
         abrir(secaoInicial);
         
-    } catch (err) { 
-        console.error("Erro fatal ao inicializar:", err); 
-        showToast("Erro grave ao iniciar. Tente recarregar.", 'error'); 
-    }
+    } catch (err) { console.error("Erro main:", err); }
 }
 
 
@@ -601,9 +672,59 @@ function initDB() {
                 } else { inicializarEstadoVazio(); }
             } catch (err) { showToast('Erro ao carregar dados iniciais.', 'error'); inicializarEstadoVazio(); }
         }
-        function carregarEstado(dados) { equipe = dados.equipe || []; frotasTurno = dados.frotas || []; servicos = dados.servicos || []; frotasTurno.forEach(f => f.tipo = f.tipo || 'maquina'); servicos.forEach(s => { s.isExpanded = s.isExpanded || false; s.foiCompartilhado = s.foiCompartilhado || false; s.pecasUtilizadas = s.pecasUtilizadas || []; }); }
+        function carregarEstado(dados) { 
+    equipe = dados.equipe || []; 
+    frotasTurno = dados.frotas || []; 
+    servicos = dados.servicos || []; 
+    
+    // --- RECUPERANDO A LINHA DO TEMPO SALVA ---
+    linhasApontamento = dados.linhasApontamento || [];
+    // ------------------------------------------
+
+    frotasTurno.forEach(f => f.tipo = f.tipo || 'maquina'); 
+    servicos.forEach(s => { 
+        s.isExpanded = s.isExpanded || false; 
+        s.foiCompartilhado = s.foiCompartilhado || false; 
+        s.pecasUtilizadas = s.pecasUtilizadas || []; 
+    }); 
+}
+
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
-        function salvarTudo(forcar = false) { clearTimeout(debounceTimer); const executar = async () => { try { const relatorioBruto = document.getElementById("relatorio_bruto")?.value || ''; const snapshotServicos = document.getElementById("relatorio_snapshot")?.value || '[]'; const dados = { id: TURNO_ATUAL_ID, data: document.getElementById("dataTurno")?.value, fazenda: document.getElementById("fazenda")?.value.trim(), frente: document.getElementById("frente")?.value.trim(), turno: document.getElementById("turnoLetra")?.value, equipe: equipe, frotas: frotasTurno, servicos: servicos, relatorio: relatorioBruto, relatorioGeradoComServicos: snapshotServicos }; await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); } catch (err) { showToast('Erro ao salvar os dados.', 'error'); } }; if (forcar) executar(); else debounceTimer = setTimeout(executar, 1000); }
+        
+        function salvarTudo(forcar = false) { 
+    clearTimeout(debounceTimer); 
+    const executar = async () => { 
+        try { 
+            const relatorioBruto = document.getElementById("relatorio_bruto")?.value || ''; 
+            const snapshotServicos = document.getElementById("relatorio_snapshot")?.value || '[]'; 
+            
+            const dados = { 
+                id: TURNO_ATUAL_ID, 
+                data: document.getElementById("dataTurno")?.value, 
+                fazenda: document.getElementById("fazenda")?.value.trim(), 
+                frente: document.getElementById("frente")?.value.trim(), 
+                turno: document.getElementById("turnoLetra")?.value, 
+                equipe: equipe, 
+                frotas: frotasTurno, 
+                servicos: servicos, 
+                // --- AQUI ESTÁ A NOVIDADE: SALVAR A LINHA DO TEMPO ---
+                linhasApontamento: linhasApontamento, 
+                // -----------------------------------------------------
+                relatorio: relatorioBruto, 
+                relatorioGeradoComServicos: snapshotServicos 
+            }; 
+            
+            await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); 
+        } catch (err) { 
+            console.error("Erro ao salvar:", err); // Mudei para console para não spammar toast
+        } 
+    }; 
+    
+    if (forcar) executar(); 
+    else debounceTimer = setTimeout(executar, 1000); 
+}
+
+        
         function salvarDadosParciaisTurno() { validarCamposTurnoBasicos(); salvarTudo(); }
 
         // =================================================================================
@@ -2068,11 +2189,170 @@ function renderizarListaLinhas() {
     });
 }
 
+// ============================================================
+// MÓDULO: ADICIONAR PREVENTIVA (NOVO)
+// ============================================================
+
+function abrirPopupAddPreventiva() {
+    // 1. Prepara as opções de Frota
+    let opcoesFrota = '<option value="">Selecione a Frota...</option>';
+    if (frotasTurno.length > 0) {
+        opcoesFrota += frotasTurno.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
+    }
+
+    // 2. Prepara as opções de Sistema
+    let opcoesSistemas = '<option value="">Selecione o Sistema...</option>';
+    for (const [grupo, lista] of Object.entries(sistemas)) {
+        opcoesSistemas += `<optgroup label="${grupo}">`;
+        lista.forEach(sys => {
+            opcoesSistemas += `<option value="${sys.cod}">${sys.cod} - ${sys.nome}</option>`;
+        });
+        opcoesSistemas += `</optgroup>`;
+    }
+
+    // 3. (NOVO) Prepara as opções de Atividade
+    // Filtra apenas as que começam com 'P' (Produtivas/Preventivas) para facilitar, ou mostra todas.
+    // Aqui vou colocar todas que não são 'H' (Horas paradas), pois preventiva é trabalho.
+    let opcoesAtividade = '<option value="">Selecione a Atividade...</option>';
+    atividades.forEach(a => {
+        if (a.startsWith('P')) { // Mostra apenas códigos 'P'
+            opcoesAtividade += `<option value="${a}">${a}</option>`;
+        }
+    });
+
+    // 4. HTML do Formulário
+    const conteudo = `
+        <div class="space-y-3 text-left">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600">Nº da O.S. *</label>
+                    <input type="number" id="prevOS" class="w-full p-2 border rounded-md font-bold text-purple-700 bg-purple-50" placeholder="Ex: 102030">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600">Frota *</label>
+                    <select id="prevFrota" class="w-full p-2 border rounded-md bg-white text-sm">
+                        ${opcoesFrota}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600">Atividade Realizada *</label>
+                <select id="prevAtividade" class="w-full p-2 border rounded-md bg-white text-xs font-semibold text-gray-700">
+                    ${opcoesAtividade}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600">Sistema *</label>
+                    <select id="prevSistema" onchange="atualizarSubsistemaPreventiva()" class="w-full p-2 border rounded-md bg-white text-xs">
+                        ${opcoesSistemas}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600">Subsistema *</label>
+                    <select id="prevSubsistema" class="w-full p-2 border rounded-md bg-gray-50 text-xs" disabled>
+                        <option value="">Selecione Sistema 1º</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 bg-purple-50 p-2 rounded-md border border-purple-100 mt-2">
+                <div>
+                    <label class="block text-xs font-bold text-purple-800">Início *</label>
+                    <input type="time" id="prevInicio" class="w-full p-1 bg-white border border-purple-200 rounded text-center font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-purple-800">Fim *</label>
+                    <input type="time" id="prevFim" class="w-full p-1 bg-white border border-purple-200 rounded text-center font-bold">
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    abrirPopup('📋 Adicionar Preventiva', conteudo, [
+        { texto: 'Cancelar', classe: 'bg-gray-200 text-gray-700', acao: fecharPopup },
+        { texto: 'Salvar', classe: 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg', acao: salvarPreventiva }
+    ]);
+}
+
+// Função auxiliar para carregar subsistemas dinamicamente no popup
+function atualizarSubsistemaPreventiva() {
+    const codSistema = document.getElementById('prevSistema').value;
+    const selectSub = document.getElementById('prevSubsistema');
+    
+    selectSub.innerHTML = '<option value="">Selecione...</option>';
+    selectSub.disabled = true;
+    selectSub.classList.add('bg-gray-50');
+
+    if (codSistema && subsistemas[codSistema]) {
+        subsistemas[codSistema].forEach(sub => {
+            const option = document.createElement('option');
+            option.value = sub;
+            option.textContent = sub;
+            selectSub.appendChild(option);
+        });
+        selectSub.disabled = false;
+        selectSub.classList.remove('bg-gray-50');
+        selectSub.classList.add('bg-white');
+    }
+}
+
+function salvarPreventiva() {
+    // 1. Coleta dados
+    const os = document.getElementById('prevOS').value.trim();
+    const frota = document.getElementById('prevFrota').value;
+    const atividade = document.getElementById('prevAtividade').value; // <-- NOVO
+    const sistema = document.getElementById('prevSistema').value;
+    const subsistema = document.getElementById('prevSubsistema').value;
+    const inicio = document.getElementById('prevInicio').value;
+    const fim = document.getElementById('prevFim').value;
+
+    // 2. Validação
+    if (!os || !frota || !atividade || !sistema || !subsistema || !inicio || !fim) {
+        showToast("Preencha todos os campos da Preventiva.", "error");
+        return;
+    }
+
+    if (inicio >= fim) {
+        showToast("A hora final deve ser maior que a inicial.", "error");
+        return;
+    }
+
+    // 3. Adiciona à Linha do Tempo
+    linhasApontamento.push({
+        id: Date.now(),
+        tipo: 'servico', 
+        atividade: atividade, // Usa a atividade selecionada pelo usuário
+        inicio: inicio,
+        fim: fim,
+        frota: frota,
+        os: os,
+        sistema: sistema,
+        subsistema: subsistema
+    });
+
+    renderizarListaLinhas();
+    rolarParaUltimoItemApontamento();
+    fecharPopup();
+    
+    
+    // Avisa que mudou para o botão de atualizar ficar laranja
+    marcarComoDesatualizado(); 
+    
+    showToast("Preventiva adicionada com sucesso!", "success");
+    salvarTudo();
+}
+
 
 // Atualiza dados da memória quando o usuário edita os inputs
 function atualizarLinha(index, campo, valor) {
     linhasApontamento[index][campo] = valor;
     marcarComoDesatualizado(); 
+    salvarTudo();
 }
 
 function adicionarLinhaManual() {
@@ -2092,12 +2372,14 @@ function adicionarLinhaManual() {
     // ADICIONE ESTA LINHA:
     rolarParaUltimoItemApontamento(); 
     marcarComoDesatualizado(); 
+    salvarTudo();
 }
 
 function removerLinhaApontamento(index) {
     linhasApontamento.splice(index, 1);
     renderizarListaLinhas();
     marcarComoDesatualizado(); 
+    salvarTudo();
 }
 
 // Popup para escolher qual serviço importar
@@ -2259,6 +2541,7 @@ function importarServicoFinalizado(originalId, frota, atividade, sistema, subsis
     showToast(`Serviço ${os} importado!`, "success");
     rolarParaUltimoItemApontamento();
     marcarComoDesatualizado();
+    salvarTudo();
 }
 
 //explica o.s pendente 
@@ -2438,6 +2721,7 @@ function trocarOrdem(index) {
     renderizarListaLinhas();
     showToast("Ordem atualizada!", "success");
     marcarComoDesatualizado();
+    salvarTudo();
 }
 
 
@@ -2702,60 +2986,359 @@ function iniciarMonitoramentoFormulario() {
         // MÓDULO: HISTÓRICO
         // ---------------------------------
         async function renderizarSecaoHistorico(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><button onclick="abrirPopupApagarPorData()" class="w-full sm:w-auto py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">🗑️ Apagar Histórico por Data</button></div><div id="historico_lista" class="space-y-4"></div>`; await mostrarHistorico(); }
-        async function salvarOSnoHistorico(serviceId) { const servico = servicos.find(s => s.id === serviceId); if (!servico || !servico.texto) return; try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); let itemExistente = todosItens.find(item => item.id === servico.id); const itemHistorico = { id: servico.id, frota: servico.frota, tipo: servico.tipo, texto: servico.texto, descricao: servico.descricao, atividade: servico.atividade, sistema: servico.sistema, subsistema: servico.subsistema, inicio: servico.inicio, fim: servico.fim, dataOS: servico.data, dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'), status: itemExistente ? itemExistente.status : "pendente", osNumero: itemExistente ? itemExistente.osNumero : "", datahoraRegistro: itemExistente ? itemExistente.datahoraRegistro : new Date().toLocaleString('pt-BR') }; if (itemExistente) itemHistorico.uniqueId = itemExistente.uniqueId; await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico)); } catch (err) { showToast("Erro ao salvar O.S. no histórico.", "error"); } }
-        async function mostrarHistorico() { const div = document.getElementById("historico_lista"); if (!div) return; try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); if (todosItens.length === 0) { div.innerHTML = "<p class='text-center text-gray-500 p-4'>Nenhuma O.S. registada no histórico.</p>"; return; } const agrupado = todosItens.reduce((acc, item) => { const dataKey = item.dataOS; if (!acc[dataKey]) acc[dataKey] = []; acc[dataKey].push(item); return acc; }, {}); const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
-div.innerHTML = datasOrdenadas.map(dataKey => `
-    <div class="bg-white rounded-lg shadow-md">
-        
-        <h3 class="text-xl font-semibold text-blue-700 mb-0 border-b-2 pb-2 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onclick="toggleHistoricoDia('${dataKey}')">
-            <span>Serviços de: ${formatarDataParaExibicao(dataKey)}</span>
-            <span id="toggler-dia-${dataKey}" class="text-lg">&#9650;</span>
-        </h3>
-        
-        <div id="historico-dia-${dataKey}" class="p-3 space-y-3" style="display: block;">
-            ${agrupado[dataKey].sort((a, b) => a.inicio.localeCompare(b.inicio)).map(s => `
-                <div class="bg-gray-50 p-3 rounded-lg shadow-sm border-l-4 ${s.status === 'pendente' ? 'border-orange-500' : 'border-green-600'}">
-                    <div class="mb-2 text-sm">
-                        <span class="font-semibold text-blue-700">${s.frota}</span> | ${s.atividade.split(" - ")[0]} - ${s.sistema} - ${(s.subsistema || "").split(" - ")[0]} [${s.inicio} - ${s.fim}]
-                    </div>
-                    <div class="text-sm text-gray-800 mb-3">
-                        <p class="font-semibold">Descrição:</p>
-                        <div class="pl-2 whitespace-pre-line">${formatarDescricao(s.descricao)}</div>
-                    </div>
-                    
-<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
-    <div class="flex items-center gap-x-4">
-        <label class="font-medium whitespace-nowrap">Nº O.S.:</label>
-        <input id="os_input_${s.uniqueId}" class="w-28 p-1 border rounded" value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
-        <span class="font-semibold ${s.status === 'pendente' ? 'text-orange-500' : 'text-green-600'}">${s.status === "pendente" ? "❌ Pendente" : "✅ Finalizada"}</span>
-    </div>
+        async function salvarOSnoHistorico(serviceId) { 
+    const servico = servicos.find(s => s.id === serviceId); 
+    if (!servico || !servico.texto) return; 
     
-    <button onclick="toggleBotoesHistorico(${s.uniqueId})" class="py-1 px-3 rounded bg-gray-200 hover:bg-gray-300 text-xs font-semibold">
-        Ações &#9776;
-    </button>
-</div>
+    // Pega dados de contexto para etiquetar a O.S.
+    const frenteAtual = document.getElementById("frente").value.trim();
+    const turnoAtual = document.getElementById("turnoLetra").value;
 
-<div id="botoes-historico-${s.uniqueId}" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2" style="display: none;">
-    ${s.status === 'pendente' ? `<button id="btnFinalizarOS_${s.uniqueId}" onclick="finalizarOS(${s.uniqueId})" class="py-2 rounded bg-blue-600 text-white text-xs" ${!s.osNumero ? 'disabled' : ''}>Finalizar</button>` : `<button onclick="habilitarEdicaoOS(${s.uniqueId}, this)" class="py-2 rounded bg-yellow-500 text-white text-xs">Editar Nº</button>`}
-    <button onclick="copiarHistorico(${s.uniqueId})" class="py-2 rounded bg-gray-200 text-xs">Copiar Texto O.S.</button>
-    <button onclick="compartilharHistorico(${s.uniqueId})" class="py-2 rounded bg-green-500 text-white text-xs">Compartilhar O.S.</button>
-    <button onclick="excluirHistoricoItem(${s.uniqueId})" class="py-2 rounded bg-red-600 text-white text-xs">Excluir</button>
-</div>
-<textarea id="texto_os_hist_${s.uniqueId}" class="hidden">${s.texto}</textarea>
+    if (!frenteAtual) {
+        showToast("Selecione a Frente antes de gerar a O.S.", "error");
+        return;
+    }
+
+    try { 
+        const uniqueId = servico.id; 
+        let dadosAntigos = {};
+        
+        // Tenta recuperar dados prévios (ex: status ou numero da OS já digitado)
+        try {
+            const doc = await firestore.collection('historico_os').doc(String(uniqueId)).get();
+            if (doc.exists) dadosAntigos = doc.data();
+        } catch(e) { }
+
+        const itemHistorico = { 
+            uniqueId: uniqueId,
+            id: servico.id, 
+            
+            // ETIQUETAS DE FILTRO
+            frente: frenteAtual, 
+            turno: turnoAtual, 
+            
+            frota: servico.frota, 
+            tipo: servico.tipo, 
+            texto: servico.texto, 
+            descricao: servico.descricao, 
+            atividade: servico.atividade, 
+            sistema: servico.sistema, 
+            subsistema: servico.subsistema, 
+            inicio: servico.inicio, 
+            fim: servico.fim, 
+            dataOS: servico.data, 
+            dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'), 
+            status: dadosAntigos.status || "pendente", 
+            osNumero: dadosAntigos.osNumero || "", 
+            datahoraRegistro: dadosAntigos.datahoraRegistro || new Date().toLocaleString('pt-BR') 
+        }; 
+
+        // Salva na nuvem (o onSnapshot do Passo 1 vai atualizar o local automaticamente)
+        await firestore.collection('historico_os').doc(String(uniqueId)).set(itemHistorico, { merge: true });
+        console.log(`O.S. salva na nuvem: ${frenteAtual} / ${turnoAtual}`);
+
+    } catch (err) { 
+        console.error(err);
+        showToast("Erro ao salvar O.S. na nuvem. Verifique a conexão.", "error"); 
+    } 
+}
+ async function mostrarHistorico() { 
+    const div = document.getElementById("historico_lista"); 
+    if (!div) return; 
+    
+    try { 
+        const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); 
+        
+        // FILTRO VISUAL (Segurança)
+        const frenteSelecionada = document.getElementById('frente').value;
+        const turnoSelecionado = document.getElementById('turnoLetra').value;
+
+        const itensFiltrados = todosItens.filter(item => 
+            item.frente === frenteSelecionada && 
+            item.turno === turnoSelecionado
+        );
+
+        if (itensFiltrados.length === 0) { 
+            div.innerHTML = "<p class='text-center text-gray-400 p-8 bg-gray-50 rounded-lg border border-dashed'>Nenhuma O.S. encontrada para esta Frente/Turno.</p>"; 
+            return; 
+        } 
+        
+        // (O resto da função permanece igual ao seu layout anterior, apenas usando 'itensFiltrados')
+        const agrupado = itensFiltrados.reduce((acc, item) => { 
+            const dataKey = item.dataOS; 
+            if (!acc[dataKey]) acc[dataKey] = []; 
+            acc[dataKey].push(item); 
+            return acc; 
+        }, {}); 
+        
+        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
+
+        // ... (Mantenha aqui o restante do seu HTML de geração do histórico que você já tinha) ...
+        // Vou resumir para caber na resposta, use o HTML do seu código anterior dentro do map abaixo:
+        div.innerHTML = datasOrdenadas.map(dataKey => `
+            <div class="bg-white rounded-lg shadow-md mb-4">
+                <h3 class="text-lg font-bold text-gray-700 p-3 border-b bg-gray-50 cursor-pointer" onclick="toggleHistoricoDia('${dataKey}')">
+                    📅 ${formatarDataParaExibicao(dataKey)}
+                </h3>
+                <div id="historico-dia-${dataKey}" class="p-2 space-y-2">
+                    ${agrupado[dataKey].sort((a, b) => a.inicio.localeCompare(b.inicio)).map(s => `
+                        <div class="bg-white p-3 rounded-lg border-l-4 ${s.status === 'pendente' ? 'border-orange-400' : 'border-green-500'} shadow-sm">
+                            <div class="flex justify-between">
+                                <span class="font-bold text-blue-800">${s.frota}</span>
+                                <span class="text-xs font-bold ${s.status === 'pendente' ? 'text-orange-600' : 'text-green-600'}">
+                                    ${s.status === 'pendente' ? 'Pendente' : 'Finalizada'}
+                                </span>
+                            </div>
+                            <div class="text-xs text-gray-600 my-1">
+                                ${s.atividade.split(" - ")[0]} - ${s.sistema} [${s.inicio} - ${s.fim}]
+                            </div>
+                             <div class="text-xs text-gray-800 bg-gray-50 p-2 rounded border border-gray-100 mb-2 italic">
+                                "${s.descricao.substring(0, 100)}${s.descricao.length > 100 ? '...' : ''}"
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <input id="os_input_${s.uniqueId}" class="flex-1 p-1 border rounded text-xs" placeholder="Nº O.S." value="${s.osNumero || ""}" oninput="validarOSInput(${s.uniqueId})" ${s.status === "pendente" ? "" : "disabled"}>
+                                ${s.status === 'pendente' 
+                                    ? `<button id="btnFinalizarOS_${s.uniqueId}" onclick="finalizarOS(${s.uniqueId})" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold" disabled>OK</button>` 
+                                    : `<button onclick="habilitarEdicaoOS(${s.uniqueId}, this)" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs font-bold">Edit</button>`
+                                }
+                                <button onclick="toggleBotoesHistorico(${s.uniqueId})" class="p-1 text-gray-400">⋮</button>
+                            </div>
+                            <div id="botoes-historico-${s.uniqueId}" class="hidden mt-2 grid grid-cols-3 gap-2">
+                                <button onclick="copiarHistorico(${s.uniqueId})" class="bg-gray-200 py-1 rounded text-[10px]">Copiar</button>
+                                <button onclick="compartilharHistorico(${s.uniqueId})" class="bg-green-100 py-1 rounded text-[10px]">Zap</button>
+                                <button onclick="excluirHistoricoItem(${s.uniqueId})" class="bg-red-100 py-1 rounded text-[10px]">Excluir</button>
+                            </div>
+                            <textarea id="texto_os_hist_${s.uniqueId}" class="hidden">${s.texto}</textarea>
+                        </div>
+                    `).join('')}
                 </div>
-            `).join('')}
-        </div>
-    </div>
-`).join('');
- } catch (e) { div.innerHTML = "<p class='text-center text-red-500 p-4'>Erro ao carregar histórico.</p>"; console.error(e); } }
-        function validarOSInput(id) { document.getElementById(`btnFinalizarOS_${id}`).disabled = !document.getElementById(`os_input_${id}`).value.trim(); }
-        function copiarHistorico(id) { const text = document.querySelector(`#texto_os_hist_${id}`).value; navigator.clipboard.writeText(text); showToast('Texto da O.S. copiado!', 'success'); }
-        function compartilharHistorico(id) { const text = document.querySelector(`#texto_os_hist_${id}`).value; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank"); }
-        async function finalizarOS(id) { const osNumero = document.getElementById(`os_input_${id}`).value.trim(); if (!osNumero) { showToast('Digite o número da O.S.', 'error'); return; } try { const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(id)); item.status = 'finalizada'; item.osNumero = osNumero; await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item)); await mostrarHistorico(); showToast('O.S. finalizada com sucesso!', 'success'); } catch (e) { showToast('Erro ao finalizar O.S.', 'error'); } }
-        function habilitarEdicaoOS(id, btn) { const input = document.getElementById(`os_input_${id}`); input.disabled = false; input.focus(); btn.innerText = 'Salvar'; btn.onclick = () => confirmarEdicaoOS(id, btn); }
-        async function confirmarEdicaoOS(id, btn) { const input = document.getElementById(`os_input_${id}`); const numero = input.value.trim(); if (!numero) { showToast("Nº O.S não pode ser vazio.", "error"); return; } try { const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(id)); item.osNumero = numero; await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item)); await mostrarHistorico(); showToast("Nº O.S atualizado!", 'success'); } catch (error) { showToast("Erro ao atualizar O.S.", 'error'); } }
-        async function excluirHistoricoItem(id) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir Registro', 'Tem certeza que deseja excluir este item do histórico?', resolve)); if (confirmado) { try { await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(id)); await mostrarHistorico(); showToast('Item excluído do histórico.', 'success'); } catch (e) { showToast('Erro ao excluir item.', 'error'); } } }
-        async function abrirPopupApagarPorData() { try { const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); if (todosItens.length === 0) { showToast('Histórico está vazio.', 'info'); return; } const datas = [...new Set(todosItens.map(item => item.dataOS))].sort((a, b) => b.localeCompare(a)); const options = datas.map(d => `<option value="${d}">${formatarDataParaExibicao(d)}</option>`).join(''); const selectHTML = `<select id="selectDataParaApagar" class="w-full p-2 border rounded">${options}</select>`; abrirPopupConfirmar('Apagar por Data', `Selecione a data para apagar todo o histórico correspondente:<br>${selectHTML}`, async confirmado => { if (confirmado) { const dataSelecionada = document.getElementById('selectDataParaApagar').value; const confirmadoFinal = await new Promise(resolve => abrirPopupConfirmar('Confirmação Final', `Tem certeza que deseja apagar TODOS os registros de ${formatarDataParaExibicao(dataSelecionada)}?`, resolve)); if (confirmadoFinal) { const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); const idsParaApagar = todos.filter(item => item.dataOS === dataSelecionada).map(item => item.uniqueId); const tx = db.transaction(STORE_HISTORICO, 'readwrite'); for (const id of idsParaApagar) { tx.objectStore(STORE_HISTORICO).delete(id); } tx.oncomplete = () => { mostrarHistorico(); showToast(`Histórico de ${formatarDataParaExibicao(dataSelecionada)} apagado!`, 'success'); }; } } }); } catch (e) { showToast("Erro ao carregar datas do histórico.", "error"); } }
+            </div>
+        `).join('');
+        
+    } catch (e) { console.error(e); } 
+}
+async function abrirPopupApagarPorData() {
+    try {
+        // 1. Busca as datas disponíveis (Cache Local)
+        const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+
+        if (todosItens.length === 0) {
+            showToast('Histórico vazio.', 'info');
+            return;
+        }
+
+        // 2. Filtra e Ordena as datas
+        const datas = [...new Set(todosItens.map(item => item.dataOS))]
+            .sort((a, b) => b.localeCompare(a));
+
+        const options = datas.map(d => `<option value="${d}">${formatarDataParaExibicao(d)}</option>`).join('');
+        
+        // Pega as variáveis para exibir no texto de alerta
+        const frenteNome = document.getElementById('frente').value;
+        const turnoNome = document.getElementById('turnoLetra').value;
+
+        const conteudo = `
+            <div class="text-left space-y-3">
+                <p class="text-sm text-gray-600">Selecione a data para apagar os registros da <strong>NUVEM</strong>:</p>
+                <select id="selectDataParaApagar" class="w-full p-2 border border-gray-300 rounded font-bold bg-white">
+                    ${options}
+                </select>
+                <div class="bg-red-50 p-3 rounded border border-red-100">
+                    <p class="text-xs text-red-600 font-bold flex items-center gap-1">
+                        <span>⚠️</span> ATENÇÃO:
+                    </p>
+                    <p class="text-xs text-red-500 mt-1">
+                        Isso apagará <strong>PERMANENTEMENTE</strong> todas as O.S. desta data para a frente 
+                        <strong>${frenteNome}</strong> e turno <strong>${turnoNome}</strong>.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        // 3. Abre o Primeiro Popup (Seleção de Data)
+        abrirPopupConfirmar('🗑️ Apagar Histórico (Nuvem)', conteudo, async (confirmado) => {
+            if (confirmado) {
+                const dataSelecionada = document.getElementById('selectDataParaApagar').value;
+                if (!dataSelecionada) return;
+
+                // --- NOVA SEGURANÇA COM CÓDIGO ---
+                
+                // A. Gera código aleatório de 8 dígitos
+                const codigoSeguranca = Math.floor(10000000 + Math.random() * 90000000).toString();
+
+                // B. Exibe o Toast com o código (Dura 10 segundos)
+                showToast(`🔑 CÓDIGO DE SEGURANÇA: ${codigoSeguranca}`, "warning", 20000);
+
+                // C. Abre o Popup de Input pedindo o código
+                // Pequeno delay para a transição dos popups ficar suave
+                setTimeout(() => {
+                    const labelInput = `Para confirmar a exclusão de <b>${formatarDataParaExibicao(dataSelecionada)}</b>, digite o código que apareceu no aviso:`;
+                    
+                    abrirPopupInput(
+                        '🔒 Confirmação de Segurança',
+                        labelInput,
+                        `Digite ${codigoSeguranca} aqui...`,
+                        '', 
+                        async (digitado) => {
+                            // D. Validação
+                            if (digitado === codigoSeguranca) {
+                                // SUCESSO: Código igual, executa a exclusão
+                                await executarExclusaoNuvem(dataSelecionada);
+                            } else if (digitado !== null) {
+                                // ERRO: Digitou errado (e não foi cancelar)
+                                showToast("Código incorreto! Ação cancelada por segurança.", "error");
+                            }
+                        },
+                        'number' // Abre teclado numérico no celular
+                    );
+                }, 300);
+            }
+        });
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao listar datas.", "error");
+    }
+}
+
+async function executarExclusaoNuvem(dataAlvo) {
+    const frenteAtual = document.getElementById('frente').value;
+    const turnoAtual = document.getElementById('turnoLetra').value;
+
+    abrirPopupLoading("Apagando registros da nuvem...");
+
+    try {
+        // 1. Busca no Firestore usando o índice que já criamos (Frente + Turno)
+        const snapshot = await firestore.collection('historico_os')
+            .where('frente', '==', frenteAtual)
+            .where('turno', '==', turnoAtual)
+            .get();
+
+        // 2. Filtra manualmente pela data (para não precisar criar outro índice complexo)
+        const docsParaApagar = snapshot.docs.filter(doc => {
+            const dados = doc.data();
+            return dados.dataOS === dataAlvo;
+        });
+
+        if (docsParaApagar.length === 0) {
+            fecharPopup();
+            showToast("Nenhum registro encontrado na nuvem para apagar.", "info");
+            return;
+        }
+
+        // 3. Executa a exclusão em lote (Batch)
+        const batch = firestore.batch();
+        docsParaApagar.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        fecharPopup();
+        showToast(`Sucesso! ${docsParaApagar.length} registros apagados da nuvem.`, "success");
+
+        // A sincronização automática (onSnapshot) vai limpar a tela do celular sozinha em instantes.
+
+    } catch (error) {
+        fecharPopup();
+        console.error("Erro ao apagar:", error);
+        showToast("Erro ao apagar. Verifique sua conexão.", "error");
+    }
+}
+
+// ============================================================
+// FUNÇÕES DE AÇÃO DO HISTÓRICO (NUVEM)
+// ============================================================
+
+async function finalizarOS(id) {
+    const input = document.getElementById(`os_input_${id}`);
+    const osNumero = input ? input.value.trim() : "";
+
+    if (!osNumero) {
+        showToast('Digite o número da O.S.', 'error');
+        input.focus();
+        return;
+    }
+
+    try {
+        // Atualiza direto na nuvem. O onSnapshot cuidará de atualizar a tela.
+        await firestore.collection('historico_os').doc(String(id)).update({
+            status: 'finalizada',
+            osNumero: osNumero
+        });
+        showToast('O.S. finalizada com sucesso!', 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('Erro ao finalizar na nuvem.', 'error');
+    }
+}
+
+function habilitarEdicaoOS(id, btn) {
+    const input = document.getElementById(`os_input_${id}`);
+    if (!input) return;
+    
+    input.disabled = false;
+    input.focus();
+    input.classList.add('bg-yellow-50', 'border-yellow-400'); // Destaque visual
+    
+    btn.innerText = 'Salvar';
+    btn.onclick = () => confirmarEdicaoOS(id, btn);
+}
+
+async function confirmarEdicaoOS(id, btn) {
+    const input = document.getElementById(`os_input_${id}`);
+    const numero = input.value.trim();
+
+    if (!numero) {
+        showToast("Nº O.S não pode ser vazio.", "error");
+        return;
+    }
+
+    try {
+        await firestore.collection('historico_os').doc(String(id)).update({
+            osNumero: numero
+        });
+        showToast("Nº O.S atualizado!", 'success');
+        
+        // Retorna o estado visual (embora o onSnapshot vá redesenhar tudo em breve)
+        input.disabled = true;
+        input.classList.remove('bg-yellow-50', 'border-yellow-400');
+        btn.innerText = 'Edit';
+        btn.onclick = () => habilitarEdicaoOS(id, btn);
+        
+    } catch (error) {
+        showToast("Erro ao atualizar O.S.", 'error');
+    }
+}
+
+async function excluirHistoricoItem(id) {
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar('Excluir Registro', 
+        'Tem certeza que deseja excluir este item <strong>PERMANENTEMENTE</strong> da nuvem?', 
+        resolve)
+    );
+
+    if (confirmado) {
+        try {
+            await firestore.collection('historico_os').doc(String(id)).delete();
+            showToast('Item excluído da nuvem.', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Erro ao excluir item.', 'error');
+        }
+    }
+}
+
+// Validação simples para habilitar/desabilitar o botão OK enquanto digita
+function validarOSInput(id) {
+    const input = document.getElementById(`os_input_${id}`);
+    const btn = document.getElementById(`btnFinalizarOS_${id}`);
+    if (input && btn) {
+        btn.disabled = !input.value.trim();
+        btn.style.opacity = btn.disabled ? '0.5' : '1';
+    }
+}
+
         // ---------------------------------
         // OUTROS MÓDULOS
         // ---------------------------------
@@ -2787,6 +3370,111 @@ function toggleBotoesHistorico(uniqueId) {
         const isHidden = containerBotoes.style.display === 'none';
         // Usamos 'grid' ao invés de 'block' porque as classes do Tailwind usam display: grid para este elemento
         containerBotoes.style.display = isHidden ? 'grid' : 'none';
+    }
+}
+
+// ============================================================
+// MÓDULO: HISTÓRICO NA NUVEM (COM FILTRO)
+// ============================================================
+
+let unsubscribeHistorico = null; // Variável de controle da conexão
+
+function iniciarSincronizacaoHistorico() {
+    // 1. Pega os filtros atuais da tela
+    const frenteSelecionada = document.getElementById('frente').value;
+    const turnoSelecionado = document.getElementById('turnoLetra').value;
+
+    // 2. Se faltar algum dado, não sincroniza (espera o usuário selecionar)
+    if (!frenteSelecionada || !turnoSelecionado) {
+        if (unsubscribeHistorico) {
+            unsubscribeHistorico(); // Desliga conexão anterior
+            unsubscribeHistorico = null;
+        }
+        return;
+    }
+
+    // 3. Se já estiver ouvindo outra frente, desliga para ligar a nova
+    if (unsubscribeHistorico) {
+        unsubscribeHistorico();
+    }
+
+    console.log(`Sincronizando Histórico: ${frenteSelecionada} | Turno ${turnoSelecionado}`);
+    // showToast(`Sincronizando histórico...`, "info"); // Opcional
+
+    // 4. Conecta no Firebase com FILTRO DUPLO
+    unsubscribeHistorico = firestore.collection('historico_os')
+        .where('frente', '==', frenteSelecionada)
+        .where('turno', '==', turnoSelecionado)
+        .onSnapshot(async (snapshot) => {
+            
+            const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+            const store = tx.objectStore(STORE_HISTORICO);
+            
+            snapshot.docChanges().forEach(change => {
+                const dados = change.doc.data();
+                // Garante que o ID seja número para bater com o sistema local
+                dados.uniqueId = parseInt(change.doc.id); 
+
+                if (change.type === 'added' || change.type === 'modified') {
+                    store.put(dados);
+                }
+                if (change.type === 'removed') {
+                    store.delete(dados.uniqueId);
+                }
+            });
+
+            tx.oncomplete = async () => {
+                // Se a aba histórico estiver aberta, atualiza a visualização
+                if (document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
+                    await mostrarHistorico();
+                }
+            };
+        }, (error) => {
+            console.error("Erro sync histórico:", error);
+            if (error.code === 'failed-precondition') {
+                alert("ERRO CRÍTICO: É necessário criar um índice no Firebase. Verifique o console do navegador para o link.");
+                console.log("⚠️ CLIQUE NO LINK GERADO PELO FIREBASE ABAIXO PARA ATIVAR O ÍNDICE ⚠️");
+            }
+        });
+}
+
+async function migrarDadosLocaisParaNuvem() {
+    // Pequeno delay para garantir que os selects carregaram
+    await new Promise(r => setTimeout(r, 1500));
+
+    const frenteAtual = document.getElementById('frente').value;
+    const turnoAtual = document.getElementById('turnoLetra').value;
+
+    if (!frenteAtual || !turnoAtual) return;
+
+    try {
+        // Pega tudo que está no celular
+        const todosLocais = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        
+        // Identifica itens "órfãos" (sem frente/turno)
+        const itensLegados = todosLocais.filter(item => !item.frente || !item.turno);
+
+        if (itensLegados.length === 0) return; // Nada a fazer
+
+        showToast(`Migrando ${itensLegados.length} O.S. antigas para a nuvem...`, "info");
+
+        const batch = firestore.batch();
+        itensLegados.forEach(item => {
+            const docRef = firestore.collection('historico_os').doc(String(item.id));
+            const itemAtualizado = {
+                ...item,
+                frente: frenteAtual, // Assume a frente atual
+                turno: turnoAtual,   // Assume o turno atual
+                migradoEm: new Date().toISOString()
+            };
+            batch.set(docRef, itemAtualizado, { merge: true });
+        });
+
+        await batch.commit();
+        showToast("Dados antigos salvos na nuvem com sucesso!", "success");
+        
+    } catch (e) {
+        console.error("Erro migração:", e);
     }
 }
 
@@ -3052,7 +3740,43 @@ function sincronizarCatalogoFrotas() {
     });
 }
 
+
     </script>
+    <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden relative">
+        
+        <div id="slide1" class="p-6 text-center space-y-4">
+            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-4xl">☁️</div>
+            <h2 class="text-xl font-bold text-gray-800">Seus dados agora na Nuvem!</h2>
+            <p class="text-sm text-gray-600">Não se preocupe mais em perder o celular. Todas as suas O.S. e apontamentos agora são salvos automaticamente no servidor seguro.</p>
+            <button onclick="proximoSlide(2)" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold mt-4 shadow-lg hover:bg-blue-700">Próximo</button>
+        </div>
+
+        <div id="slide2" class="p-6 text-center space-y-4 hidden">
+            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-4xl">⚠️</div>
+            <h2 class="text-xl font-bold text-gray-800">Cuidado ao Apagar!</h2>
+            <p class="text-sm text-gray-600">O sistema agora é <strong>COLABORATIVO</strong>. Se você editar ou excluir uma O.S., ela sumirá para <strong>TODOS</strong> os mecânicos da sua frente.</p>
+            <button onclick="proximoSlide(3)" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold mt-4 shadow-lg hover:bg-blue-700">Entendi</button>
+        </div>
+
+        <div id="slide3" class="p-6 text-center space-y-4 hidden">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-4xl">🎯</div>
+            <h2 class="text-xl font-bold text-gray-800">Filtros Inteligentes</h2>
+            <p class="text-sm text-gray-600">Para ver suas O.S., certifique-se de que a <strong>FRENTE</strong> e o <strong>TURNO</strong> estão selecionados corretamente no topo da tela.</p>
+            
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-left mt-2">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="checkTermos" class="mt-1 w-5 h-5 text-blue-600 rounded">
+                    <span class="text-gray-500">Declaro que li e estou ciente da responsabilidade sobre a manipulação dos dados compartilhados.</span>
+                </label>
+            </div>
+
+            <button id="btnConcluirOnboarding" onclick="concluirOnboarding()" disabled class="w-full py-3 bg-gray-300 text-white rounded-xl font-bold mt-4 cursor-not-allowed transition-colors">Começar a Usar 🚀</button>
+        </div>
+
+    </div>
+</div>
+
 </body>
 
 </html>
