@@ -7,11 +7,11 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -616,7 +616,7 @@ function concluirOnboarding() {
         let catalogoFrotas = [];
         let catalogoLocal = [];
 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 7;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 20;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -630,6 +630,14 @@ const firebaseApp = firebase.initializeApp(firebaseConfig);
 // 2. Cria a instância do Firestore
 const firestore = firebase.firestore();
 
+// Tenta pegar o auth, se falhar, avisa no console mas não trava o script todo
+let auth;
+try {
+    auth = firebase.auth();
+} catch (e) {
+    console.error("Erro crítico: Biblioteca Auth não carregada.", e);
+    alert("Erro de conexão. Recarregue a página.");
+}
 // ============================================================
 // 3. AQUI ENTRA A CONFIGURAÇÃO DE CONEXÃO (O ESCOPO É GLOBAL)
 // ============================================================
@@ -642,6 +650,252 @@ firestore.settings({
 // 4. Depois ativa a persistência e continua o resto...
 firestore.enablePersistence({ synchronizeTabs: true })
     .catch((err) => { console.warn('Falha na persistência:', err.code); });
+
+// ============================================================
+// LÓGICA DE AUTENTICAÇÃO (LOGIN, CADASTRO, SAIR)
+// ============================================================
+
+let isModoCadastro = false; // Variável para saber se é Login ou Cadastro
+
+// 1. MONITORAMENTO DE ESTADO (O CÉREBRO DO LOGIN)
+// Esse código roda sozinho sempre que o app abre ou o usuário loga/desloga
+auth.onAuthStateChanged(user => {
+    const telaLogin = document.getElementById('telaLogin');
+    const appPrincipal = document.querySelector('main');
+    const header = document.querySelector('header');
+    const nav = document.getElementById('menu-lateral');
+    const tituloHeader = document.getElementById('header-titulo');
+
+    if (user) {
+        console.log("✅ Usuário conectado:", user.email);
+        
+        // A. Esconde a tela de Login
+        if (telaLogin) telaLogin.classList.add('hidden');
+        
+        // B. Libera o App (Remove borrão e bloqueio de clique)
+        if (appPrincipal) {
+            appPrincipal.style.filter = "none";
+            appPrincipal.classList.remove('hidden'); 
+            appPrincipal.style.opacity = "1";
+            appPrincipal.style.pointerEvents = "auto";
+        }
+        
+        // C. Mostra Menu e Header
+        if (header) header.style.display = "flex";
+        if (nav) nav.style.display = "block";
+
+        // D. Arruma o Nome e Foto no Topo
+        let nomeExibicao = user.displayName || user.email.split('@')[0].toUpperCase();
+        let avatarHTML = '';
+
+        if (user.photoURL) {
+            // Se tiver foto do Google
+            avatarHTML = `<img src="${user.photoURL}" class="w-8 h-8 rounded-full border-2 border-white shadow-sm">`;
+        } else {
+            // Se não tiver, cria bolinha com inicial
+            avatarHTML = `<div class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold border-2 border-white shadow-sm text-sm">${nomeExibicao.charAt(0)}</div>`;
+        }
+
+        if (tituloHeader) {
+            tituloHeader.innerHTML = `
+                <div class="flex items-center gap-2">
+                    ${avatarHTML}
+                    <div class="flex flex-col leading-tight">
+                        <span class="text-[10px] opacity-80 font-normal">Olá,</span>
+                        <span class="text-sm font-bold truncate max-w-[120px]">${nomeExibicao}</span>
+                    </div>
+                </div>`;
+        }
+
+        // E. Força a entrada na tela inicial (Evita Tela Branca)
+        setTimeout(() => {
+            // Se a função 'abrir' existir, usa ela. Se não, força manual.
+            const secao = localStorage.getItem('secaoAtiva') || 'turno';
+            if (typeof abrir === 'function') {
+                abrir(secao);
+            } else {
+                document.getElementById('turno')?.classList.remove('hidden');
+            }
+            
+            // Se tiver layout inicial para carregar (selects), carrega agora
+            if (typeof renderizarLayoutInicial === 'function') renderizarLayoutInicial();
+        }, 250);
+
+    } else {
+        console.log("🔒 Usuário desconectado.");
+        
+        // Bloqueia tudo e mostra Login
+        if (telaLogin) telaLogin.classList.remove('hidden');
+        
+        if (appPrincipal) {
+            appPrincipal.style.filter = "blur(8px)";
+            appPrincipal.style.pointerEvents = "none"; // Impede clicar no fundo
+        }
+        
+        if (header) header.style.display = "none";
+        if (nav) nav.style.display = "none";
+    }
+});
+
+// 2. BOTÃO "ENTRAR" ou "CADASTRAR"
+function processarAutenticacao() {
+    const email = document.getElementById('emailLogin').value.trim();
+    const senha = document.getElementById('senhaLogin').value;
+    const msg = document.getElementById('msgErroLogin');
+    const btn = document.getElementById('btnAuth');
+
+    // Validação simples
+    if (!email || !senha) {
+        msg.innerText = "Preencha e-mail e senha.";
+        msg.classList.remove('hidden');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Processando...";
+    msg.classList.add('hidden');
+
+    if (isModoCadastro) {
+        // --- LÓGICA DE CADASTRO ---
+        const confirma = document.getElementById('confirmaSenhaLogin').value;
+        
+        if (senha !== confirma) {
+            msg.innerText = "As senhas não conferem.";
+            msg.classList.remove('hidden');
+            btn.disabled = false; btn.innerText = "CADASTRAR";
+            return;
+        }
+        if (senha.length < 6) {
+            msg.innerText = "A senha deve ter no mínimo 6 caracteres.";
+            msg.classList.remove('hidden');
+            btn.disabled = false; btn.innerText = "CADASTRAR";
+            return;
+        }
+
+        auth.createUserWithEmailAndPassword(email, senha)
+            .then(() => {
+                showToast("Conta criada com sucesso!", "success");
+                // O onAuthStateChanged vai liberar a tela automaticamente
+            })
+            .catch(error => {
+                console.error(error);
+                msg.innerText = traduzirErroFirebase(error.code);
+                msg.classList.remove('hidden');
+                btn.disabled = false; btn.innerText = "CADASTRAR";
+            });
+
+    } else {
+        // --- LÓGICA DE LOGIN ---
+        auth.signInWithEmailAndPassword(email, senha)
+            .then(() => {
+                showToast("Bem-vindo de volta!", "success");
+            })
+            .catch(error => {
+                console.error(error);
+                msg.innerText = traduzirErroFirebase(error.code);
+                msg.classList.remove('hidden');
+                btn.disabled = false; btn.innerText = "ENTRAR";
+            });
+    }
+}
+
+// 3. BOTÃO GOOGLE
+function fazerLoginGoogle() {
+    // Verifica se o Firebase foi carregado antes de tentar
+    if (!firebase || !firebase.auth) {
+        alert("Erro Crítico: Firebase não carregou. Verifique sua internet.");
+        return;
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    
+    // Tenta usar Popup primeiro (mais fácil de debugar)
+    // Se falhar no celular, ele avisa.
+    auth.signInWithPopup(provider)
+        .then((result) => {
+            showToast(`Bem-vindo, ${result.user.displayName}!`, "success");
+        })
+        .catch((error) => {
+            console.error("Erro Google:", error);
+            
+            // Mostra o erro na cara do usuário para você ler
+            alert("Erro Google: " + error.code + " - " + error.message);
+            
+            if (error.code === 'auth/popup-blocked') {
+                alert("O navegador bloqueou o popup. Tente usar o método de Redirecionamento.");
+                // Fallback para Redirect se popup falhar
+                auth.signInWithRedirect(provider);
+            }
+        });
+}
+
+// 4. BOTÃO SAIR (LOGOUT)
+function fazerLogout() {
+    abrirPopupConfirmar("Sair", "Deseja desconectar sua conta?", (sim) => {
+        if (sim) {
+            auth.signOut().then(() => {
+                // Recarrega a página para limpar memória
+                window.location.reload();
+            });
+        }
+    });
+}
+
+// 5. BOTÃO RECUPERAR SENHA
+function recuperarSenha() {
+    const email = document.getElementById('emailLogin').value.trim();
+    if (!email) {
+        showToast("Digite seu e-mail no campo acima primeiro.", "info");
+        document.getElementById('emailLogin').focus();
+        return;
+    }
+    
+    abrirPopupConfirmar("Recuperar Senha", `Enviar link para <b>${email}</b>?`, (sim) => {
+        if (sim) {
+            auth.sendPasswordResetEmail(email)
+                .then(() => showToast("E-mail enviado! Verifique sua caixa de entrada.", "success"))
+                .catch(e => showToast("Erro: " + traduzirErroFirebase(e.code), "error"));
+        }
+    });
+}
+
+// 6. ALTERNAR ENTRE TELA DE LOGIN E CADASTRO (Visual)
+function alternarModoAuth() {
+    isModoCadastro = !isModoCadastro;
+    const titulo = document.getElementById('tituloAuth');
+    const btn = document.getElementById('btnAuth');
+    const divConfirma = document.getElementById('divConfirmarSenha');
+    const link = document.getElementById('linkAlternar');
+    const texto = document.getElementById('textoAlternar');
+    
+    document.getElementById('msgErroLogin').classList.add('hidden');
+
+    if (isModoCadastro) {
+        titulo.innerText = "Criar Nova Conta";
+        divConfirma.classList.remove('hidden');
+        btn.innerText = "CADASTRAR";
+        btn.className = "w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-lg transition-transform active:scale-95";
+        texto.innerText = "Já tem conta?";
+        link.innerText = "Fazer Login";
+    } else {
+        titulo.innerText = "Meu Turno";
+        divConfirma.classList.add('hidden');
+        btn.innerText = "ENTRAR";
+        btn.className = "w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-transform active:scale-95";
+        texto.innerText = "Não tem conta?";
+        link.innerText = "Cadastre-se";
+    }
+}
+
+// 7. TRADUTOR DE ERROS (Para português)
+function traduzirErroFirebase(code) {
+    if (code === 'auth/user-not-found') return "Usuário não encontrado.";
+    if (code === 'auth/wrong-password') return "Senha incorreta.";
+    if (code === 'auth/email-already-in-use') return "Este e-mail já está em uso.";
+    if (code === 'auth/invalid-email') return "E-mail inválido.";
+    if (code === 'auth/weak-password') return "A senha deve ter pelo menos 6 caracteres.";
+    return "Erro ao conectar. Tente novamente.";
+}
 
         // =================================================================================
         // 2. INICIALIZAÇÃO E LÓGICA DO PWA
@@ -893,7 +1147,9 @@ function initDB() {
             }
         }
         function inicializarMenuHamburguer() { const btn = document.getElementById('hamburger-btn'); const overlay = document.getElementById('menu-overlay'); const links = document.querySelectorAll('#menu-lateral a'); const fecharMenu = () => document.body.classList.remove('menu-open'); btn.addEventListener('click', e => { e.stopPropagation(); document.body.classList.toggle('menu-open'); }); overlay.addEventListener('click', fecharMenu); links.forEach(link => link.addEventListener('click', e => { e.preventDefault(); abrir(link.getAttribute('data-secao')); fecharMenu(); })); }
-        let toastTimer; function showToast(msg, type = 'info', duration = 2000) { const t = document.getElementById("toast"); if (!t) return; clearTimeout(toastTimer); t.textContent = msg; t.className = ''; t.classList.add(type); requestAnimationFrame(() => { t.classList.add('show'); }); toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration); }
+        let toastTimer; 
+        
+        function showToast(msg, type = 'info', duration = 2000) { const t = document.getElementById("toast"); if (!t) return; clearTimeout(toastTimer); t.textContent = msg; t.className = ''; t.classList.add(type); requestAnimationFrame(() => { t.classList.add('show'); }); toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration); }
         function abrirPopup(titulo, mensagem, botoes = []) { document.getElementById('popupTitulo').innerHTML = titulo; document.getElementById('popupMensagem').innerHTML = mensagem; const divBotoes = document.getElementById('popupBotoes'); divBotoes.innerHTML = ''; if (botoes.length === 0) botoes.push({ texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }); botoes.forEach(b => { const btn = document.createElement('button'); btn.className = `py-2 px-4 rounded-md font-semibold transition-colors duration-150 ${b.classe}`; btn.innerHTML = b.texto; btn.onclick = () => { fecharPopup(); if (b.acao) b.acao(); }; divBotoes.appendChild(btn); }); document.getElementById('popupGenerico').style.display = 'block'; document.getElementById('overlayGenerico').style.display = 'block'; }
         function fecharPopup() { document.getElementById('popupGenerico').style.display = 'none'; document.getElementById('overlayGenerico').style.display = 'none'; }
         function abrirPopupConfirmar(titulo, mensagem, callback, acaoConfirmar = 'Confirmar') { abrirPopup(titulo, mensagem, [{ texto: acaoConfirmar, classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => callback(true) }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(false) }]); }
@@ -3770,7 +4026,6 @@ function sincronizarCatalogoPecas() {
         monitoramentoCatalogoIniciado = false; // Reseta em caso de erro para tentar de novo
     });
 }
-
 
         let monitoramentoFrotasIniciado = false; // Nova variável de controle
 
