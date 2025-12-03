@@ -3722,27 +3722,56 @@ function habilitarEdicaoOS(id, btn) {
 
 async function confirmarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
-    const numero = input.value.trim();
+    const numero = input ? input.value.trim() : "";
 
     if (!numero) {
         showToast("Nº O.S não pode ser vazio.", "error");
+        if(input) input.focus();
         return;
     }
 
+    // Feedback visual imediato no botão
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "...";
+
     try {
-        await firestore.collection('historico_os').doc(String(id)).update({
-            osNumero: numero
+        // 1. OPERAÇÃO LOCAL (Prioridade Máxima - IndexedDB)
+        const idNumerico = parseInt(id);
+        const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+
+        if (!item) throw new Error("Item não encontrado no celular.");
+
+        // Atualiza o objeto
+        item.osNumero = numero;
+        item.atualizadoEm = new Date().toISOString();
+
+        // Salva no banco local
+        await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
+
+        // 2. ATUALIZA A TELA E TRAVA A EDIÇÃO
+        showToast("Nº O.S atualizado (Salvo no dispositivo)!", 'success');
+        
+        // Em vez de recarregar tudo com mostrarHistorico(), podemos apenas ajustar a UI
+        // Mas para garantir consistência, chamamos o refresh rápido se a tela estiver visível
+        await mostrarHistorico(); 
+
+        // 3. SINCRONIZAÇÃO SILENCIOSA (Nuvem - Background)
+        firestore.collection('historico_os').doc(String(id)).update({
+            osNumero: numero,
+            atualizadoEm: item.atualizadoEm
+        }).then(() => {
+            console.log("☁️ Número da OS sincronizado com a nuvem.");
+        }).catch(err => {
+            console.warn("⚠️ Sem rede. Alteração salva localmente e será enviada depois.", err);
         });
-        showToast("Nº O.S atualizado!", 'success');
-        
-        // Retorna o estado visual (embora o onSnapshot vá redesenhar tudo em breve)
-        input.disabled = true;
-        input.classList.remove('bg-yellow-50', 'border-yellow-400');
-        btn.innerText = 'Edit';
-        btn.onclick = () => habilitarEdicaoOS(id, btn);
-        
+
     } catch (error) {
-        showToast("Erro ao atualizar O.S.", 'error');
+        console.error(error);
+        showToast("Erro ao atualizar localmente: " + error.message, 'error');
+        // Restaura o botão em caso de erro real (ex: falha no disco)
+        btn.disabled = false;
+        btn.innerText = textoOriginal;
     }
 }
 
