@@ -509,6 +509,7 @@ function proximoSlide(numero) {
     document.getElementById('slide1').classList.add('hidden');
     document.getElementById('slide2').classList.add('hidden');
     document.getElementById('slide3').classList.add('hidden');
+    document.getElementById('slide4').classList.add('hidden');
     
     // Mostra o atual
     document.getElementById(`slide${numero}`).classList.remove('hidden');
@@ -3124,31 +3125,34 @@ function iniciarMonitoramentoFormulario() {
         // ---------------------------------
         // MÓDULO: HISTÓRICO
         // ---------------------------------
-async function renderizarSecaoHistorico(container) {
+    async function renderizarSecaoHistorico(container) {
     container.innerHTML = `
     <div class="bg-white p-4 rounded-lg shadow mb-4 space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center border-b pb-2">
             <h3 class="text-lg font-bold text-blue-800">Histórico de O.S.</h3>
-            <button onclick="mostrarHistorico()" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1">
-                🔄 Atualizar
+            
+            <button onclick="mostrarHistorico()" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Atualizar
             </button>
         </div>
         
-        <div class="flex items-center gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-            <input type="checkbox" id="verTodosHistorico" onchange="mostrarHistorico()" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
-            <label for="verTodosHistorico" class="text-sm font-bold text-gray-700 cursor-pointer select-none">
-                Ver todos (Ignorar Frente/Turno)
-            </label>
-        </div>
-
-        <button onclick="abrirPopupApagarPorData()" class="w-full sm:w-auto py-2 px-4 rounded-md font-semibold bg-red-100 text-red-700 hover:bg-red-200 text-sm flex items-center justify-center gap-2">
-            🗑️ Apagar por Data
+        <button onclick="abrirPopupApagarPorData()" class="w-full sm:w-auto py-2.5 px-4 rounded-lg font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Apagar por Data (Nuvem)
         </button>
     </div>
     <div id="historico_lista" class="space-y-4"></div>`;
     
     await mostrarHistorico();
 }
+
+
+
         
         async function salvarOSnoHistorico(serviceId) {
             const servico = servicos.find(s => s.id === serviceId);
@@ -3218,182 +3222,167 @@ async function renderizarSecaoHistorico(container) {
         }
 
 
-        async function mostrarHistorico() {
-            const div = document.getElementById("historico_lista");
-            if (!div) return;
+    async function mostrarHistorico() {
+    const div = document.getElementById("historico_lista");
+    if (!div) return;
 
-            div.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
+    div.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
 
-            try {
-                const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+    try {
+        const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
 
-                // 1. Filtros
-                const frenteInput = document.getElementById('frente');
-                const turnoInput = document.getElementById('turnoLetra');
-                
-                const frenteSelecionada = frenteInput ? frenteInput.value.trim() : "";
-                const turnoSelecionado = turnoInput ? turnoInput.value : "";
-                
-                const ignorarFiltros = document.getElementById('verTodosHistorico')?.checked;
+        // 1. Filtros (Contexto Atual)
+        const frenteInput = document.getElementById('frente');
+        const turnoInput = document.getElementById('turnoLetra');
+        
+        const frenteSelecionada = frenteInput ? frenteInput.value.trim() : "";
+        const turnoSelecionado = turnoInput ? turnoInput.value : "";
+        
+        // 2. Filtragem RÍGIDA (Sem "Ver Todos")
+        const itensFiltrados = todosItens.filter(item => {
+            // Tenta normalizar a frente do item (alguns antigos podem não ter trim)
+            const itemFrente = item.frente ? item.frente.trim() : "";
+            const itemTurno = item.turno || "";
+            
+            // Só passa se for EXATAMENTE igual
+            return itemFrente === frenteSelecionada && itemTurno === turnoSelecionado;
+        });
 
-                // 2. Filtragem
-                const itensFiltrados = todosItens.filter(item => {
-                    if (ignorarFiltros) return true;
-                    const itemFrente = item.frente ? item.frente.trim() : frenteSelecionada;
-                    const itemTurno = item.turno || turnoSelecionado;
-                    return itemFrente === frenteSelecionada && itemTurno === turnoSelecionado;
-                });
-
-                if (itensFiltrados.length === 0) {
-                    if (todosItens.length > 0 && !ignorarFiltros) {
-                        div.innerHTML = `
-                            <div class="text-center p-6 bg-yellow-50 rounded-lg border border-yellow-200">
-                                <p class="text-yellow-800 font-bold">Nenhum registro para esta Frente/Turno.</p>
-                                <p class="text-xs text-yellow-600 mt-2">Existem ${todosItens.length} O.S. salvas em outras frentes.</p>
-                                <button onclick="document.getElementById('verTodosHistorico').click()" class="mt-3 text-blue-600 font-bold text-sm underline">
-                                    Clique aqui para ver todas
-                                </button>
-                            </div>`;
-                    } else {
-                        div.innerHTML = `
-                            <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                                <p class="text-gray-400 font-bold">Histórico Vazio.</p>
-                            </div>`;
-                    }
-                    return;
-                }
-
-                // 3. Agrupamento
-                const agrupado = itensFiltrados.reduce((acc, item) => {
-                    const dataKey = item.dataOS || "Sem Data";
-                    if (!acc[dataKey]) acc[dataKey] = [];
-                    acc[dataKey].push(item);
-                    return acc;
-                }, {});
-
-                const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
-
-                // 4. Renderização com NOVO LAYOUT
-                div.innerHTML = datasOrdenadas.map(dataKey => {
-                    const itensDoDia = agrupado[dataKey].sort((a, b) => (b.inicio || "").localeCompare(a.inicio || ""));
-                    
-                    return `
-                    <div class="bg-white rounded-lg shadow-sm mb-4 overflow-hidden border border-gray-200">
-                        <div class="bg-gray-100 p-3 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-200 transition-colors" 
-                             onclick="toggleHistoricoDia('${dataKey}')">
-                            <h3 class="text-sm font-bold text-blue-800 flex items-center gap-2">
-                                📅 ${formatarDataParaExibicao(dataKey)}
-                                <span class="bg-blue-200 text-blue-900 text-[10px] px-2 py-0.5 rounded-full">${itensDoDia.length}</span>
-                            </h3>
-                            <span id="toggler-dia-${dataKey}" class="text-gray-500 font-bold transition-transform">&#9660;</span>
-                        </div>
-                        
-                        <div id="historico-dia-${dataKey}" class="divide-y divide-gray-100">
-                            ${itensDoDia.map(s => {
-                                const statusClass = s.status === 'finalizada' 
-                                    ? 'bg-green-50 border-l-4 border-green-500' 
-                                    : 'bg-white border-l-4 border-orange-500';
-                                
-                                const statusTexto = s.status === 'finalizada' 
-                                    ? `<span class="flex items-center gap-1 text-green-700 font-bold text-xs uppercase"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg> Finalizada</span>`
-                                    : `<span class="flex items-center gap-1 text-orange-600 font-bold text-xs uppercase">❌ Pendente</span>`;
-
-                                const safeId = s.uniqueId || s.id;
-                                
-                                // Formata a linha técnica (P001 • 1 • 1.9)
-                                const linhaTecnica = [
-                                    (s.atividade || "").split(' - ')[0],
-                                    s.sistema || "",
-                                    (s.subsistema || "").split(' - ')[0]
-                                ].filter(Boolean).join(' <span class="text-gray-300 mx-1">•</span> ');
-
-                                return `
-                                <div class="p-4 ${statusClass} hover:bg-gray-50 transition-colors">
-                                    
-                                    <div class="flex justify-between items-start mb-3">
-                                        <div>
-                                            <span class="block font-black text-gray-900 text-base">${safeText(s.frota)}</span>
-                                            <div class="text-xs text-gray-500 font-medium mt-0.5 flex items-center">
-                                                ${linhaTecnica}
-                                            </div>
-                                        </div>
-                                        <div class="text-right flex flex-col items-end">
-                                            ${statusTexto}
-                                            <div class="text-xs font-bold text-gray-500 mt-1 bg-gray-100 px-2 py-0.5 rounded">
-                                                ${safeText(s.inicio)} - ${safeText(s.fim)}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="bg-gray-50 p-3 rounded-md border border-gray-200 mb-4">
-                                        <p class="text-sm text-gray-700 italic line-clamp-3 before:content-['“'] after:content-['”'] before:text-gray-400 after:text-gray-400 before:mr-1 after:ml-1">
-                                            ${safeText(s.descricao)}
-                                        </p>
-                                    </div>
-
-                                    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                        
-                                        <div class="flex items-center gap-2 flex-1 mr-4 bg-white p-1 rounded border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
-                                            <span class="text-xs font-bold text-gray-500 pl-2">O.S:</span>
-                                            <input type="number" 
-                                                id="os_input_${safeId}" 
-                                                class="flex-1 p-1.5 text-sm font-bold text-gray-900 outline-none bg-transparent disabled:text-gray-500 w-full" 
-                                                placeholder="Nº..." 
-                                                value="${safeText(s.osNumero || "")}" 
-                                                oninput="validarOSInput(${safeId})" 
-                                                ${s.status === "finalizada" ? "disabled" : ""}>
-                                            
-                                            ${s.status === 'pendente' 
-                                                ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled>OK</button>` 
-                                                : `<span class="flex items-center gap-1 text-green-600 text-xs font-bold bg-green-50 px-3 py-1.5 rounded border border-green-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> OK</span>`
-                                            }
-                                        </div>
-                                        
-                                        <button onclick="toggleBotoesHistorico(${safeId})" class="p-2 text-gray-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors flex-shrink-0" title="Mais Ações">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <div id="botoes-historico-${safeId}" class="hidden mt-4 grid grid-cols-3 gap-3 pt-3 border-t border-gray-100 animate-fade-in-down">
-                                        <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center gap-1 bg-gray-100 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-200 transition-colors group">
-                                            <span class="text-xl group-hover:scale-110 transition-transform">📋</span>
-                                            <span>Copiar</span>
-                                        </button>
-                                        <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center gap-1 bg-green-100 py-3 rounded-lg text-xs font-bold text-green-700 hover:bg-green-200 transition-colors group">
-                                            <span class="text-xl group-hover:scale-110 transition-transform">📱</span>
-                                            <span>Enviar Wtzp</span>
-                                        </button>
-                                        <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center gap-1 bg-red-100 py-3 rounded-lg text-xs font-bold text-red-700 hover:bg-red-200 transition-colors group">
-                                            <span class="text-xl group-hover:scale-110 transition-transform">🗑️</span>
-                                            <span>Excluir</span>
-                                        </button>
-                                        ${s.status === 'finalizada' ? `
-                                        <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 flex items-center justify-center gap-2 bg-yellow-100 py-3 rounded-lg text-xs font-bold text-yellow-700 hover:bg-yellow-200 transition-colors group mt-1 border border-yellow-200">
-                                            <span class="text-lg">✏️</span>
-                                            <span>Editar Número da O.S.</span>
-                                        </button>` : ''}
-                                    </div>
-                                    
-                                    <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
-                                </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>`;
-                }).join('');
-
-            } catch (e) {
-                console.error(e);
-                div.innerHTML = `<p class="text-red-500 text-center p-4 border border-red-200 bg-red-50 rounded-lg">Erro ao ler dados: ${e.message}</p>`;
-            }
+        if (itensFiltrados.length === 0) {
+            div.innerHTML = `
+                <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <p class="text-gray-400 font-bold">Nenhum registro encontrado.</p>
+                    <p class="text-xs text-gray-400 mt-1">
+                        Verifique se está na Frente <b>${safeText(frenteSelecionada)}</b> e Turno <b>${safeText(turnoSelecionado)}</b> corretos.
+                    </p>
+                </div>`;
+            return;
         }
 
+        // 3. Agrupamento
+        const agrupado = itensFiltrados.reduce((acc, item) => {
+            const dataKey = item.dataOS || "Sem Data";
+            if (!acc[dataKey]) acc[dataKey] = [];
+            acc[dataKey].push(item);
+            return acc;
+        }, {});
+
+        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
+
+        // 4. Renderização (Visual Limpo/Padronizado mantido)
+        div.innerHTML = datasOrdenadas.map(dataKey => {
+            const itensDoDia = agrupado[dataKey].sort((a, b) => (b.inicio || "").localeCompare(a.inicio || ""));
+            
+            return `
+            <div class="bg-white rounded-lg shadow-sm mb-5 overflow-hidden border border-gray-200">
+                <div class="bg-blue-50 p-3 border-b border-blue-100 flex justify-between items-center cursor-pointer select-none" 
+                     onclick="toggleHistoricoDia('${dataKey}')">
+                    <h3 class="text-sm font-bold text-blue-800 flex items-center gap-2">
+                        📅 ${formatarDataParaExibicao(dataKey)}
+                        <span class="bg-white text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm border border-blue-100">${itensDoDia.length}</span>
+                    </h3>
+                    <span id="toggler-dia-${dataKey}" class="text-blue-400 font-bold text-lg transition-transform">&#9660;</span>
+                </div>
+                
+                <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
+                    ${itensDoDia.map(s => {
+                        const isFinalizada = s.status === 'finalizada';
+                        const bordaLateral = isFinalizada ? 'border-green-500' : 'border-orange-500';
+                        const safeId = s.uniqueId || s.id;
+
+                        const infoTecnica = [
+                            (s.atividade || "N/A").split(' - ')[0],
+                            s.sistema || "?",
+                            (s.subsistema || "?").split(' - ')[0]
+                        ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
+
+                        return `
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
+                            
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
+                                        ${safeText(s.frota)}
+                                    </span>
+                                    <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                                        ${infoTecnica}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                                        🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
+                                    "${safeText(s.descricao)}"
+                                </p>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
+                                <div class="flex items-center gap-2 flex-grow">
+                                    <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
+                                    <div class="relative flex items-center">
+                                        <input type="number" 
+                                            id="os_input_${safeId}" 
+                                            class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
+                                            placeholder="PENDENTE" 
+                                            value="${safeText(s.osNumero || "")}" 
+                                            oninput="validarOSInput(${safeId})" 
+                                            ${isFinalizada ? "disabled" : ""}>
+                                        
+                                        ${!isFinalizada 
+                                            ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
+                                            : `` 
+                                        }
+                                    </div>
+                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+                                </div>
+
+                                <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
+                                    <span>⚙️ Ações</span>
+                                </button>
+                            </div>
+
+                            <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-3 gap-2 animate-fade-in">
+                                <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
+                                    <span class="text-lg mb-1">📋</span>
+                                    <span class="text-[9px] font-bold uppercase">Copiar</span>
+                                </button>
+                                <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
+                                    <span class="text-lg mb-1">📱</span>
+                                    <span class="text-[9px] font-bold uppercase">Enviar Wtzp</span>
+                                </button>
+                                <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
+                                    <span class="text-lg mb-1">🗑️</span>
+                                    <span class="text-[9px] font-bold uppercase">Excluir</span>
+                                </button>
+                                ${isFinalizada ? `
+                                <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
+                                    ✏️ Editar Número da O.S.
+                                </button>` : ''}
+                            </div>
+                            
+                            <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>`;
+        }).join('');
+
+    } catch (e) {
+        console.error(e);
+        div.innerHTML = `<p class="text-red-500 text-center p-4 border border-red-200 bg-red-50 rounded-lg">Erro ao ler dados: ${e.message}</p>`;
+    }
+}
 
 
 
-async function abrirPopupApagarPorData() {
+
+    async function abrirPopupApagarPorData() {
     try {
         // 1. Carrega dados locais para listar as datas
         const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
@@ -3620,35 +3609,84 @@ async function confirmarEdicaoOS(id, btn) {
 }
 
 async function excluirHistoricoItem(id) {
-    const confirmado = await new Promise(resolve => 
-        abrirPopupConfirmar('Excluir Registro', 
-        'Tem certeza que deseja excluir este item do histórico? Esta ação não pode ser desfeita.', 
-        resolve)
-    );
+    try {
+        // 1. Busca o item no banco local para verificar a quem pertence
+        // O IndexedDB usa chave numérica, garantimos a conversão
+        const idNumerico = parseInt(id);
+        const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
 
-    if (confirmado) {
-        try {
-            // 1. Apaga do Banco Local (IndexedDB) IMEDIATAMENTE
-            // Convertemos para Inteiro pois o IndexedDB usa chave numérica
-            const idNumerico = parseInt(id);
+        if (!item) {
+            showToast('Erro: Item não encontrado no dispositivo.', 'error');
+            // Se não tá no local, tenta forçar exclusão visual ou da nuvem? 
+            // Melhor não arriscar sem saber de quem é.
+            return;
+        }
+
+        // 2. Pega o contexto atual (Quem está tentando apagar)
+        const elFrente = document.getElementById('frente');
+        const elTurno = document.getElementById('turnoLetra');
+        
+        const minhaFrente = elFrente ? elFrente.value.trim() : "";
+        const meuTurno = elTurno ? elTurno.value : "";
+
+        // 3. TRAVA DE SEGURANÇA: Verifica Propriedade
+        const itemFrente = (item.frente || "").trim();
+        const itemTurno = item.turno || "";
+
+        // Se a Frente OU o Turno forem diferentes, BLOQUEIA
+        if (itemFrente !== minhaFrente || itemTurno !== meuTurno) {
+            const msg = `
+                <div class="text-left text-sm text-gray-600 space-y-3">
+                    <p class="font-bold text-gray-800">🚫 Ação Bloqueada</p>
+                    <p>Você não pode apagar registros de outra equipe.</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-red-50 p-2 rounded border border-red-200">
+                            <span class="block text-red-500 font-bold mb-1">O ITEM É DA:</span>
+                            ${itemFrente}<br>Turno ${itemTurno}
+                        </div>
+                        <div class="bg-blue-50 p-2 rounded border border-blue-200">
+                            <span class="block text-blue-500 font-bold mb-1">VOCÊ ESTÁ NA:</span>
+                            ${minhaFrente}<br>Turno ${meuTurno}
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs italic bg-gray-100 p-2 rounded">
+                        💡 Dica: Para gerenciar este item, troque a Frente e o Turno no topo da tela para corresponder aos do item.
+                    </p>
+                </div>
+            `;
+            // Usa sua função de popup genérico
+            abrirPopup("Permissão Negada", msg);
+            return; // PARA A EXECUÇÃO AQUI. Nada é apagado.
+        }
+
+        // 4. Se passou na validação, segue para a confirmação normal
+        const confirmado = await new Promise(resolve => 
+            abrirPopupConfirmar('Excluir Registro', 
+            'Tem certeza que deseja excluir este item do histórico? Esta ação não pode ser desfeita.', 
+            resolve)
+        );
+
+        if (confirmado) {
+            // Apaga Localmente
             await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(idNumerico));
             
-            // 2. Atualiza a Tela na hora (Feedback instantâneo)
+            // Atualiza Tela
             await mostrarHistorico();
             showToast('Item excluído.', 'success');
 
-            // 3. Sincroniza com a Nuvem (Background)
-            // Convertemos para String pois o Firestore usa IDs de texto
+            // Apaga na Nuvem (Background)
             firestore.collection('historico_os').doc(String(id)).delete()
-                .then(() => console.log("🗑️ Item apagado da nuvem."))
-                .catch(err => console.warn("⚠️ Sem rede. Exclusão pendente de sync.", err));
-
-        } catch (e) {
-            console.error(e);
-            showToast('Erro ao excluir item localmente.', 'error');
+                .catch(err => console.warn("Offline. Exclusão será sincronizada depois.", err));
         }
+
+    } catch (e) {
+        console.error(e);
+        showToast('Erro ao validar permissão.', 'error');
     }
 }
+
 
 // Validação simples para habilitar/desabilitar o botão OK enquanto digita
 function validarOSInput(id) {
@@ -4067,40 +4105,85 @@ function sincronizarCatalogoFrotas() {
 
 
     </script>
-    <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+  <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden relative">
         
         <div id="slide1" class="p-6 text-center space-y-4">
-            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-4xl">☁️</div>
-            <h2 class="text-xl font-bold text-gray-800">Seus dados agora na Nuvem!</h2>
-            <p class="text-sm text-gray-600">Não se preocupe mais em perder o celular. Todas as suas O.S. e apontamentos agora são salvos automaticamente no servidor seguro.</p>
-            <button onclick="proximoSlide(2)" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold mt-4 shadow-lg hover:bg-blue-700">Próximo</button>
+            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-4xl shadow-sm">☁️</div>
+            <h2 class="text-xl font-bold text-gray-800">Seus dados na Nuvem!</h2>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                Não se preocupe em perder o celular. Todas as suas O.S. e apontamentos agora são salvos automaticamente no servidor seguro.
+            </p>
+            <button onclick="proximoSlide(2)" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold mt-4 shadow-lg hover:bg-blue-700 transition-transform active:scale-95">
+                Próximo
+            </button>
         </div>
 
         <div id="slide2" class="p-6 text-center space-y-4 hidden">
-            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-4xl">⚠️</div>
-            <h2 class="text-xl font-bold text-gray-800">Cuidado ao Apagar!</h2>
-            <p class="text-sm text-gray-600">O sistema agora é <strong>COLABORATIVO</strong>. Se você editar ou excluir uma O.S., ela sumirá para <strong>TODOS</strong> os mecânicos da sua frente.</p>
-            <button onclick="proximoSlide(3)" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold mt-4 shadow-lg hover:bg-blue-700">Entendi</button>
+            <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto text-4xl shadow-sm">🔍</div>
+            <h2 class="text-xl font-bold text-gray-800">Histórico Inteligente</h2>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                A aba <strong>Histórico</strong> só mostra as O.S. da <strong>FRENTE</strong> e <strong>TURNO</strong> que você selecionou no topo da tela.
+            </p>
+            <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-xs text-indigo-800 font-medium">
+                💡 Dica: Se o histórico parecer vazio, verifique se a Frente selecionada é a correta!
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3 mt-4">
+                <button onclick="proximoSlide(1)" class="col-span-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                    Voltar
+                </button>
+                <button onclick="proximoSlide(3)" class="col-span-2 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-transform active:scale-95">
+                    Entendi
+                </button>
+            </div>
         </div>
 
         <div id="slide3" class="p-6 text-center space-y-4 hidden">
-            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-4xl">🎯</div>
-            <h2 class="text-xl font-bold text-gray-800">Filtros Inteligentes</h2>
-            <p class="text-sm text-gray-600">Para ver suas O.S., certifique-se de que a <strong>FRENTE</strong> e o <strong>TURNO</strong> estão selecionados corretamente no topo da tela.</p>
+            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-4xl shadow-sm">🛡️</div>
+            <h2 class="text-xl font-bold text-gray-800">Segurança Total</h2>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                O sistema é colaborativo, mas protegido. Você não poderá apagar ou editar O.S. criadas por outras Frentes ou Turnos.
+            </p>
+            
+            <div class="grid grid-cols-3 gap-3 mt-4">
+                <button onclick="proximoSlide(2)" class="col-span-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                    Voltar
+                </button>
+                <button onclick="proximoSlide(4)" class="col-span-2 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-transform active:scale-95">
+                    Ok, Próximo
+                </button>
+            </div>
+        </div>
+
+        <div id="slide4" class="p-6 text-center space-y-4 hidden">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-4xl shadow-sm">🚀</div>
+            <h2 class="text-xl font-bold text-gray-800">Tudo Pronto!</h2>
+            <p class="text-sm text-gray-600">
+                Lembre-se de sempre clicar em <strong>"Gerar O.S."</strong> para salvar seu serviço.
+            </p>
             
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-left mt-2">
-                <label class="flex items-start gap-2 cursor-pointer">
-                    <input type="checkbox" id="checkTermos" class="mt-1 w-5 h-5 text-blue-600 rounded">
-                    <span class="text-gray-500">Declaro que li e estou ciente da responsabilidade sobre a manipulação dos dados compartilhados.</span>
+                <label class="flex items-start gap-3 cursor-pointer select-none">
+                    <input type="checkbox" id="checkTermos" class="mt-0.5 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+                    <span class="text-gray-500 font-medium">Declaro que li e entendi como usar o histórico e os filtros.</span>
                 </label>
             </div>
 
-            <button id="btnConcluirOnboarding" onclick="concluirOnboarding()" disabled class="w-full py-3 bg-gray-300 text-white rounded-xl font-bold mt-4 cursor-not-allowed transition-colors">Começar a Usar 🚀</button>
+            <div class="grid grid-cols-3 gap-3 mt-4">
+                <button onclick="proximoSlide(3)" class="col-span-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                    Voltar
+                </button>
+                <button id="btnConcluirOnboarding" onclick="concluirOnboarding()" disabled class="col-span-2 py-3 bg-gray-300 text-gray-500 rounded-xl font-bold cursor-not-allowed transition-all shadow-none">
+                    Começar
+                </button>
+            </div>
         </div>
 
     </div>
 </div>
+
+
 
 </body>
 
