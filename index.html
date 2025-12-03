@@ -2637,151 +2637,122 @@ async function abrirPopupImportarServico() {
     const inputData = document.getElementById('apontamentoData');
     const dataAlvo = inputData ? inputData.value : dataHojeInputLocal();
 
-    // 1. OBTÉM FILTROS RÍGIDOS DA UI
+    // Filtros Atuais
     const frenteInput = document.getElementById('frente');
     const turnoInput = document.getElementById('turnoLetra');
-    
     const frenteAtual = frenteInput ? frenteInput.value.trim() : "";
     const turnoAtual = turnoInput ? turnoInput.value : "";
 
-
-    if (!dataAlvo || !frenteAtual || !turnoAtual) {
-        showToast("Selecione a Data, Frente e Turno para importar serviços.", "error");
+    if (!dataAlvo) {
+        showToast("Selecione uma data primeiro.", "error");
         return;
     }
 
-    showToast(`Buscando serviços de ${frenteAtual} - ${turnoAtual}...`, "info", 1500);
-
-    let listaCombinada = [];
+    showToast(`Buscando serviços...`, "info", 1000);
 
     try {
-        // A. Busca no Histórico (IndexedDB) - Contém O.S. já geradas e finalizadas
+        // A. Busca no Histórico
         const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
 
-        // TRAVA 1: Filtro Rígido no Histórico
-        // Apenas dados que batem com a Frente, Turno e Data atuais.
-        const doHistorico = historico.filter(h => 
-            h.dataOS === dataAlvo &&
-            (h.frente || "").trim() === frenteAtual &&
-            (h.turno || "") === turnoAtual
-        );
+        // FILTRO INTELIGENTE (Aceita Legados)
+        const doHistorico = historico.filter(h => {
+            // 1. Data deve bater sempre
+            if (h.dataOS !== dataAlvo) return false;
 
-        // B. Busca na Memória Atual (servicos) - Contém Rascunhos não gerados
+            // 2. Verifica Contexto
+            const itemFrente = h.frente ? h.frente.trim() : "";
+            const itemTurno = h.turno || "";
+
+            // Lógica: Se o item tem frente, ela deve ser igual a atual.
+            // MAS, se o item NÃO TEM frente (é antigo/legado), permite importar!
+            const ehLegado = itemFrente === "" || itemTurno === "";
+            const ehDaFrente = itemFrente === frenteAtual && itemTurno === turnoAtual;
+
+            return ehLegado || ehDaFrente;
+        });
+
+        // B. Busca na Memória (Rascunhos)
         const idsNoHistorico = new Set(doHistorico.map(h => String(h.id)));
-        
-        // TRAVA 2: Filtro Rígido nos Rascunhos
-        // Rascunhos também precisam bater com o contexto (Frente e Turno)
         const daMemoria = servicos.filter(s => 
             s.data === dataAlvo && 
-            !idsNoHistorico.has(String(s.id)) &&
-            // Filtros de Segurança nos rascunhos (Assumindo que eles têm Frente/Turno salvo)
-            (s.frente || "").trim() === frenteAtual && 
-            (s.turno || "") === turnoAtual
+            !idsNoHistorico.has(String(s.id))
         );
 
-        // C. Combina
-        listaCombinada = [...doHistorico, ...daMemoria];
+        const listaCombinada = [...doHistorico, ...daMemoria];
+
+        if (listaCombinada.length === 0) {
+            showToast(`Nenhum serviço encontrado em ${formatarDataParaExibicao(dataAlvo)}.`, "info");
+            return;
+        }
+
+        listaCombinada.sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
+
+        // GERAÇÃO DO HTML (Visual Mantido)
+        const listaHtml = listaCombinada.map(s => {
+            const temOS = s.osNumero && String(s.osNumero).trim() !== "";
+            const numeroOS = temOS ? s.osNumero : "PENDENTE";
+            const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
+            
+            // Tratamento seguro de campos que podem não existir nos antigos
+            const ativTexto = s.atividade || "Atividade Desconhecida";
+            const codAtiv = ativTexto.split(' - ')[0];
+            const sist = s.sistema || "?";
+            const sub = (s.subsistema || "?").split(' - ')[0];
+            
+            const action = temOS 
+                ? `tentarImportarServico('${s.id}', '${s.frota || "?"}', '${s.atividade || ""}', '${s.sistema || ""}', '${s.subsistema || ""}', '${s.inicio || ""}', '${s.fim || ""}', '${numeroOS}')` 
+                : `explicarFaltaOS()`;
+
+            let cardClass = "bg-white border-green-200 hover:border-green-500";
+            let badgeColor = "bg-green-100 text-green-700 border-green-200";
+            let iconHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>`;
+
+            if (!temOS) {
+                cardClass = "bg-orange-50 border-orange-300";
+                badgeColor = "bg-orange-100 text-orange-700 border-orange-300";
+                iconHTML = "⚠️";
+            } 
+            
+            if (jaImportado) {
+                cardClass = "bg-blue-50 border-blue-300 shadow-inner opacity-75"; 
+                iconHTML = `<span class="text-blue-600 font-bold text-xs">✔ ADD</span>`;
+            }
+
+            return `
+            <div onclick="${!jaImportado ? action : ''}" 
+                 class="group border rounded-xl p-3 mb-2 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${cardClass}">
+                <div class="flex-1 min-w-0 pr-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-black text-gray-700 text-xs uppercase bg-white px-1 rounded border border-gray-200">${s.frota || "N/D"}</span>
+                        <span class="text-[10px] font-bold px-1.5 rounded border ${badgeColor}">${numeroOS}</span>
+                    </div>
+                    <div class="text-xs font-bold text-gray-800 truncate">${codAtiv} - ${sist} - ${sub}</div>
+                    <div class="text-[10px] text-gray-500 mt-0.5">🕒 ${s.inicio || "--:--"} - ${s.fim || "--:--"}</div>
+                </div>
+                <div class="flex-shrink-0 pl-1">${iconHTML}</div>
+            </div>`;
+        }).join('');
+
+        const conteudoFinal = `
+            <div class="bg-gray-50 -m-5 p-4">
+                <div class="flex justify-between items-center mb-3 border-b pb-2">
+                    <span class="text-xs font-bold text-gray-500 uppercase">Dia: ${formatarDataParaExibicao(dataAlvo)}</span>
+                    <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${listaCombinada.length} itens</span>
+                </div>
+                <div class="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    ${listaHtml}
+                </div>
+            </div>
+        `;
+
+        abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
 
     } catch (e) {
         console.error(e);
-        showToast("Erro ao ler banco de dados.", "error");
-        return;
+        showToast("Erro ao listar serviços.", "error");
     }
-
-    if (listaCombinada.length === 0) {
-        // Mensagem de erro que explica a falha de filtro
-        const dataExibicao = formatarDataParaExibicao(dataAlvo);
-        showToast(`❌ Nenhum serviço encontrado para a Frente ${frenteAtual} e Turno ${turnoAtual} na data ${dataExibicao}. Verifique os filtros.`, "error", 6000);
-        return;
-    }
-
-    listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-    // --- GERAÇÃO DO HTML LIMPO (Resto do Código) ---
-    const listaHtml = listaCombinada.map(s => {
-        const temOS = s.osNumero && s.osNumero.trim() !== "";
-        const numeroOS = temOS ? s.osNumero : "PENDENTE";
-        
-        // Verifica se já está na linha do tempo
-        const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
-
-        // Dados formatados
-        const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
-        const nomeAtiv = s.atividade ? (s.atividade.split(' - ')[1] || '') : '';
-        const sist = s.sistema || '?';
-        const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
-        const infoTecnica = `${codAtiv} - ${sist} - ${sub}`;
-        
-        // Ação
-        const action = temOS 
-            ? `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
-            : `explicarFaltaOS()`;
-        
-        // Estilos
-        let cardClass = "bg-white border-green-200 hover:border-green-500";
-        let badgeColor = "bg-green-100 text-green-700 border-green-200";
-        // Ícone padrão (+)
-        let iconHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>`;
-
-        if (!temOS) {
-            cardClass = "bg-orange-50 border-orange-300";
-            badgeColor = "bg-orange-100 text-orange-700 border-orange-300";
-            iconHTML = "⚠️";
-        } 
-        
-        // SE JÁ FOI IMPORTADO (TICADO) - VISUAL DIFERENTE
-        if (jaImportado) {
-            cardClass = "bg-blue-50 border-blue-300 shadow-inner opacity-90"; 
-            // Ícone de Check (Ticado)
-            iconHTML = `<div class="bg-blue-600 text-white rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></div>`;
-        }
-
-        return `
-        <div onclick="${action}" 
-             class="group relative border rounded-xl p-3 mb-2 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${cardClass}">
-            
-            <div class="flex-1 min-w-0 pr-3">
-                <div class="flex items-center justify-between mb-1.5">
-                    <span class="bg-white border border-gray-200 text-gray-700 text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide">
-                        ${s.frota || 'N/D'}
-                    </span>
-                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">
-                        ${jaImportado ? 'IMPORTADO' : `OS: ${numeroOS}`}
-                    </span>
-                </div>
-
-                <div class="text-sm font-black text-gray-800 leading-tight">
-                   ⚙️ ${infoTecnica}
-                </div>
-                
-                <div class="flex justify-between items-end mt-1">
-                    <div class="text-xs text-gray-500 truncate max-w-[60%]">${nomeAtiv}</div>
-                    <span class="text-[10px] text-gray-700 font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded">
-                        🕒 ${s.inicio} - ${s.fim}
-                    </span>
-                </div>
-            </div>
-
-            <div class="flex-shrink-0 pl-2">
-                ${iconHTML}
-            </div>
-        </div>`;
-    }).join('');
-
-    const conteudoFinal = `
-        <div class="bg-gray-50 -m-5 p-4 mb-0">
-            <div class="flex justify-between items-center mb-3 px-1 border-b pb-2">
-                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Data: ${formatarDataParaExibicao(dataAlvo)}</p>
-                <span class="text-xs bg-white border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full font-bold">${listaCombinada.length} itens</span>
-            </div>
-            <div class="max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar space-y-2">
-                ${listaHtml}
-            </div>
-        </div>
-    `;
-
-    abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
 }
+
 
 
 // Função auxiliar para evitar erro no HTML
@@ -3470,7 +3441,7 @@ function iniciarMonitoramentoFormulario() {
                                             : `` 
                                         }
                                     </div>
-                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-700 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
                                 </div>
 
                                 <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
@@ -3685,22 +3656,57 @@ async function finalizarOS(id) {
 
     if (!osNumero) {
         showToast('Digite o número da O.S.', 'error');
-        input.focus();
+        if(input) input.focus();
         return;
     }
 
+    // Desabilita botão visualmente para evitar clique duplo
+    const btn = document.getElementById(`btnFinalizarOS_${id}`);
+    if(btn) {
+        btn.disabled = true;
+        btn.innerText = "...";
+    }
+
     try {
-        // Atualiza direto na nuvem. O onSnapshot cuidará de atualizar a tela.
-        await firestore.collection('historico_os').doc(String(id)).update({
+        // 1. OPERAÇÃO LOCAL (Prioridade Total)
+        const idNumerico = parseInt(id);
+        
+        // Busca e atualiza no IndexedDB
+        const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        
+        if (!item) throw new Error("Item não encontrado no dispositivo.");
+
+        item.status = 'finalizada';
+        item.osNumero = osNumero;
+        item.atualizadoEm = new Date().toISOString();
+        
+        await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
+
+        // 2. ATUALIZA A TELA IMEDIATAMENTE
+        showToast('O.S. finalizada (Salvo no dispositivo)!', 'success');
+        await mostrarHistorico(); 
+
+        // 3. SINCRONIZAÇÃO SILENCIOSA (Não trava se estiver offline)
+        firestore.collection('historico_os').doc(String(id)).update({
             status: 'finalizada',
-            osNumero: osNumero
+            osNumero: osNumero,
+            atualizadoEm: item.atualizadoEm
+        }).then(() => {
+            console.log("☁️ Nuvem atualizada.");
+        }).catch(err => {
+            console.warn("⚠️ Sem rede. Sincronização pendente.", err);
         });
-        showToast('O.S. finalizada com sucesso!', 'success');
+
     } catch (e) {
         console.error(e);
-        showToast('Erro ao finalizar na nuvem.', 'error');
+        showToast('Erro ao salvar localmente: ' + e.message, 'error');
+        if(btn) {
+            btn.disabled = false;
+            btn.innerText = "OK";
+        }
     }
 }
+
 
 function habilitarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
@@ -3858,11 +3864,18 @@ function toggleHistoricoDia(dataKey) {
 function toggleBotoesHistorico(uniqueId) {
     const containerBotoes = document.getElementById(`botoes-historico-${uniqueId}`);
     if (containerBotoes) {
-        const isHidden = containerBotoes.style.display === 'none';
-        // Usamos 'grid' ao invés de 'block' porque as classes do Tailwind usam display: grid para este elemento
-        containerBotoes.style.display = isHidden ? 'grid' : 'none';
+        const isHidden = containerBotoes.style.display === 'none' || containerBotoes.classList.contains('hidden');
+        
+        if (isHidden) {
+            containerBotoes.classList.remove('hidden');
+            containerBotoes.style.display = 'grid'; // Força grid para manter o layout
+        } else {
+            containerBotoes.classList.add('hidden');
+            containerBotoes.style.display = 'none';
+        }
     }
 }
+
 
 // ============================================================
 // MÓDULO: HISTÓRICO NA NUVEM (COM FILTRO)
