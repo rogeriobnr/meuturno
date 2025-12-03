@@ -243,14 +243,16 @@
                 </div>
             </div>
 
-            <div class="mt-4">
+                       <div class="mt-4">
                 <label for="turnoLetra" class="block text-xs font-bold text-gray-500 uppercase mb-1">Turno</label>
-                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()">
+                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
+                    <option value="">Selecione...</option>
                     <option value="A">TURNO A</option>
                     <option value="B">TURNO B</option>
                     <option value="C">TURNO C</option>
                 </select>
             </div>
+
         </div>
 
         <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
@@ -710,6 +712,59 @@ const Guardian = {
     }
 };
 
+/**
+ * FAXINA AUTOMÁTICA
+ * Remove do celular dados muito antigos para economizar memória.
+ * Critérios: Mais de 120 dias E Status Finalizado.
+ * Itens Pendentes NUNCA são apagados.
+ */
+async function limparHistoricoAntigoLocal() {
+    console.log("🧹 Iniciando faxina de cache local...");
+    
+    try {
+        const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        
+        // Define o limite (120 dias atrás)
+        // Damos uma folga de 30 dias em relação ao sync da nuvem (90 dias) para segurança
+        const dataLimite = new Date();
+        dataLimite.setDate(dataLimite.getDate() - 120);
+        const dataLimiteStr = dataLimite.toISOString().split('T')[0];
+
+        const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+        const store = tx.objectStore(STORE_HISTORICO);
+        let contagem = 0;
+
+        todos.forEach(item => {
+            // 1. Verifica a data
+            if (item.dataOS < dataLimiteStr) {
+                // 2. TRAVA DE SEGURANÇA: Só apaga se estiver FINALIZADA ou SINCRONIZADA
+                // Se for "pendente", o mecânico pode ter esquecido de enviar, então NÃO APAGA.
+                if (item.status === 'finalizada' || (item.osNumero && item.osNumero.length > 0)) {
+                    // Garante ID numérico para exclusão
+                    const idParaApagar = item.uniqueId || item.id;
+                    store.delete(idParaApagar);
+                    contagem++;
+                }
+            }
+        });
+
+        tx.oncomplete = () => {
+            if (contagem > 0) {
+                console.log(`🧹 Faxina concluída: ${contagem} itens antigos removidos do celular.`);
+                // Atualiza a lista se estiver aberta para sumir com os velhos
+                if (document.getElementById('historico_lista')) {
+                    mostrarHistorico();
+                }
+            } else {
+                console.log("🧹 Nenhum item antigo para limpar.");
+            }
+        };
+
+    } catch (e) {
+        console.error("Erro na faxina automática:", e);
+    }
+}
+
         // =================================================================================
         // 2. INICIALIZAÇÃO E LÓGICA DO PWA
         // =================================================================================
@@ -724,6 +779,12 @@ const Guardian = {
         iniciarSincronizacaoEquipe();
         
         await carregarDadosIniciais();
+        
+           // --- NOVO: FAXINA DE DADOS VELHOS ---
+        // Roda em segundo plano sem travar o app
+        setTimeout(() => limparHistoricoAntigoLocal(), 5000); // Espera 5s para não pesar a inicialização
+        // ------------------------------------
+        
         renderizarLayoutInicial();
         inicializarMenuHamburguer();
         verificarOnboarding(); 
@@ -860,46 +921,39 @@ function initDB() {
         // =================================================================================
         // 5. RENDERIZAÇÃO E UI
         // =================================================================================
-        async function renderizarLayoutInicial() { 
-    try { 
-        // 1. Carrega as listas do cache local primeiro (Offline-first)
-        // Isso garante que o <select> tenha opções antes de tentar selecionar o valor
-        await carregarFazendasDoCache();
-        await carregarFrentesDoCache();
+                async function renderizarLayoutInicial() { 
+            try { 
+                // 1. Carrega as listas do cache local primeiro (Offline-first)
+                await carregarFazendasDoCache();
+                await carregarFrentesDoCache();
 
-        // 2. Carrega os dados salvos do turno atual
-        const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
-        
-        document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
-        
-        // 3. Define os valores nos selects de FAZENDA
-        if (d.fazenda) {
-            const el = document.getElementById("fazenda");
-            el.value = d.fazenda;
-            
-            // Lógica de Segurança:
-            // Se o valor salvo (ex: "FAZENDA X") não estiver na lista carregada,
-            // guardamos ele num atributo escondido. A função 'atualizarSelectGenerico'
-            // vai ler isso depois e criar a opção visualmente para não perder o dado.
-            if (!el.value) {
-                el.setAttribute('data-temp-value', d.fazenda);
-            }
+                // 2. Carrega os dados salvos do turno atual
+                const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
+                
+                document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
+                
+                // 3. Define os valores nos selects de FAZENDA
+                if (d.fazenda) {
+                    const el = document.getElementById("fazenda");
+                    el.value = d.fazenda;
+                    if (!el.value) el.setAttribute('data-temp-value', d.fazenda);
+                }
+
+                // 4. Define os valores nos selects de FRENTE
+                if (d.frente) {
+                    const el = document.getElementById("frente");
+                    el.value = d.frente;
+                    if (!el.value) el.setAttribute('data-temp-value', d.frente);
+                }
+
+                // 5. Define o Turno (Agora respeita o vazio se não houver dado salvo)
+                document.getElementById("turnoLetra").value = d.turno || ""; 
+
+            } catch (e) { 
+                console.error("Erro render inicial", e); 
+            } 
         }
 
-        // 4. Define os valores nos selects de FRENTE
-        if (d.frente) {
-            const el = document.getElementById("frente");
-            el.value = d.frente;
-            if (!el.value) {
-                el.setAttribute('data-temp-value', d.frente);
-            }
-        }
-
-        document.getElementById("turnoLetra").value = d.turno || "A"; 
-    } catch (e) { 
-        console.error("Erro render inicial", e); 
-    } 
-}
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
         function abrir(secaoId) {
@@ -966,7 +1020,24 @@ function initDB() {
         function abrirPopupConfirmar(titulo, mensagem, callback, acaoConfirmar = 'Confirmar') { abrirPopup(titulo, mensagem, [{ texto: acaoConfirmar, classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => callback(true) }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(false) }]); }
         function abrirPopupInput(titulo, label, placeholder, valorInicial, callback, tipoInput = 'text') { const conteudoPopup = `<label for="popup-input-field" class="block text-sm font-medium text-gray-700 mb-1">${label}</label><input type="${tipoInput}" id="popup-input-field" class="w-full p-2 border border-gray-300 rounded-md" placeholder="${placeholder}" value="${valorInicial}">`; const botoes = [{ texto: 'Confirmar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => callback(document.getElementById('popup-input-field').value) }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(null) }]; abrirPopup(titulo, `<div id="popup-content-wrapper">${conteudoPopup}</div>`, botoes); setTimeout(() => document.getElementById('popup-input-field')?.focus(), 50); }
         function abrirPopupLoading(mensagem) { const conteudoPopup = `<div class="flex flex-col items-center justify-center py-4"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div><p class="text-gray-700 text-center">${mensagem}</p></div>`; abrirPopup("A Processar...", conteudoPopup, []); }
-        function validarCamposTurnoBasicos() { const campos = ['dataTurno', 'fazenda', 'frente']; let todosValidos = true; campos.forEach(id => { const el = document.getElementById(id); if (!el?.value.trim()) { el?.classList.add('campo-invalido'); todosValidos = false; } else { el?.classList.remove('campo-invalido'); } }); if (!todosValidos) showToast("Preencha os campos obrigatórios do turno!", 'error'); return todosValidos; }
+        function validarCamposTurnoBasicos() { 
+            // Adicionado 'turnoLetra' na lista de obrigatórios
+            const campos = ['dataTurno', 'fazenda', 'frente', 'turnoLetra']; 
+            let todosValidos = true; 
+            
+            campos.forEach(id => { 
+                const el = document.getElementById(id); 
+                if (!el?.value.trim()) { 
+                    el?.classList.add('campo-invalido'); 
+                    todosValidos = false; 
+                } else { 
+                    el?.classList.remove('campo-invalido'); 
+                } 
+            }); 
+            
+            if (!todosValidos) showToast("Preencha todos os campos do turno (Data, Fazenda, Frente e Turno)!", 'error'); 
+            return todosValidos; 
+        }
         function dataHojeInputLocal() { return new Date().toLocaleDateString('en-CA'); }
         function formatarDataParaExibicao(dataStr) { if (!dataStr || !/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return "Sem Data"; const [ano, mes, dia] = dataStr.split('-'); return `${dia}/${mes}/${ano}`; }
         function interpretarMarkdown(texto) { if (!texto) return ""; return texto.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
@@ -2531,23 +2602,47 @@ async function abrirPopupImportarServico() {
     const inputData = document.getElementById('apontamentoData');
     const dataAlvo = inputData ? inputData.value : dataHojeInputLocal();
 
-    if (!dataAlvo) {
-        showToast("Selecione uma data no formulário primeiro.", "error");
+    // 1. OBTÉM FILTROS RÍGIDOS DA UI
+    const frenteInput = document.getElementById('frente');
+    const turnoInput = document.getElementById('turnoLetra');
+    
+    const frenteAtual = frenteInput ? frenteInput.value.trim() : "";
+    const turnoAtual = turnoInput ? turnoInput.value : "";
+
+
+    if (!dataAlvo || !frenteAtual || !turnoAtual) {
+        showToast("Selecione a Data, Frente e Turno para importar serviços.", "error");
         return;
     }
 
-    showToast(`Buscando serviços de ${formatarDataParaExibicao(dataAlvo)}...`, "info", 1500);
+    showToast(`Buscando serviços de ${frenteAtual} - ${turnoAtual}...`, "info", 1500);
 
     let listaCombinada = [];
 
     try {
-        // A. Busca no Histórico
+        // A. Busca no Histórico (IndexedDB) - Contém O.S. já geradas e finalizadas
         const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
-        const doHistorico = historico.filter(h => h.dataOS === dataAlvo);
 
-        // B. Busca na Memória Atual
+        // TRAVA 1: Filtro Rígido no Histórico
+        // Apenas dados que batem com a Frente, Turno e Data atuais.
+        const doHistorico = historico.filter(h => 
+            h.dataOS === dataAlvo &&
+            (h.frente || "").trim() === frenteAtual &&
+            (h.turno || "") === turnoAtual
+        );
+
+        // B. Busca na Memória Atual (servicos) - Contém Rascunhos não gerados
         const idsNoHistorico = new Set(doHistorico.map(h => String(h.id)));
-        const daMemoria = servicos.filter(s => s.data === dataAlvo && !idsNoHistorico.has(String(s.id)));
+        
+        // TRAVA 2: Filtro Rígido nos Rascunhos
+        // Rascunhos também precisam bater com o contexto (Frente e Turno)
+        const daMemoria = servicos.filter(s => 
+            s.data === dataAlvo && 
+            !idsNoHistorico.has(String(s.id)) &&
+            // Filtros de Segurança nos rascunhos (Assumindo que eles têm Frente/Turno salvo)
+            (s.frente || "").trim() === frenteAtual && 
+            (s.turno || "") === turnoAtual
+        );
 
         // C. Combina
         listaCombinada = [...doHistorico, ...daMemoria];
@@ -2559,13 +2654,15 @@ async function abrirPopupImportarServico() {
     }
 
     if (listaCombinada.length === 0) {
-        showToast(`📅 Nenhum serviço encontrado na data ${formatarDataParaExibicao(dataAlvo)}.`, "error", 4000);
+        // Mensagem de erro que explica a falha de filtro
+        const dataExibicao = formatarDataParaExibicao(dataAlvo);
+        showToast(`❌ Nenhum serviço encontrado para a Frente ${frenteAtual} e Turno ${turnoAtual} na data ${dataExibicao}. Verifique os filtros.`, "error", 6000);
         return;
     }
 
     listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
-    // --- GERAÇÃO DO HTML LIMPO ---
+    // --- GERAÇÃO DO HTML LIMPO (Resto do Código) ---
     const listaHtml = listaCombinada.map(s => {
         const temOS = s.osNumero && s.osNumero.trim() !== "";
         const numeroOS = temOS ? s.osNumero : "PENDENTE";
@@ -3738,43 +3835,47 @@ function toggleBotoesHistorico(uniqueId) {
 
                 let unsubscribeHistorico = null; 
 
+
         function iniciarSincronizacaoHistorico() {
             const frente = document.getElementById('frente').value;
             const turno = document.getElementById('turnoLetra').value;
 
-            // Se não tiver filtros (na inicialização), para aqui
+            // 1. Validação: Se não tiver filtros selecionados, não gasta internet
             if (!frente || !turno) return;
 
-            // Limpa listener antigo se existir (evita duplicação de dados)
+            // 2. Limpeza: Desconecta o "cano" anterior para não baixar dados duplicados
             if (unsubscribeHistorico) {
                 unsubscribeHistorico();
                 unsubscribeHistorico = null;
             }
 
-            console.log(`📡 Conectando Histórico: ${frente} [${turno}]`);
+            console.log(`📡 Conectando Histórico (90 dias): ${frente} [${turno}]`);
 
-            // Filtro de data: Pega apenas os últimos 45 dias para performance
+            // 3. PROTEÇÃO DE COTA (A Lógica dos 90 Dias)
             const dataLimite = new Date();
-            dataLimite.setDate(dataLimite.getDate() - 45);
-            const dataString = dataLimite.toISOString().split('T')[0];
+            dataLimite.setDate(dataLimite.getDate() - 90); // Subtrai 90 dias de hoje
+            const dataString = dataLimite.toISOString().split('T')[0]; // Formata YYYY-MM-DD
 
             try {
+                // A query abaixo diz ao servidor: "Só me mande o que for DEPOIS dessa data"
                 unsubscribeHistorico = firestore.collection('historico_os')
                     .where('frente', '==', frente)
                     .where('turno', '==', turno)
-                    .where('dataOS', '>=', dataString)
+                    .where('dataOS', '>=', dataString) // <--- O ESCUDO DE PROTEÇÃO ESTÁ AQUI
                     .onSnapshot(async (snapshot) => {
                         
+                        // Se não tem nada novo, não faz nada (Economia de processamento)
                         if (snapshot.empty) return;
 
                         const tx = db.transaction(STORE_HISTORICO, 'readwrite');
                         const store = tx.objectStore(STORE_HISTORICO);
                         let houveMudanca = false;
 
+                        // Processa apenas as mudanças (Delta)
                         snapshot.docChanges().forEach(change => {
                             houveMudanca = true;
                             const dados = change.doc.data();
-                            // Garante que uniqueId seja numérico para o IndexedDB
+                            // Garante ID numérico para o banco local
                             dados.uniqueId = parseInt(change.doc.id); 
 
                             if (change.type === 'added' || change.type === 'modified') {
@@ -3786,18 +3887,23 @@ function toggleBotoesHistorico(uniqueId) {
                         });
 
                         tx.oncomplete = () => {
-                            // Se a tela de histórico estiver visível, atualiza
+                            // Atualiza a tela apenas se necessário
                             if (houveMudanca && document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
                                 mostrarHistorico();
                             }
                         };
                     }, (error) => {
                         console.error("Erro Sync Histórico:", error);
+                        // Se der erro de índice, avisa no console (normal na 1ª vez)
+                        if (error.code === 'failed-precondition') {
+                            console.warn("⚠️ Link para criar índice no console do navegador.");
+                        }
                     });
             } catch (e) {
                 console.error("Erro fatal ao iniciar sync:", e);
             }
         }
+
 
 
 
