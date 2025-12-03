@@ -2410,9 +2410,7 @@ function abrirPopupAddPreventiva() {
         opcoesSistemas += `</optgroup>`;
     }
 
-    // 3. (NOVO) Prepara as opções de Atividade
-    // Filtra apenas as que começam com 'P' (Produtivas/Preventivas) para facilitar, ou mostra todas.
-    // Aqui vou colocar todas que não são 'H' (Horas paradas), pois preventiva é trabalho.
+    // 3. Prepara as opções de Atividade (Apenas Produtivas 'P')
     let opcoesAtividade = '<option value="">Selecione a Atividade...</option>';
     atividades.forEach(a => {
         if (a.startsWith('P')) { // Mostra apenas códigos 'P'
@@ -2420,53 +2418,61 @@ function abrirPopupAddPreventiva() {
         }
     });
 
-    // 4. HTML do Formulário
+    // 4. HTML do Formulário com tamanhos e espaçamentos melhorados (text-sm)
     const conteudo = `
-        <div class="space-y-3 text-left">
+        <div class="space-y-4 text-sm text-left">
             
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600">Nº da O.S. *</label>
-                    <input type="number" id="prevOS" class="w-full p-2 border rounded-md font-bold text-purple-700 bg-purple-50" placeholder="Ex: 102030">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Nº da O.S. *</label>
+                    <input type="number" id="prevOS" 
+                        class="w-full p-3 border border-gray-300 rounded-lg text-sm font-bold text-purple-700 bg-purple-50 focus:ring-2 focus:ring-purple-500 outline-none" 
+                        placeholder="Ex: 102030">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600">Frota *</label>
-                    <select id="prevFrota" class="w-full p-2 border rounded-md bg-white text-sm">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Frota *</label>
+                    <select id="prevFrota" 
+                        class="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         ${opcoesFrota}
                     </select>
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600">Atividade Realizada *</label>
-                <select id="prevAtividade" class="w-full p-2 border rounded-md bg-white text-xs font-semibold text-gray-700">
+                <label class="block text-xs font-bold text-gray-600 mb-1">Atividade Realizada *</label>
+                <select id="prevAtividade" 
+                    class="w-full p-3 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
                     ${opcoesAtividade}
                 </select>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600">Sistema *</label>
-                    <select id="prevSistema" onchange="atualizarSubsistemaPreventiva()" class="w-full p-2 border rounded-md bg-white text-xs">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Sistema *</label>
+                    <select id="prevSistema" onchange="atualizarSubsistemaPreventiva()" 
+                        class="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         ${opcoesSistemas}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600">Subsistema *</label>
-                    <select id="prevSubsistema" class="w-full p-2 border rounded-md bg-gray-50 text-xs" disabled>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Subsistema *</label>
+                    <select id="prevSubsistema" 
+                        class="w-full p-3 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" disabled>
                         <option value="">Selecione Sistema 1º</option>
                     </select>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 bg-purple-50 p-2 rounded-md border border-purple-100 mt-2">
+            <div class="grid grid-cols-2 gap-3 bg-purple-50 p-3 rounded-lg border border-purple-200 mt-3">
                 <div>
-                    <label class="block text-xs font-bold text-purple-800">Início *</label>
-                    <input type="time" id="prevInicio" class="w-full p-1 bg-white border border-purple-200 rounded text-center font-bold">
+                    <label class="block text-xs font-bold text-purple-800 mb-1">Início *</label>
+                    <input type="time" id="prevInicio" 
+                        class="w-full p-2 bg-white border border-purple-300 rounded-lg text-sm text-center font-bold focus:ring-2 focus:ring-purple-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-purple-800">Fim *</label>
-                    <input type="time" id="prevFim" class="w-full p-1 bg-white border border-purple-200 rounded text-center font-bold">
+                    <label class="block text-xs font-bold text-purple-800 mb-1">Fim *</label>
+                    <input type="time" id="prevFim" 
+                        class="w-full p-2 bg-white border border-purple-300 rounded-lg text-sm text-center font-bold focus:ring-2 focus:ring-purple-500 outline-none">
                 </div>
             </div>
 
@@ -2474,10 +2480,14 @@ function abrirPopupAddPreventiva() {
     `;
 
     abrirPopup('📋 Adicionar Preventiva', conteudo, [
-        { texto: 'Cancelar', classe: 'bg-gray-200 text-gray-700', acao: fecharPopup },
-        { texto: 'Salvar', classe: 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg', acao: salvarPreventiva }
+        { texto: 'Cancelar', classe: 'bg-gray-200 text-gray-700 py-3 rounded-lg font-bold', acao: fecharPopup },
+        { texto: 'Salvar', classe: 'bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 shadow-lg transition-transform active:scale-95', acao: salvarPreventiva }
     ]);
+    
+    // Adiciona o foco no primeiro campo
+    setTimeout(() => document.getElementById('prevOS').focus(), 50);
 }
+
 //função auxiliar para compartilhar no whatsapp.
 function compartilharHistorico(uniqueId) {
     // Busca no cache local (DOM hidden textarea)
@@ -2513,31 +2523,58 @@ function atualizarSubsistemaPreventiva() {
 }
 
 function salvarPreventiva() {
-    // 1. Coleta dados
+    // 1. Coleta e Limpa dados
     const os = document.getElementById('prevOS').value.trim();
     const frota = document.getElementById('prevFrota').value;
-    const atividade = document.getElementById('prevAtividade').value; // <-- NOVO
+    const atividade = document.getElementById('prevAtividade').value;
     const sistema = document.getElementById('prevSistema').value;
     const subsistema = document.getElementById('prevSubsistema').value;
     const inicio = document.getElementById('prevInicio').value;
     const fim = document.getElementById('prevFim').value;
 
-    // 2. Validação
-    if (!os || !frota || !atividade || !sistema || !subsistema || !inicio || !fim) {
-        showToast("Preencha todos os campos da Preventiva.", "error");
-        return;
+    // 2. NOVA VALIDAÇÃO (Destaca o campo com erro e impede o fechamento)
+    let valido = true;
+    
+    // Lista de IDs e suas condições de validação
+    const camposParaValidar = {
+        'prevOS': os,
+        'prevFrota': frota,
+        'prevAtividade': atividade,
+        'prevSistema': sistema,
+        'prevSubsistema': subsistema,
+        'prevInicio': inicio,
+        'prevFim': fim,
+    };
+
+    // Aplica a classe de erro se o campo estiver vazio
+    Object.keys(camposParaValidar).forEach(id => {
+        const el = document.getElementById(id);
+        const valor = camposParaValidar[id];
+        if (!valor || valor.length === 0) {
+            el.classList.add('campo-invalido');
+            valido = false;
+        } else {
+            el.classList.remove('campo-invalido');
+        }
+    });
+
+    if (!valido) {
+        showToast("Preencha todos os campos obrigatórios em destaque!", "error", 3000);
+        return; // IMPEDE O FECHAMENTO DO POPUP
     }
 
     if (inicio >= fim) {
-        showToast("A hora final deve ser maior que a inicial.", "error");
-        return;
+        document.getElementById('prevInicio').classList.add('campo-invalido');
+        document.getElementById('prevFim').classList.add('campo-invalido');
+        showToast("A hora final deve ser maior que a inicial.", "error", 3000);
+        return; // IMPEDE O FECHAMENTO DO POPUP
     }
 
-    // 3. Adiciona à Linha do Tempo
+    // 3. Adiciona à Linha do Tempo (Executa apenas se tudo for válido)
     linhasApontamento.push({
         id: Date.now(),
         tipo: 'servico', 
-        atividade: atividade, // Usa a atividade selecionada pelo usuário
+        atividade: atividade,
         inicio: inicio,
         fim: fim,
         frota: frota,
@@ -2548,15 +2585,13 @@ function salvarPreventiva() {
 
     renderizarListaLinhas();
     rolarParaUltimoItemApontamento();
-    fecharPopup();
+    fecharPopup(); // Fecha SÓ AGORA
     
-    
-    // Avisa que mudou para o botão de atualizar ficar laranja
     marcarComoDesatualizado(); 
-    
-    showToast("Preventiva adicionada com sucesso!", "success");
     salvarTudo();
+    showToast("Preventiva adicionada à linha do tempo!", "success");
 }
+
 
 
 // Atualiza dados da memória quando o usuário edita os inputs
