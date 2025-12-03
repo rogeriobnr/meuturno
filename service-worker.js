@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'meuturno-cache-v9.4';
+const CACHE_NAME = 'meuturno-cache-v9.6';
 
 const urlsToCache = [
   './',
