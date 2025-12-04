@@ -2117,8 +2117,55 @@ function adicionarFrotasSelecionadasAoTurno() {
         // ---------------------------------
         // MÓDULO: SERVIÇOS
         // ---------------------------------
-        function renderizarSecaoServicos(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Filtrar Serviços</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="filtroServicoFrota" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Frota..." oninput="renderizarServicos()"><input type="text" id="filtroServicoDescricao" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Descrição..." oninput="renderizarServicos()"></div></div><div id="servicosLista" class="space-y-4"></div>`; renderizarServicos(); }
-        function renderizarServicos() { const lista = document.getElementById("servicosLista"); if (!lista) return; const filtroFrota = document.getElementById('filtroServicoFrota')?.value.toLowerCase() || ""; const filtroDescricao = document.getElementById('filtroServicoDescricao')?.value.toLowerCase() || ""; const servicosFiltrados = servicos.filter(s => (!filtroFrota || s.frota.toLowerCase().includes(filtroFrota)) && (!filtroDescricao || s.descricao.toLowerCase().includes(filtroDescricao))); servicosFiltrados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); lista.innerHTML = ''; if (servicosFiltrados.length === 0) { lista.innerHTML = `<p class='text-center text-gray-500 p-4'>Nenhum serviço encontrado.</p>`; } else { servicosFiltrados.forEach(s => { const template = document.getElementById('servico-template').content.cloneNode(true); const article = template.querySelector('article'); article.id = `servico_${s.id}`; lista.appendChild(article); preencherDetalhesServico(s); }); } }
+function renderizarSecaoServicos(container) { 
+    container.innerHTML = `
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
+        
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
+            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-gray-800">Serviços em Andamento</h2>
+                <p class="text-xs text-gray-500">Manutenções do turno atual</p>
+            </div>
+        </div>
+
+        <div id="servicosLista" class="space-y-4"></div>
+        
+    </div>`; 
+    
+    renderizarServicos(); 
+}
+function renderizarServicos() { 
+    const lista = document.getElementById("servicosLista"); 
+    if (!lista) return; 
+    
+    // Ordena por data/hora
+    const servicosOrdenados = [...servicos]; // Cria cópia para não afetar o original desnecessariamente
+    servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
+    
+    lista.innerHTML = ''; 
+    
+    if (servicosOrdenados.length === 0) { 
+        lista.innerHTML = `
+        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
+            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
+            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
+        </div>`; 
+    } else { 
+        servicosOrdenados.forEach(s => { 
+            const template = document.getElementById('servico-template').content.cloneNode(true); 
+            const article = template.querySelector('article'); 
+            article.id = `servico_${s.id}`; 
+            lista.appendChild(article); 
+            preencherDetalhesServico(s); 
+        }); 
+    } 
+}
         
         function preencherDetalhesServico(s) {
     const article = document.getElementById(`servico_${s.id}`);
