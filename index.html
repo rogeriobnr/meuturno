@@ -103,11 +103,13 @@
 <body class="bg-gray-50 text-gray-800">
 
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
+       
         <button id="hamburger-btn"
             class="text-2xl p-2 rounded-full hover:bg-blue-700 transition-colors">&#9776;</button>
-        <div class="flex items-center gap-x-3">
-            <img src="logo.png" alt="Logo MeuTurno" class="h-8" onerror="this.style.display='none'">
+        <div class="flex items-center gap-x-3 gap-y-2">
+            <img src="logo.png" alt="Logo MeuTurno" class="h-10" onerror="this.style.display='none'">
             <h1 id="header-titulo" class="text-xl font-bold">Turno</h1>
+                       
         </div>
         <div class="w-10"></div>
     </header>
@@ -115,6 +117,7 @@
         class="fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-sm">
         <div class="p-4 border-b">
             <h2 class="text-2xl font-bold text-blue-800">MeuTurno</h2>
+            
         </div>
         <div class="flex flex-col">
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
@@ -137,6 +140,8 @@
                 data-secao="estatisticas">Estatísticas</a>
             <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
                 data-secao="config">Configurar</a>
+          
+
         </div>
     </nav>
 
@@ -154,6 +159,7 @@
             </h4>
             
             <div>
+                
                 <label for="dataTurno" class="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
                 <input id="dataTurno" type="date" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
             </div>
@@ -396,11 +402,44 @@
         <div class="flex justify-end space-x-2" id="popupBotoes"></div>
     </div>
 
-    <div id="update-popup"
-        class="hidden fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white py-3 px-6 rounded-lg shadow-lg z-[10001] font-semibold">
-        Nova versão disponível. <button onclick="window.location.reload()"
-            class="ml-2 bg-white text-blue-600 py-1 px-3 rounded-md font-bold">Atualizar</button>
+<div id="modalUpdate" class="fixed inset-0 z-[10001] hidden">
+    
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500 opacity-0" id="modalUpdateBackdrop"></div>
+    
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden scale-90 opacity-0 transition-all duration-300 delay-100" id="modalUpdateWindow">
+        
+        <div class="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full bg-white/10 transform -skew-y-12 scale-150 origin-top-left"></div>
+            
+            <div class="relative z-10">
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md shadow-inner border border-white/20">
+                    <span class="text-3xl">🚀</span>
+                </div>
+                <h3 class="text-xl font-bold text-white tracking-tight">Nova Versão Disponível!</h3>
+                <p class="text-blue-100 text-xs mt-1 font-medium">Melhorias e correções prontas para você.</p>
+            </div>
+        </div>
+
+        <div class="p-6 bg-white">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">O que mudou:</p>
+            
+            <ul id="listaNovidades" class="text-sm text-gray-600 space-y-2.5 mb-6 pl-1">
+                </ul>
+
+            <div class="space-y-3 pt-2">
+                <button id="btnUpdateConfirm" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                    <span class="group-hover:animate-pulse">✨</span> 
+                    <span>Atualizar Agora</span>
+                </button>
+                
+                <button onclick="fecharModalUpdate()" class="w-full py-3 text-gray-400 hover:text-gray-600 text-xs font-bold transition-colors">
+                    Agora não, atualizar depois
+                </button>
+            </div>
+        </div>
     </div>
+</div>
+
 
     <template id="servico-template">
         <article class="bg-white rounded-lg shadow mb-4">
@@ -719,7 +758,134 @@ async function limparHistoricoAntigoLocal() {
 }
 
 
-        function registrarServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js').then(reg => { reg.onupdatefound = () => { const newWorker = reg.installing; newWorker.onstatechange = () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) { document.getElementById('update-popup')?.classList.remove('hidden'); } }; }; }).catch(err => console.error('Erro no SW:', err)); } }
+// --- CONFIGURAÇÃO DAS NOVIDADES ---
+// EDITE AQUI SEMPRE QUE SUBIR UMA VERSÃO NOVA PARA O GITHUB
+const NOVIDADES_VERSAO = [
+    "✅ Novo visual na Linha do Tempo",
+    "✅ Correção no salvamento Offline",
+    "✅ Histórico agora mostra status colorido",
+    "⚡ Melhoria de performance"
+];
+
+let newWorker = null; // Variável para guardar o SW esperando
+
+function registrarServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+            
+            // 1. Se já tem um SW esperando (atualização baixada em background)
+            if (reg.waiting) {
+                newWorker = reg.waiting;
+                abrirModalUpdate();
+                return;
+            }
+
+            // 2. Se encontrar uma atualização nova
+            reg.onupdatefound = () => {
+                const worker = reg.installing;
+                worker.onstatechange = () => {
+                    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                        newWorker = worker;
+                        abrirModalUpdate();
+                    }
+                };
+            };
+        }).catch(err => console.error('Erro no SW:', err));
+
+        // Ouve o evento de recarregar a página quando o novo SW assumir
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                window.location.reload();
+                refreshing = true;
+            }
+        });
+    }
+}
+
+// Adicione uma propriedade 'critico'
+const UPDATE_CONFIG = {
+    critico: false, // MUDE PARA TRUE SE FOR OBRIGATÓRIO
+    novidades: [
+        "✅ Novo visual na Linha do Tempo",
+        "⚡ Melhoria de performance"
+    ]
+};
+// --- FUNÇÕES VISUAIS DO NOVO MODAL ---
+
+function abrirModalUpdate() {
+    const modal = document.getElementById('modalUpdate');
+    const backdrop = document.getElementById('modalUpdateBackdrop');
+    const windowEl = document.getElementById('modalUpdateWindow');
+    const lista = document.getElementById('listaNovidades');
+    const btn = document.getElementById('btnUpdateConfirm');
+
+    if (!modal) return;
+
+
+    // 1. Preenche a lista de novidades
+    lista.innerHTML = NOVIDADES_VERSAO.map(item => 
+        `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
+    ).join('');
+
+   // 2. Lógica Crítica
+   const btnCancelar = document.querySelector('button[onclick="fecharModalUpdate()"]');
+   
+   if (UPDATE_CONFIG.critico) {
+       // Esconde o botão de cancelar e o fundo não fecha
+       
+       btnCancelar.style.display = 'none';
+       backdrop.onclick = null; // Impede clicar fora para fechar
+       // Muda o texto para ser mais urgente
+       document.querySelector('#modalUpdateWindow h3').innerText = "Atualização Obrigatória";
+       document.querySelector('#modalUpdateWindow p').innerText = "Esta versão contém correções de segurança críticas.";
+   } else {
+       btnCancelar.style.display = 'block';
+   }
+
+
+    // 2. Define a ação do botão
+    btn.onclick = () => {
+        if (newWorker) {
+            // Manda o novo Service Worker assumir o controle
+            newWorker.postMessage({ action: 'skipWaiting' });
+            btn.innerHTML = "Atualizando...";
+            btn.disabled = true;
+        } else {
+            window.location.reload();
+        }
+    };
+
+    // 3. Mostra com animação
+    modal.classList.remove('hidden');
+    // Pequeno delay para permitir a transição CSS
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        windowEl.classList.remove('opacity-0', 'scale-90');
+        windowEl.classList.add('scale-100');
+    }, 10);
+}
+
+function fecharModalUpdate() {
+    const modal = document.getElementById('modalUpdate');
+    const backdrop = document.getElementById('modalUpdateBackdrop');
+    const windowEl = document.getElementById('modalUpdateWindow');
+
+    if (!modal) return;
+
+    // Animação de saída
+    backdrop.classList.add('opacity-0');
+    windowEl.classList.remove('scale-100');
+    windowEl.classList.add('opacity-0', 'scale-90');
+   
+    document.getElementById('btnUpdateBadge')?.classList.remove('hidden');
+
+    
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300); // Espera a transição acabar
+}
 
         // =================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
