@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'meuturno-cache-v9.8';
+const CACHE_NAME = 'meuturno-cache-v13';
 
 const urlsToCache = [
   './',
@@ -21,10 +21,10 @@ const urlsToCache = [
 
 self.addEventListener('install', event => {
   console.log('[ServiceWorker] Instalando...', CACHE_NAME);
-  self.skipWaiting();
+  
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Adiciona todos os arquivos críticos
       return cache.addAll(urlsToCache);
     })
   );
@@ -50,44 +50,39 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
 
-  // 3. MELHORIA: Filtros de Segurança
-  // Ignora métodos que não sejam GET
   if (event.request.method !== 'GET') return;
 
-  // Ignora requisições do próprio Firebase/Firestore/Google APIs
-  // (Deixe o SDK do Firebase lidar com o cache de dados, evita conflitos)
   if (requestUrl.origin.includes('firestore.googleapis.com') || 
       requestUrl.origin.includes('identitytoolkit.googleapis.com')) {
     return;
   }
 
-  // Ignora extensões do Chrome e esquemas não-http
   if (!requestUrl.protocol.startsWith('http')) return;
 
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
         
-        // Estratégia: Stale-While-Revalidate
-        // 1. Busca na rede para atualizar o cache em background
         const fetchedResponsePromise = fetch(event.request)
           .then(networkResponse => {
-            // Só guarda no cache se a resposta for válida (status 200)
             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
           })
           .catch(error => {
-            // 4. MELHORIA: Se der erro na rede (offline), apenas ignora.
-            // O app vai continuar funcionando se tiver o arquivo em cache.
-            // console.warn('Fetch falhou (offline):', event.request.url);
+             // Offline: falha silenciosa
           });
 
-        // 2. Se tem no cache, entrega IMEDIATAMENTE (rápido).
-        // Se não tem, espera a rede.
         return cachedResponse || fetchedResponsePromise;
       });
     })
   );
+});
+
+// --- NOVO: Escuta o botão "Atualizar Agora" do popup ---
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
