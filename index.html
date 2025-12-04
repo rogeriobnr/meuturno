@@ -367,7 +367,7 @@
         </button>
 
         <button onclick="abrirPopupImportarServico()" 
-            class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border     border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm h-12">
+            class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm h-12">
             <span class="text-base group-hover:scale-110 transition-transform">🔧</span>
             <span class="text-sm font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
         </button>
@@ -943,7 +943,7 @@ function fecharModalUpdate() {
     }, 300); // Espera a transição acabar
 }
 
-        // ================================================================================
+        // =================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
         // =================================================================================
        const STORE_FAZENDAS = 'lista_fazendas';
@@ -1363,7 +1363,7 @@ function renderizarEquipe() {
         }
 
         return `
-        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-4 ${corBorda}">
+        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-8 ${corBorda}">
             
             <div class="flex flex-col min-w-0 pr-2">
                 <span class="text-base font-bold text-gray-800 truncate">
@@ -2117,55 +2117,8 @@ function adicionarFrotasSelecionadasAoTurno() {
         // ---------------------------------
         // MÓDULO: SERVIÇOS
         // ---------------------------------
-function renderizarSecaoServicos(container) { 
-    container.innerHTML = `
-    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
-        
-        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
-            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </div>
-            <div>
-                <h2 class="text-lg font-bold text-gray-800">Serviços em Andamento</h2>
-                <p class="text-xs text-gray-500">Manutenções do turno atual</p>
-            </div>
-        </div>
-
-        <div id="servicosLista" class="space-y-4"></div>
-        
-    </div>`; 
-    
-    renderizarServicos(); 
-}
-function renderizarServicos() { 
-    const lista = document.getElementById("servicosLista"); 
-    if (!lista) return; 
-    
-    // Ordena por data/hora
-    const servicosOrdenados = [...servicos]; // Cria cópia para não afetar o original desnecessariamente
-    servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
-    
-    lista.innerHTML = ''; 
-    
-    if (servicosOrdenados.length === 0) { 
-        lista.innerHTML = `
-        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
-            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
-            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
-        </div>`; 
-    } else { 
-        servicosOrdenados.forEach(s => { 
-            const template = document.getElementById('servico-template').content.cloneNode(true); 
-            const article = template.querySelector('article'); 
-            article.id = `servico_${s.id}`; 
-            lista.appendChild(article); 
-            preencherDetalhesServico(s); 
-        }); 
-    } 
-}
+        function renderizarSecaoServicos(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Filtrar Serviços</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="filtroServicoFrota" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Frota..." oninput="renderizarServicos()"><input type="text" id="filtroServicoDescricao" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Descrição..." oninput="renderizarServicos()"></div></div><div id="servicosLista" class="space-y-4"></div>`; renderizarServicos(); }
+        function renderizarServicos() { const lista = document.getElementById("servicosLista"); if (!lista) return; const filtroFrota = document.getElementById('filtroServicoFrota')?.value.toLowerCase() || ""; const filtroDescricao = document.getElementById('filtroServicoDescricao')?.value.toLowerCase() || ""; const servicosFiltrados = servicos.filter(s => (!filtroFrota || s.frota.toLowerCase().includes(filtroFrota)) && (!filtroDescricao || s.descricao.toLowerCase().includes(filtroDescricao))); servicosFiltrados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); lista.innerHTML = ''; if (servicosFiltrados.length === 0) { lista.innerHTML = `<p class='text-center text-gray-500 p-4'>Nenhum serviço encontrado.</p>`; } else { servicosFiltrados.forEach(s => { const template = document.getElementById('servico-template').content.cloneNode(true); const article = template.querySelector('article'); article.id = `servico_${s.id}`; lista.appendChild(article); preencherDetalhesServico(s); }); } }
         
         function preencherDetalhesServico(s) {
     const article = document.getElementById(`servico_${s.id}`);
@@ -2614,57 +2567,59 @@ function renderizarListaLinhas() {
         const isServico = linha.tipo === 'servico';
         const isSelecionado = (indiceOrigemTroca === index);
         
-        let borderClass = isServico ? 'border-l-[4px] border-blue-600' : 'border-l-[4px] border-yellow-400';
+        // Cores
+        let borderClass = isServico ? 'border-l-[5px] border-blue-600' : 'border-l-[5px] border-yellow-400';
         let bgClass = 'bg-white';
         
         if (isSelecionado) {
-            borderClass = 'border-l-[4px] border-yellow-400 ring-2 ring-yellow-200';
+            borderClass = 'border-l-[5px] border-yellow-400 ring-2 ring-yellow-200';
             bgClass = 'bg-yellow-50';
         }
 
-        // Botões de Ação (Ajustado para não quebrar)
+        // Botões de Ação (Fixo à direita)
         const acoesHtml = `
-            <div class="flex items-center gap-0.5 ml-auto pl-2 border-l border-gray-100 shrink-0">
-                <button onclick="trocarOrdem(${index})" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-0.5 ml-1 pl-1 border-l border-gray-200 shrink-0">
+                <button onclick="trocarOrdem(${index})" class="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                 </button>
-                <button onclick="removerLinhaApontamento(${index})" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                <button onclick="removerLinhaApontamento(${index})" class="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                 </button>
             </div>
         `;
 
-        // Input de Hora (Fixo, mas seguro)
-        const inputTimeClass = "block w-[48px] h-8 text-[11px] font-bold text-center bg-gray-50 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none p-0";
+        // Input de Hora (Estilo unificado)
+        const inputTimeClass = "block w-[50px] h-8 text-xs font-bold text-center bg-gray-50 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none p-0";
 
         let html = '';
 
         if (isServico) {
-            // CARD SERVIÇO (Layout Responsivo)
+            // === CARD SERVIÇO ===
+            // Formatação P### • # • #.#
             const infoTecnica = `${linha.atividade.split(' - ')[0]} • ${linha.sistema} • ${(linha.subsistema||'?').split(' - ')[0]}`;
             
             html = `
-            <div class="${bgClass} rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
-                <div class="p-3 flex flex-col gap-2">
+            <div class="${bgClass} rounded-xl shadow-sm mb-3 border-l-[6px] ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
+                <div class="p-2 flex flex-col gap-2">
                     
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-start gap-2 overflow-hidden">
-                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200 mt-0.5">${index + 1}</span>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
                             <div class="min-w-0">
-                                <span class="block font-black text-sm text-gray-800 leading-tight truncate">${linha.frota || 'N/A'}</span>
-                                <span class="block text-[10px] text-gray-400 font-mono mt-0.5 truncate">${infoTecnica}</span>
+                                <span class="block font-black text-sm text-gray-800 leading-none truncate">${linha.frota || 'N/A'}</span>
+                                <span class="block text-[9px] text-gray-400 font-mono mt-0.5 truncate">${infoTecnica}</span>
                             </div>
                         </div>
                         ${acoesHtml}
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100 gap-y-2">
+                    <div class="flex items-center justify-between bg-gray-50 p-1.5 rounded border border-gray-100">
                         <div class="flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-gray-200 shadow-sm">
                             <span class="text-[9px] font-bold text-gray-400 uppercase">OS</span>
-                            <span class="text-xs font-bold text-blue-700">${linha.os || '---'}</span>
+                            <span class="text-sm font-bold text-blue-700">${linha.os || '---'}</span>
                         </div>
                         
-                        <div class="flex items-center gap-1 ml-auto">
+                        <div class="flex items-center gap-1">
                             <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
                             <span class="text-gray-300 text-[10px]">➜</span>
                             <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
@@ -2674,35 +2629,31 @@ function renderizarListaLinhas() {
             </div>`;
 
         } else {
-            // CARD MANUAL (Layout Responsivo com Wrap)
+            // === CARD MANUAL (CORRIGIDO) ===
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
                 `<option value="${a}" ${linha.atividade===a?'selected':''}>${a}</option>`
             ).join('');
             
             html = `
-            <div class="bg-white rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
-                <div class="p-2">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
-                        
-                        <div class="flex-grow min-w-0 relative">
-                            <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
-                                class="w-full h-9 pl-2 pr-6 text-xs font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
-                                ${opsH}
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-yellow-400">
-                                <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                            </div>
-                        </div>
+            <div class="bg-white rounded-xl shadow-sm mb-3 border-l-[6px] ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
+                <div class="p-2 flex items-center gap-2">
+                    
+                    <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
 
-                        ${acoesHtml}
+                    <div class="flex-grow min-w-0 relative">
+                        <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
+                            class="w-full h-9 pl-2 pr-6 text-xs font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
+                            ${opsH}
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-yellow-400">
+                            <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-1 pr-1">
-                        <span class="text-[9px] font-bold text-gray-400 mr-1">DURAÇÃO:</span>
+                    <div class="flex items-center gap-1 shrink-0">
                         <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
-                        <span class="text-gray-300 text-[10px]">➜</span>
                         <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
+                        ${acoesHtml}
                     </div>
                 </div>
             </div>`;
