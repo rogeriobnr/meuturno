@@ -1363,7 +1363,7 @@ function renderizarEquipe() {
         }
 
         return `
-        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-4 ${corBorda}">
+        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-8 ${corBorda}">
             
             <div class="flex flex-col min-w-0 pr-2">
                 <span class="text-base font-bold text-gray-800 truncate">
@@ -2124,8 +2124,8 @@ function adicionarFrotasSelecionadasAoTurno() {
     const article = document.getElementById(`servico_${s.id}`);
     if (!article) return;
     
-    // --- MUDANÇA AQUI: border-l-[10px] ---
-    article.className = "bg-white rounded-xl shadow-sm mb-4 border-t border-r border-b border-gray-200 transition-all hover:shadow-md border-l-[10px]";
+    // --- MUDANÇA AQUI: border-l-
+    article.className = "bg-white rounded-xl shadow-sm mb-4 border-t border-r border-b border-gray-200 transition-all hover:shadow-md border-l-4";
     
     const cabecalho = article.querySelector('.servico-cabecalho');
     const osNaoGerada = !s.texto;
@@ -3914,9 +3914,11 @@ async function mostrarHistorico() {
     }
 }
 
+// ============================================================
+// LÓGICA DE LIMPEZA DE HISTÓRICO (MÊS/DIA)
+// ============================================================
 
-
-    async function abrirPopupApagarPorData() {
+async function abrirPopupApagarPorData() {
     const btn = event?.currentTarget;
     const originalText = btn ? btn.innerHTML : "";
     if (btn) {
@@ -3952,30 +3954,29 @@ async function mostrarHistorico() {
         const diasUnicos = [...new Set(itensDaEquipe.map(i => i.dataOS))].sort().reverse();
         const mesesUnicos = [...new Set(diasUnicos.map(d => d.substring(0, 7)))].sort().reverse();
 
-        // --- GERAÇÃO DA LISTA VISUAL (SUBSTITUI O SELECT) ---
         let listaHTML = `<div class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">`;
 
         // 1. BLOCO DE MESES
         if (mesesUnicos.length > 0) {
-            listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2">Apagar Mês Inteiro</div>`;
+            listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2 px-1">Apagar Mês Inteiro</div>`;
             
             mesesUnicos.forEach(mes => {
                 const [ano, mesNum] = mes.split('-');
                 const qtd = itensDaEquipe.filter(i => i.dataOS.startsWith(mes)).length;
                 
-                // Input Radio escondido + Label estilizado
+                // --- MUDANÇA AQUI: border-2 para border-4 ---
                 listaHTML += `
-                <label class="relative block group cursor-pointer">
+                <label class="relative block cursor-pointer group">
                     <input type="radio" name="dataExclusao" value="${mes}" class="peer sr-only">
-                    <div class="p-3 bg-white border border-gray-200 rounded-lg transition-all 
-                                peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:ring-1 peer-checked:ring-red-500 
-                                hover:bg-gray-50 flex justify-between items-center">
+                    <div class="p-3 bg-white border-2 peer-checked:border-4 border-gray-200 rounded-xl transition-all duration-100
+                                peer-checked:border-red-500 peer-checked:bg-red-50
+                                hover:border-red-200 hover:bg-gray-50 flex justify-between items-center">
                         <div>
-                            <span class="block font-bold text-gray-800 peer-checked:text-red-700">MÊS: ${mesNum}/${ano}</span>
-                            <span class="text-xs text-gray-500 peer-checked:text-red-500">Contém ${qtd} registros</span>
+                            <span class="block font-bold text-gray-700 peer-checked:text-red-700">MÊS: ${mesNum}/${ano}</span>
+                            <span class="text-xs text-gray-500 peer-checked:text-red-500 font-medium">${qtd} registros</span>
                         </div>
-                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center">
-                            <div class="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100"></div>
+                        <div class="w-6 h-6 rounded-full border-2 peer-checked:border-4 border-gray-300 bg-white peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center transition-all">
+                            <div class="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
                         </div>
                     </div>
                 </label>`;
@@ -3983,73 +3984,70 @@ async function mostrarHistorico() {
         }
 
         // 2. BLOCO DE DIAS
-        listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-4">Apagar Dia Específico</div>`;
+        listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-4 px-1">Apagar Dia Específico</div>`;
         
         diasUnicos.forEach(dia => {
             const qtd = itensDaEquipe.filter(i => i.dataOS === dia).length;
             
+            // --- MUDANÇA AQUI: border-2 para border-4 ---
             listaHTML += `
-            <label class="relative block group cursor-pointer">
+            <label class="relative block cursor-pointer group">
                 <input type="radio" name="dataExclusao" value="${dia}" class="peer sr-only">
-                <div class="p-3 bg-white border border-gray-200 rounded-lg transition-all 
-                            peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:ring-1 peer-checked:ring-red-500 
-                            hover:bg-gray-50 flex justify-between items-center">
+                <div class="p-3 bg-white border-2 peer-checked:border-4 border-gray-200 rounded-xl transition-all duration-100
+                            peer-checked:border-red-500 peer-checked:bg-red-50
+                            hover:border-red-200 hover:bg-gray-50 flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <div class="bg-gray-100 text-gray-600 font-bold p-2 rounded text-xs peer-checked:bg-red-100 peer-checked:text-red-700">
+                        <div class="bg-gray-100 text-gray-600 font-bold p-2 rounded-lg text-xs peer-checked:bg-red-200 peer-checked:text-red-800">
                             ${dia.split('-').reverse().slice(0, 2).join('/')}
                         </div>
-                        <span class="text-sm font-medium text-gray-700 peer-checked:text-red-800">${qtd} itens</span>
+                        <span class="text-sm font-bold text-gray-600 peer-checked:text-red-700">${qtd} itens</span>
                     </div>
-                    <div class="w-4 h-4 rounded-full border border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-500"></div>
+                    <div class="w-5 h-5 rounded-full border-2 peer-checked:border-4 border-gray-300 bg-white peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center transition-all">
+                         <div class="w-1.5 h-1.5 bg-white rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                    </div>
                 </div>
             </label>`;
         });
 
-        listaHTML += `</div>`; // Fecha container
+        listaHTML += `</div>`; 
 
-        const conteudoPopup = `
-            <div class="text-left mb-2">
-                 <p class="text-sm text-gray-600 mb-3">Selecione o período que deseja limpar da <b>${frenteAtual}</b>.</p>
-                 ${listaHTML}
-            </div>
-        `;
-
-        // Restaura botão
         if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
 
-        abrirPopupConfirmar('🗑️ Central de Limpeza', conteudoPopup, async (confirmado) => {
-            if (confirmado) {
-                // --- NOVA FORMA DE PEGAR O VALOR (RADIO BUTTON) ---
-                const selecionado = document.querySelector('input[name="dataExclusao"]:checked');
-                
-                if (!selecionado) {
-                    showToast("Selecione uma opção para apagar.", "error");
-                    // Reabre o popup se nada foi selecionado (opcional, ou apenas cancela)
-                    return false; 
+        // Abre o popup
+        abrirPopupConfirmar('🗑️ Central de Limpeza', 
+            `<div class="text-left mb-2"><p class="text-sm text-gray-600 mb-3">Selecione o período que deseja limpar da <b>${frenteAtual}</b>.</p>${listaHTML}</div>`, 
+            async (confirmado) => {
+                if (confirmado) {
+                    const selecionado = document.querySelector('input[name="dataExclusao"]:checked');
+                    
+                    if (!selecionado) {
+                        showToast("Selecione uma opção para apagar.", "error");
+                        return false; 
+                    }
+
+                    const valorSelecionado = selecionado.value;
+                    const isMes = valorSelecionado.length === 7;
+                    const label = isMes ? `o MÊS ${valorSelecionado}` : `o dia ${formatarDataParaExibicao(valorSelecionado)}`;
+                    const codigo = Math.floor(1000 + Math.random() * 9000);
+
+                    setTimeout(() => {
+                        abrirPopupInput(
+                            'Confirmar Exclusão',
+                            `Para apagar <b>${label}</b>, digite <span class="text-red-600 font-black text-lg">${codigo}</span>:`,
+                            'Código...', '',
+                            (digitado) => {
+                                if (String(digitado) === String(codigo)) {
+                                    executarExclusaoEmMassa(valorSelecionado, frenteAtual, turnoAtual);
+                                } else if (digitado !== null) {
+                                    showToast("Código incorreto.", "error");
+                                }
+                            }, 'number'
+                        );
+                        setTimeout(() => document.getElementById('popup-input-field')?.focus(), 100);
+                    }, 200);
                 }
-
-                const valorSelecionado = selecionado.value;
-                const isMes = valorSelecionado.length === 7;
-                const label = isMes ? `o MÊS ${valorSelecionado}` : `o dia ${formatarDataParaExibicao(valorSelecionado)}`;
-                const codigo = Math.floor(1000 + Math.random() * 9000);
-
-                setTimeout(() => {
-                    abrirPopupInput(
-                        'Confirmar Exclusão',
-                        `Para apagar <b>${label}</b>, digite <span class="text-red-600 font-black text-lg">${codigo}</span>:`,
-                        'Código...', '',
-                        (digitado) => {
-                            if (String(digitado) === String(codigo)) {
-                                executarExclusaoEmMassa(valorSelecionado, frenteAtual, turnoAtual);
-                            } else if (digitado !== null) {
-                                showToast("Código incorreto.", "error");
-                            }
-                        }, 'number'
-                    );
-                    setTimeout(() => document.getElementById('popup-input-field')?.focus(), 100);
-                }, 200);
-            }
-        }, "Continuar");
+            }, "Continuar"
+        );
 
     } catch (e) {
         console.error(e);
@@ -4059,151 +4057,65 @@ async function mostrarHistorico() {
 }
 
 
-// Função auxiliar para processar a exclusão em massa
 async function executarExclusaoEmMassa(criterioData, frente, turno) {
     fecharPopup();
-    
-    // Detecta se é Mês (7 chars: "2023-12") ou Dia (10 chars: "2023-12-01")
     const modoMes = criterioData.length === 7;
-    
-    setTimeout(() => {
-        abrirPopupLoading(modoMes ? "Apagando o Mês inteiro..." : "Apagando o Dia...");
-    }, 100);
-    
+    setTimeout(() => abrirPopupLoading(modoMes ? "Apagando Mês..." : "Apagando Dia..."), 100);
+
     try {
         const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
-        
-        // --- FILTRO FINAL ---
         const itensParaApagar = todos.filter(i => {
             const iFrente = (i.frente || "").trim().toUpperCase();
             const iTurno = (i.turno || "").replace("TURNO ", "").trim();
-            
             const bateuEquipe = (iFrente === frente && iTurno === turno);
-            
             if (!bateuEquipe) return false;
-            
-            // Se for Modo Mês, usa "startsWith", senão usa igualdade exata
-            if (modoMes) {
-                return i.dataOS && i.dataOS.startsWith(criterioData);
-            } else {
-                return i.dataOS === criterioData;
-            }
+            return modoMes ? i.dataOS && i.dataOS.startsWith(criterioData) : i.dataOS === criterioData;
         });
-        
+
         if (itensParaApagar.length === 0) {
-            setTimeout(() => { fecharPopup();
-                alert("Erro: Os itens sumiram antes de apagar. Tente recarregar."); }, 500);
+            setTimeout(() => { fecharPopup(); showToast("Nenhum item encontrado.", "info"); }, 500);
             return;
         }
-        
-        console.log(`🗑️ Apagando ${itensParaApagar.length} itens. Modo Mês: ${modoMes}`);
-        
-        // 1. Apaga Local (IndexedDB)
+
         const tx = db.transaction(STORE_HISTORICO, 'readwrite');
         const store = tx.objectStore(STORE_HISTORICO);
-        
-        itensParaApagar.forEach(item => {
-            // Garante que apaga pelo ID numérico se existir, ou string se for legado
-            store.delete(item.uniqueId || item.id);
-        });
-        
+        itensParaApagar.forEach(item => store.delete(item.uniqueId || item.id));
+
         tx.oncomplete = async () => {
-            // 2. Apaga Nuvem (Firestore)
             const batch = firestore.batch();
             itensParaApagar.forEach(item => {
                 const ref = firestore.collection('historico_os').doc(String(item.uniqueId || item.id));
                 batch.delete(ref);
             });
-            
-            // Envia batch (sem await para não travar UI)
             batch.commit().catch(console.warn);
-            
-            // 3. Feedback
+
             setTimeout(async () => {
                 fecharPopup();
-                showToast(`Sucesso! ${itensParaApagar.length} registros apagados.`, 'success');
-                await mostrarHistorico(); // Atualiza a tela
-            }, 1000);
+                showToast(`Sucesso! ${itensParaApagar.length} apagados.`, 'success');
+                await mostrarHistorico();
+            }, 800);
         };
-        
-        tx.onerror = (e) => {
-            throw new Error("Falha no banco local.");
-        };
-        
     } catch (e) {
         fecharPopup();
         console.error(e);
-        alert("Erro na exclusão: " + e.message);
-    }
-}
-
-
-async function executarExclusaoNuvem(dataAlvo) {
-    const frenteAtual = document.getElementById('frente').value;
-    const turnoAtual = document.getElementById('turnoLetra').value;
-
-    abrirPopupLoading("Apagando registros da nuvem...");
-
-    try {
-        // 1. Busca no Firestore usando o índice que já criamos (Frente + Turno)
-        const snapshot = await firestore.collection('historico_os')
-            .where('frente', '==', frenteAtual)
-            .where('turno', '==', turnoAtual)
-            .get();
-
-        // 2. Filtra manualmente pela data (para não precisar criar outro índice complexo)
-        const docsParaApagar = snapshot.docs.filter(doc => {
-            const dados = doc.data();
-            return dados.dataOS === dataAlvo;
-        });
-
-        if (docsParaApagar.length === 0) {
-            fecharPopup();
-            showToast("Nenhum registro encontrado na nuvem para apagar.", "info");
-            return;
-        }
-
-        // 3. Executa a exclusão em lote (Batch)
-        const batch = firestore.batch();
-        docsParaApagar.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-
-        fecharPopup();
-        showToast(`Sucesso! ${docsParaApagar.length} registros apagados da nuvem.`, "success");
-
-        // A sincronização automática (onSnapshot) vai limpar a tela do celular sozinha em instantes.
-
-    } catch (error) {
-        fecharPopup();
-        console.error("Erro ao apagar:", error);
-        showToast("Erro ao apagar. Verifique sua conexão.", "error");
+        showToast("Erro: " + e.message, "error");
     }
 }
 
 // ============================================================
-// FUNÇÕES DE AÇÃO DO HISTÓRICO (NUVEM)
+// AÇÕES DO HISTÓRICO (SINGLETONS)
 // ============================================================
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
     const osNumero = input ? input.value.trim() : "";
+    if (!osNumero) { showToast('Digite o número da O.S.', 'error'); if(input) input.focus(); return; }
 
-    if (!osNumero) {
-        showToast('Digite o número da O.S.', 'error');
-        if(input) input.focus();
-        return;
-    }
-
-    // Efeito visual de carregamento
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
     if(btn) { btn.innerText = "⏳"; btn.disabled = true; }
 
     try {
         const idNumerico = parseInt(id);
-        // 1. Salva Local (Garantia)
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
         if (item) {
             item.status = 'finalizada';
@@ -4211,17 +4123,9 @@ async function finalizarOS(id) {
             item.atualizadoEm = new Date().toISOString();
             await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
         }
-
-        // 2. Atualiza Tela (Feedback imediato)
         showToast('O.S. Finalizada!', 'success');
-        await mostrarHistorico(); // Recarrega a lista com o visual verde novo
-
-        // 3. Tenta Nuvem (Sem travar)
-        firestore.collection('historico_os').doc(String(id)).update({
-            status: 'finalizada',
-            osNumero: osNumero
-        }).catch(e => console.warn("Offline: O.S. salva no dispositivo."));
-
+        await mostrarHistorico();
+        firestore.collection('historico_os').doc(String(id)).update({ status: 'finalizada', osNumero }).catch(console.warn);
     } catch (e) {
         console.error(e);
         showToast("Erro ao salvar.", "error");
@@ -4229,16 +4133,12 @@ async function finalizarOS(id) {
     }
 }
 
-
-
 function habilitarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
     if (!input) return;
-    
     input.disabled = false;
     input.focus();
-    input.classList.add('bg-yellow-50', 'border-yellow-400'); // Destaque visual
-    
+    input.classList.add('bg-yellow-50', 'border-yellow-400');
     btn.innerText = 'Salvar';
     btn.onclick = () => confirmarEdicaoOS(id, btn);
 }
@@ -4246,139 +4146,54 @@ function habilitarEdicaoOS(id, btn) {
 async function confirmarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
     const numero = input ? input.value.trim() : "";
-
-    if (!numero) {
-        showToast("Nº O.S não pode ser vazio.", "error");
-        if(input) input.focus();
-        return;
-    }
-
-    // Feedback visual imediato no botão
+    if (!numero) { showToast("Nº O.S não pode ser vazio.", "error"); input.focus(); return; }
+    
     const textoOriginal = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "...";
+    btn.disabled = true; btn.innerText = "...";
 
     try {
-        // 1. OPERAÇÃO LOCAL (Prioridade Máxima - IndexedDB)
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
-
-        if (!item) throw new Error("Item não encontrado no celular.");
-
-        // Atualiza o objeto
+        if (!item) throw new Error("Item não encontrado.");
         item.osNumero = numero;
         item.atualizadoEm = new Date().toISOString();
-
-        // Salva no banco local
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-
-        // 2. ATUALIZA A TELA E TRAVA A EDIÇÃO
-        showToast("Nº O.S atualizado (Salvo no dispositivo)!", 'success');
-        
-        // Em vez de recarregar tudo com mostrarHistorico(), podemos apenas ajustar a UI
-        // Mas para garantir consistência, chamamos o refresh rápido se a tela estiver visível
-        await mostrarHistorico(); 
-
-        // 3. SINCRONIZAÇÃO SILENCIOSA (Nuvem - Background)
-        firestore.collection('historico_os').doc(String(id)).update({
-            osNumero: numero,
-            atualizadoEm: item.atualizadoEm
-        }).then(() => {
-            console.log("☁️ Número da OS sincronizado com a nuvem.");
-        }).catch(err => {
-            console.warn("⚠️ Sem rede. Alteração salva localmente e será enviada depois.", err);
-        });
-
+        showToast("Nº O.S atualizado!", 'success');
+        await mostrarHistorico();
+        firestore.collection('historico_os').doc(String(id)).update({ osNumero: numero, atualizadoEm: item.atualizadoEm }).catch(console.warn);
     } catch (error) {
-        console.error(error);
-        showToast("Erro ao atualizar localmente: " + error.message, 'error');
-        // Restaura o botão em caso de erro real (ex: falha no disco)
-        btn.disabled = false;
-        btn.innerText = textoOriginal;
+        showToast("Erro: " + error.message, 'error');
+        btn.disabled = false; btn.innerText = textoOriginal;
     }
 }
 
 async function excluirHistoricoItem(id) {
     try {
-        // 1. Busca o item no banco local para verificar a quem pertence
-        // O IndexedDB usa chave numérica, garantimos a conversão
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        if (!item) { showToast('Item não encontrado.', 'error'); return; }
 
-        if (!item) {
-            showToast('Erro: Item não encontrado no dispositivo.', 'error');
-            // Se não tá no local, tenta forçar exclusão visual ou da nuvem? 
-            // Melhor não arriscar sem saber de quem é.
+        const elFrente = document.getElementById('frente');
+        const elTurno = document.getElementById('turnoLetra');
+        const mf = elFrente ? elFrente.value.trim() : "";
+        const mt = elTurno ? elTurno.value : "";
+
+        if ((item.frente||"").trim() !== mf || (item.turno||"") !== mt) {
+            abrirPopup("Permissão Negada", `<p class="text-sm">Este item pertence a <b>${item.frente}</b>. Mude seus filtros para gerenciar.</p>`);
             return;
         }
 
-        // 2. Pega o contexto atual (Quem está tentando apagar)
-        const elFrente = document.getElementById('frente');
-        const elTurno = document.getElementById('turnoLetra');
-        
-        const minhaFrente = elFrente ? elFrente.value.trim() : "";
-        const meuTurno = elTurno ? elTurno.value : "";
-
-        // 3. TRAVA DE SEGURANÇA: Verifica Propriedade
-        const itemFrente = (item.frente || "").trim();
-        const itemTurno = item.turno || "";
-
-        // Se a Frente OU o Turno forem diferentes, BLOQUEIA
-        if (itemFrente !== minhaFrente || itemTurno !== meuTurno) {
-            const msg = `
-                <div class="text-left text-sm text-gray-600 space-y-3">
-                    <p class="font-bold text-gray-800">🚫 Ação Bloqueada</p>
-                    <p>Você não pode apagar registros de outra equipe.</p>
-                    
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-red-50 p-2 rounded border border-red-200">
-                            <span class="block text-red-500 font-bold mb-1">O ITEM É DA:</span>
-                            ${itemFrente}<br>Turno ${itemTurno}
-                        </div>
-                        <div class="bg-blue-50 p-2 rounded border border-blue-200">
-                            <span class="block text-blue-500 font-bold mb-1">VOCÊ ESTÁ NA:</span>
-                            ${minhaFrente}<br>Turno ${meuTurno}
-                        </div>
-                    </div>
-                    
-                    <p class="text-xs italic bg-gray-100 p-2 rounded">
-                        💡 Dica: Para gerenciar este item, troque a Frente e o Turno no topo da tela para corresponder aos do item.
-                    </p>
-                </div>
-            `;
-            // Usa sua função de popup genérico
-            abrirPopup("Permissão Negada", msg);
-            return; // PARA A EXECUÇÃO AQUI. Nada é apagado.
-        }
-
-        // 4. Se passou na validação, segue para a confirmação normal
-        const confirmado = await new Promise(resolve => 
-            abrirPopupConfirmar('Excluir Registro', 
-            'Tem certeza que deseja excluir este item do histórico? Esta ação não pode ser desfeita.', 
-            resolve)
-        );
-
-        if (confirmado) {
-            // Apaga Localmente
-            await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(idNumerico));
-            
-            // Atualiza Tela
-            await mostrarHistorico();
-            showToast('Item excluído.', 'success');
-
-            // Apaga na Nuvem (Background)
-            firestore.collection('historico_os').doc(String(id)).delete()
-                .catch(err => console.warn("Offline. Exclusão será sincronizada depois.", err));
-        }
-
-    } catch (e) {
-        console.error(e);
-        showToast('Erro ao validar permissão.', 'error');
-    }
+        abrirPopupConfirmar('Excluir Registro', 'Tem certeza? Não pode ser desfeito.', async (ok) => {
+            if(ok) {
+                await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(idNumerico));
+                await mostrarHistorico();
+                showToast('Item excluído.', 'success');
+                firestore.collection('historico_os').doc(String(id)).delete().catch(console.warn);
+            }
+        });
+    } catch (e) { console.error(e); }
 }
 
-
-// Validação simples para habilitar/desabilitar o botão OK enquanto digita
 function validarOSInput(id) {
     const input = document.getElementById(`os_input_${id}`);
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
@@ -4388,213 +4203,98 @@ function validarOSInput(id) {
     }
 }
 
-        // ---------------------------------
-        // OUTROS MÓDULOS
-        // ---------------------------------
-        /**
- * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos serviços de um dia específico no histórico.
- * @param {string} dataKey - A data (no formato YYYY-MM-DD) que serve como identificador do grupo.
- */
 function toggleHistoricoDia(dataKey) {
-    const listaServicos = document.getElementById(`historico-dia-${dataKey}`);
-    const toggler = document.getElementById(`toggler-dia-${dataKey}`);
-
-    if (listaServicos && toggler) {
-        // Verifica se a lista de serviços está escondida
-        const isHidden = listaServicos.style.display === 'none';
-        
-        // Alterna a exibição e o ícone
-        listaServicos.style.display = isHidden ? 'block' : 'none';
-        toggler.innerHTML = isHidden ? '&#9650;' : '&#9660;'; // Seta para cima (▲) / Seta para baixo (▼)
-    }
-}
-/**
- * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos botões de ação
- * de um item específico no histórico.
- * @param {number} uniqueId - O ID único do item de serviço no histórico.
- */
-function toggleBotoesHistorico(uniqueId) {
-    const containerBotoes = document.getElementById(`botoes-historico-${uniqueId}`);
-    if (containerBotoes) {
-        const isHidden = containerBotoes.style.display === 'none' || containerBotoes.classList.contains('hidden');
-        
-        if (isHidden) {
-            containerBotoes.classList.remove('hidden');
-            containerBotoes.style.display = 'grid'; // Força grid para manter o layout
-        } else {
-            containerBotoes.classList.add('hidden');
-            containerBotoes.style.display = 'none';
-        }
+    const lista = document.getElementById(`historico-dia-${dataKey}`);
+    const icon = document.getElementById(`toggler-dia-${dataKey}`);
+    if (lista && icon) {
+        const hidden = lista.style.display === 'none';
+        lista.style.display = hidden ? 'block' : 'none';
+        icon.innerHTML = hidden ? '&#9650;' : '&#9660;';
     }
 }
 
+function toggleBotoesHistorico(id) {
+    const box = document.getElementById(`botoes-historico-${id}`);
+    if (box) {
+        const hidden = box.classList.contains('hidden');
+        hidden ? box.classList.remove('hidden') : box.classList.add('hidden');
+        if(hidden) box.style.display = 'grid'; else box.style.display = 'none';
+    }
+}
 
 // ============================================================
-// MÓDULO: HISTÓRICO NA NUVEM (COM FILTRO)
+// SINCRONIZAÇÃO E MIGRAÇÃO (SINGLETONS)
 // ============================================================
 
-
-        let unsubscribeHistorico = null; 
+let unsubscribeHistorico = null;
 
 function iniciarSincronizacaoHistorico() {
     const frente = document.getElementById('frente').value;
     const turno = document.getElementById('turnoLetra').value;
-
-    // 1. Validação: Se não tiver filtros, não faz nada
     if (!frente || !turno) return;
 
-    // 2. Limpeza: Desliga a "torneira" anterior para não duplicar
-    if (unsubscribeHistorico) {
-        unsubscribeHistorico();
-        unsubscribeHistorico = null;
-    }
+    if (unsubscribeHistorico) { unsubscribeHistorico(); unsubscribeHistorico = null; }
 
-    // 3. Verifica se estamos Online (Opcional, mas economiza bateria)
-    // O Firestore lida bem com isso, mas é bom saber
-    const isOnline = navigator.onLine;
-    console.log(`📡 Sync Histórico iniciado (${isOnline ? 'Online' : 'Offline'}): ${frente} [${turno}]`);
-
-    // 4. Definição da Data de Corte (90 dias)
     const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 90); 
-    const dataString = dataLimite.toISOString().split('T')[0]; 
+    dataLimite.setDate(dataLimite.getDate() - 90);
+    const dataString = dataLimite.toISOString().split('T')[0];
 
-    try {
-        // A QUERY DO FIREBASE
-        // Essa função é mágica: se estiver offline, ela lê do Cache do Firebase automaticamente!
-        unsubscribeHistorico = firestore.collection('historico_os')
-            .where('frente', '==', frente)
-            .where('turno', '==', turno)
-            .where('dataOS', '>=', dataString)
-            .onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
-                
-                // Se for apenas uma mudança de metadados (ex: "agora está salvo na nuvem"), ignoramos para não pesar
-                // Mas se estiver offline, snapshot.metadata.fromCache será true
-                
-                if (snapshot.empty) return;
+    unsubscribeHistorico = firestore.collection('historico_os')
+        .where('frente', '==', frente)
+        .where('turno', '==', turno)
+        .where('dataOS', '>=', dataString)
+        .onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+            if (snapshot.empty) return;
+            const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+            const store = tx.objectStore(STORE_HISTORICO);
+            let changed = false;
 
-                const tx = db.transaction(STORE_HISTORICO, 'readwrite');
-                const store = tx.objectStore(STORE_HISTORICO);
-                let houveMudancaRelevante = false;
-
-                snapshot.docChanges().forEach(change => {
-                    // Só processamos se for dado real, ou se for a primeira carga
-                    const dados = change.doc.data();
-                    dados.uniqueId = parseInt(change.doc.id); 
-
-                    if (change.type === 'added' || change.type === 'modified') {
-                        store.put(dados);
-                        houveMudancaRelevante = true;
-                    }
-                    if (change.type === 'removed') {
-                        store.delete(dados.uniqueId);
-                        houveMudancaRelevante = true;
-                    }
-                });
-
-                tx.oncomplete = () => {
-                    // Só redesenha a tela se realmente mudou algo nos dados e se a tela estiver visível
-                    // E se NÃO for apenas uma atualização de "sincronizado com sucesso"
-                    if (houveMudancaRelevante && !document.getElementById('historico').classList.contains('hidden')) {
-                        mostrarHistorico();
-                        console.log("🔄 Tela atualizada com dados do servidor/cache.");
-                    }
-                };
-
-            }, (error) => {
-                // SE DER ERRO DE REDE (Permissão ou Índice), NÃO TRAVA O APP
-                console.warn("⚠️ Aviso do Sync (Provavelmente Offline ou Falta Índice):", error.message);
-                // O app continua funcionando com o que tem no IndexedDB local
+            snapshot.docChanges().forEach(change => {
+                const d = change.doc.data();
+                d.uniqueId = parseInt(change.doc.id);
+                if (change.type === 'added' || change.type === 'modified') { store.put(d); changed = true; }
+                if (change.type === 'removed') { store.delete(d.uniqueId); changed = true; }
             });
 
-    } catch (e) {
-        console.error("Erro fatal ao iniciar sync (App segue offline):", e);
-    }
+            tx.oncomplete = () => {
+                if (changed && !document.getElementById('historico').classList.contains('hidden')) mostrarHistorico();
+            };
+        }, console.warn);
 }
-
-
 
 async function migrarDadosLocaisParaNuvem() {
-    // Aguarda um pouco para garantir que os selects do DOM foram carregados
     await new Promise(r => setTimeout(r, 1500));
-
-    const frenteInput = document.getElementById('frente');
-    const turnoInput = document.getElementById('turnoLetra');
-
-    // Se os campos não existirem ou estiverem vazios, cancela
-    if (!frenteInput || !turnoInput) return;
-
-    const frenteAtual = frenteInput.value.trim();
-    const turnoAtual = turnoInput.value;
-
-    // Se não tiver contexto selecionado, não faz nada para evitar corromper dados
-    if (!frenteAtual || !turnoAtual) return;
+    const f = document.getElementById('frente')?.value.trim();
+    const t = document.getElementById('turnoLetra')?.value;
+    if (!f || !t) return;
 
     try {
-        // 1. Ler todos os dados locais
-        const todosLocais = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
-        
-        // 2. Identificar APENAS os itens "Legados" (que não têm Frente ou Turno definidos)
-        const itensLegados = todosLocais.filter(item => 
-            !item.frente || item.frente.trim() === "" || 
-            !item.turno || item.turno === ""
-        );
+        const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        const legados = todos.filter(i => !i.frente || !i.turno);
+        if (legados.length === 0) return;
 
-        // Se não tiver nada antigo, para aqui (Verificação feita!)
-        if (itensLegados.length === 0) return; 
-
-        console.log(`🔄 Migrando ${itensLegados.length} itens legados para: ${frenteAtual} - ${turnoAtual}`);
-        showToast(`Atualizando ${itensLegados.length} serviços antigos...`, "info");
-
-        // 3. Atualizar o BANCO LOCAL (Isso impede que a migração rode de novo)
         const tx = db.transaction(STORE_HISTORICO, 'readwrite');
         const store = tx.objectStore(STORE_HISTORICO);
-        
-        // Prepara o lote da nuvem também
-        const batchCloud = firestore.batch();
+        const batch = firestore.batch();
 
-        itensLegados.forEach(item => {
-            // Atualiza o objeto na memória
-            item.frente = frenteAtual;
-            item.turno = turnoAtual;
-            item.migradoEm = new Date().toISOString(); // Marca que foi migrado
-
-            // Salva no IndexedDB (Agora ele deixa de ser legado!)
-            // Usamos put para sobrescrever o registro existente
-            store.put(item);
-
-            // Prepara envio para nuvem
-            // Nota: Convertendo ID para string para garantir compatibilidade com Firestore
-            const docRef = firestore.collection('historico_os').doc(String(item.uniqueId || item.id));
-            batchCloud.set(docRef, item, { merge: true });
+        legados.forEach(i => {
+            i.frente = f; i.turno = t; i.migradoEm = new Date().toISOString();
+            store.put(i);
+            batch.set(firestore.collection('historico_os').doc(String(i.uniqueId || i.id)), i, { merge: true });
         });
 
-        // 4. Quando o banco local terminar de gravar...
         tx.oncomplete = () => {
-            console.log("✅ Dados locais atualizados com sucesso.");
-            
-            // Se a tela de histórico estiver aberta, atualiza ela para mostrar os itens "novos"
-            if (document.getElementById('historico_lista')) {
-                mostrarHistorico();
-            }
-
-            // 5. Tenta enviar para a Nuvem (Sem travar o app se estiver offline)
-            batchCloud.commit()
-                .then(() => console.log("☁️ Migração sincronizada com a nuvem."))
-                .catch(err => console.warn("⚠️ Offline: Migração salva no celular, será enviada quando houver rede.", err));
-                
-            showToast("Serviços antigos recuperados com sucesso!", "success");
+            if(document.getElementById('historico_lista')) mostrarHistorico();
+            batch.commit().catch(console.warn);
+            showToast(`Migrados ${legados.length} itens antigos.`, "info");
         };
-
-        tx.onerror = (e) => {
-            console.error("Erro na transação local:", e);
-        };
-
-    } catch (e) {
-        console.error("Erro fatal na migração:", e);
-    }
+    } catch(e) { console.error("Erro migração:", e); }
 }
 
+// ============================================================
+// OUTROS MÓDULOS (MANTIDOS)
+// ============================================================
+// (Cole aqui o restante das funções: renderizarEstatisticas, Relatorio, Config, etc)
 
 
         async function renderizarSecaoEstatisticas(container) { const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const totalHorasParadas = calcularHorasParadasCorretivasTotais(); const dmTurnoAtual = calcularDMGeral(maquinasPrincipais, totalHorasParadas); const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); const osPorDia = {}; osHistorico.forEach(item => { const dataKey = item.dataOS.split('-').reverse().join('/'); osPorDia[dataKey] = (osPorDia[dataKey] || 0) + 1; }); const labels = Object.keys(osPorDia).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'))).slice(-15); const data = labels.map(label => osPorDia[label]); container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Estatísticas do Turno</h2><div class="p-4 border border-gray-200 rounded-lg text-center"><h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4><p class="text-4xl font-bold text-green-600">${dmTurnoAtual}%</p><p class="text-sm text-gray-500 mt-1">Base: ${maquinasPrincipais.length} máquinas. Considera paradas corretivas de todas as frotas.</p></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">O.S. Registradas (Últimos 15 dias)</h4><canvas id="graficoHistoricoOS"></canvas></div></div>`; const ctx = document.getElementById('graficoHistoricoOS'); if (graficoOS) graficoOS.destroy(); if (ctx) { graficoOS = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Nº de O.S.', data, backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); } }
