@@ -1,7 +1,7 @@
 'use strict';
 
 // Mude este número SEMPRE que editar qualquer arquivo no projeto
-const CACHE_NAME = 'meuturno-cache-v18';
+const CACHE_NAME = 'meuturno-cache-v19';
 
 const urlsToCache = [
   './',
