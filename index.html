@@ -1247,26 +1247,86 @@ function atualizarSelectGenerico(elementId, dados) {
 
 // 3. Funções de CRUD (Adicionar / Remover)
 
-function adicionarNovaFazenda() {
+function adicionarNovaFazenda(callbackSucesso = null) {
     abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', async (nome) => {
         if (!nome) return;
         const nomeUpper = nome.trim().toUpperCase();
         
+        // 1. Verificação inicial (antes de ir pro servidor)
         if (listaFazendas.some(f => f.nome === nomeUpper)) {
             showToast("Esta fazenda já existe.", "error");
             return;
         }
 
         try {
-            await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
+            // 2. Salva na Nuvem
+            const docRef = await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
+            
+            // 3. CORREÇÃO AQUI: Verifica se o Sync automático já não adicionou o item
+            // enquanto esperávamos o 'await' do Firestore.
+            const jaExisteNaMemoria = listaFazendas.some(f => f.nome === nomeUpper);
+            
+            if (!jaExisteNaMemoria) {
+                listaFazendas.push({ nome: nomeUpper, docId: docRef.id });
+                listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+            }
+            
             showToast("Fazenda adicionada!", "success");
-            // Força seleção imediata
-            setTimeout(() => {
-                const el = document.getElementById('fazenda');
-                el.value = nomeUpper;
+            
+            // Atualiza select da tela principal se existir
+            const elMain = document.getElementById('fazenda');
+            if(elMain) {
+                atualizarSelectGenerico('fazenda', listaFazendas);
+                elMain.value = nomeUpper;
+            }
+
+            // Retorno para o fluxo do Popup de Contexto
+            if (callbackSucesso) {
+                callbackSucesso(nomeUpper);
+            } else {
                 salvarDadosParciaisTurno();
-            }, 500);
+            }
+
         } catch (e) { showToast("Erro ao salvar: " + e.message, "error"); }
+    });
+}
+
+function adicionarNovaFrente(callbackSucesso = null) {
+    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', async (nome) => {
+        if (!nome) return;
+        const nomeUpper = nome.trim().toUpperCase();
+        
+        if (listaFrentes.some(f => f.nome === nomeUpper)) {
+            showToast("Esta frente já existe.", "error");
+            return;
+        }
+
+        try {
+            const docRef = await firestore.collection('lista_frentes').add({ nome: nomeUpper });
+            
+            // 3. CORREÇÃO AQUI TAMBÉM: Trava de duplicidade pós-save
+            const jaExisteNaMemoria = listaFrentes.some(f => f.nome === nomeUpper);
+
+            if (!jaExisteNaMemoria) {
+                listaFrentes.push({ nome: nomeUpper, docId: docRef.id });
+                listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+            }
+            
+            showToast("Frente adicionada!", "success");
+            
+            const elMain = document.getElementById('frente');
+            if(elMain) {
+                atualizarSelectGenerico('frente', listaFrentes);
+                elMain.value = nomeUpper;
+            }
+
+            if (callbackSucesso) {
+                callbackSucesso(nomeUpper);
+            } else {
+                salvarDadosParciaisTurno();
+            }
+
+        } catch (e) { showToast("Erro ao salvar.", "error"); }
     });
 }
 
@@ -3238,7 +3298,159 @@ function iniciarMonitoramentoFormulario() {
             }
         }
 
+// Funções auxiliares para preservar o estado do Popup
+function chamarAddFazendaContexto() {
+    // 1. Salva o estado atual do popup
+    const tempFrente = document.getElementById('popupQuickFrente').value;
+    const tempTurno = document.getElementById('popupQuickTurno').value;
+    
+    // 2. Chama a função de adicionar passando o callback de retorno
+    adicionarNovaFazenda((novaFazenda) => {
+        // 3. Reabre o popup restaurando tudo e selecionando a nova fazenda
+        verificarContextoHistorico(novaFazenda, tempFrente, tempTurno);
+    });
+}
+
+function chamarAddFrenteContexto() {
+    const tempFazenda = document.getElementById('popupQuickFazenda').value;
+    const tempTurno = document.getElementById('popupQuickTurno').value;
+    
+    adicionarNovaFrente((novaFrente) => {
+        verificarContextoHistorico(tempFazenda, novaFrente, tempTurno);
+    });
+}
+
+
+async function verificarContextoHistorico(preSelectFazenda = null, preSelectFrente = null, preSelectTurno = null) {
+    const fazendaEl = document.getElementById('fazenda');
+    const frenteEl = document.getElementById('frente');
+    const turnoEl = document.getElementById('turnoLetra');
+    
+    // Prioridade: 1. Valor passado (retorno do add) -> 2. Valor do input principal -> 3. Vazio
+    const fazenda = preSelectFazenda !== null ? preSelectFazenda : (fazendaEl ? fazendaEl.value.trim() : '');
+    const frente = preSelectFrente !== null ? preSelectFrente : (frenteEl ? frenteEl.value.trim() : '');
+    const turno = preSelectTurno !== null ? preSelectTurno : (turnoEl ? turnoEl.value : '');
+
+    // Se já tem tudo (e não estamos no meio de um fluxo de edição forçada), libera
+    // A verificação 'preSelectFazenda === null' garante que se a função foi chamada pelo callback (com valor), o popup ABRA mesmo se já tiver dados, para confirmar.
+    if (preSelectFazenda === null && fazenda && frente && turno) return true;
+
+    // Garantia de Dados (Offline First)
+    if (listaFazendas.length === 0 || listaFrentes.length === 0) {
+        try {
+            const [fazendasDB, frentesDB] = await Promise.all([
+                dbExec(STORE_FAZENDAS, 'readonly', s => s.getAll()),
+                dbExec(STORE_FRENTES, 'readonly', s => s.getAll())
+            ]);
+            listaFazendas = fazendasDB || [];
+            listaFrentes = frentesDB || [];
+            // Ordenação
+            listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+            listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+        } catch (e) { console.warn(e); }
+    }
+
+    // --- GERAÇÃO DAS LISTAS ---
+    let htmlOptionsFazenda = '<option value="">Selecione...</option>';
+    listaFazendas.forEach(f => {
+        htmlOptionsFazenda += `<option value="${f.nome}" ${f.nome === fazenda ? 'selected' : ''}>${f.nome}</option>`;
+    });
+
+    let htmlOptionsFrente = '<option value="">Selecione...</option>';
+    listaFrentes.forEach(f => {
+        htmlOptionsFrente += `<option value="${f.nome}" ${f.nome === frente ? 'selected' : ''}>${f.nome}</option>`;
+    });
+
+    // --- CONTEÚDO DO POPUP ---
+    const conteudo = `
+        <div class="text-center space-y-4">
+            <div class="bg-blue-50 p-3 rounded-full w-14 h-14 flex items-center justify-center mx-auto mb-2">
+                <span class="text-2xl">📍</span>
+            </div>
+            <p class="text-sm text-gray-600 px-2">
+                Confirme sua localização para carregar os dados.
+            </p>
+            
+            <div class="text-left space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fazenda</label>
+                    <div class="flex gap-2">
+                        <select id="popupQuickFazenda" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            ${htmlOptionsFazenda}
+                        </select>
+                        <button onclick="chamarAddFazendaContexto()" class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg border border-green-200 transition-colors shrink-0" title="Nova Fazenda">
+                            <span class="font-bold text-lg leading-none">+</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Frente de Trabalho</label>
+                    <div class="flex gap-2">
+                        <select id="popupQuickFrente" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            ${htmlOptionsFrente}
+                        </select>
+                        <button onclick="chamarAddFrenteContexto()" class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg border border-green-200 transition-colors shrink-0" title="Nova Frente">
+                            <span class="font-bold text-lg leading-none">+</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno</label>
+                    <select id="popupQuickTurno" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        <option value="A" ${turno === 'A' ? 'selected' : ''}>TURNO A</option>
+                        <option value="B" ${turno === 'B' ? 'selected' : ''}>TURNO B</option>
+                        <option value="C" ${turno === 'C' ? 'selected' : ''}>TURNO C</option>
+                    </select>
+                </div>
+
+            </div>
+        </div>
+    `;
+
+    abrirPopup('Configuração Inicial', conteudo, [
+        { 
+            texto: 'Salvar e Acessar', 
+            classe: 'bg-blue-600 text-white w-full py-3 rounded-lg shadow-md hover:bg-blue-700 font-bold', 
+            acao: () => {
+                const faz = document.getElementById('popupQuickFazenda').value;
+                const fre = document.getElementById('popupQuickFrente').value;
+                const tur = document.getElementById('popupQuickTurno').value;
+
+                if (!faz || !fre || !tur) {
+                    showToast("Preencha todos os campos!", "error");
+                    return false; // Mantém aberto
+                }
+
+                if(fazendaEl) fazendaEl.value = faz;
+                if(frenteEl) frenteEl.value = fre;
+                if(turnoEl) turnoEl.value = tur;
+
+                salvarDadosParciaisTurno();
+                iniciarSincronizacaoHistorico();
+                
+                setTimeout(() => mostrarHistorico(), 50);
+                
+                return true; 
+            }
+        }
+    ]);
+
+    return false; 
+}
+
+
+
 async function mostrarHistorico() {
+        // --- MUDANÇA AQUI: Adicionado 'await' ---
+    // Agora esperamos a função verificar se tem dados e carregar as listas se precisar
+    if (!(await verificarContextoHistorico())) return; 
+    // ----------------------------------------
+
+
     const div = document.getElementById("historico_lista");
     if (!div) return;
 
