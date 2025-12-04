@@ -20,6 +20,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
+        /* --- TOAST (Notificações) --- */
         #toast {
             position: fixed;
             left: 50%;
@@ -44,20 +45,13 @@
             transform: translate(-50%, 0);
         }
 
-        #toast.error {
-            background-color: #c0392b;
-        }
+        #toast.error { background-color: #c0392b; }
+        #toast.success { background-color: #27ae60; }
 
-        #toast.success {
-            background-color: #27ae60;
-        }
-
+        /* --- POPUP (Janelas Modais) --- */
         .popup-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6);
             z-index: 9998;
             display: none;
@@ -66,8 +60,7 @@
 
         .popup {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: white;
             padding: 1.25rem;
@@ -76,9 +69,12 @@
             z-index: 9999;
             width: 90%;
             max-width: 400px;
-            display: none;       max-height: 90vh;       max-height: 90vh;
+            display: none;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
+        /* --- MENU LATERAL (Animação) --- */
         .menu-open #menu-lateral {
             transform: translateX(0);
         }
@@ -88,76 +84,20 @@
             pointer-events: auto;
         }
 
+        /* --- UTILITÁRIOS --- */
         .campo-invalido {
             border-color: #ef4444 !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
         }
 
-        .servico-pendente-os {
-            border-left-width: 4px;
-            border-left-color: #F97316;
-        }
-
-        .servico-pendente-os .servico-cabecalho {
-            background-color: #FFF7ED;
-        }
-
-        .servico-compartilhado .servico-cabecalho {
-            background-color: #d9f99d;
-        }
-
-        .servico-compartilhado {
-            border-left-width: 4px;
-            border-left-color: #84cc16;
-        }
-
-        .servico-cabecalho {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            padding: 0.75rem 1rem;
-            background-color: #e9ecef;
-            border-bottom-width: 1px;
-            border-color: #ced4da;
-            border-top-left-radius: 0.5rem;
-            border-top-right-radius: 0.5rem;
-        }
-
-        .servico-cabecalho-info {
-            flex-grow: 1;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            margin-right: 0.5rem;
-        }
-
-        .servico-cabecalho-info .frota-destaque {
-            font-weight: bold;
-            color: #0056b3;
-        }
-
-        .servico-cabecalho-info .atividade-info {
-            color: #495057;
-            font-size: 0.9em;
-            margin-left: 0.25rem;
-        }
-
-        .servico-cabecalho-toggler {
-            font-size: 1.1em;
-            color: #495057;
-        }
-
-        .servico-detalhes {
-            padding: 1rem;
-            border-width: 1px;
-            border-top-width: 0;
-            border-color: #ced4da;
-            border-bottom-left-radius: 0.5rem;
-            border-bottom-right-radius: 0.5rem;
-        }
-
+        /* Barra de rolagem personalizada (fina) */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
+
+
 </head>
 
 <body class="bg-gray-50 text-gray-800">
