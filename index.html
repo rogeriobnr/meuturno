@@ -20,6 +20,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
+        /* --- TOAST (Notificações) --- */
         #toast {
             position: fixed;
             left: 50%;
@@ -44,20 +45,13 @@
             transform: translate(-50%, 0);
         }
 
-        #toast.error {
-            background-color: #c0392b;
-        }
+        #toast.error { background-color: #c0392b; }
+        #toast.success { background-color: #27ae60; }
 
-        #toast.success {
-            background-color: #27ae60;
-        }
-
+        /* --- POPUP (Janelas Modais) --- */
         .popup-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6);
             z-index: 9998;
             display: none;
@@ -66,8 +60,7 @@
 
         .popup {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: white;
             padding: 1.25rem;
@@ -76,9 +69,12 @@
             z-index: 9999;
             width: 90%;
             max-width: 400px;
-            display: none;       max-height: 90vh;       max-height: 90vh;
+            display: none;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
+        /* --- MENU LATERAL (Animação) --- */
         .menu-open #menu-lateral {
             transform: translateX(0);
         }
@@ -88,116 +84,99 @@
             pointer-events: auto;
         }
 
+        /* --- UTILITÁRIOS --- */
         .campo-invalido {
             border-color: #ef4444 !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
         }
 
-        .servico-pendente-os {
-            border-left-width: 4px;
-            border-left-color: #F97316;
-        }
-
-        .servico-pendente-os .servico-cabecalho {
-            background-color: #FFF7ED;
-        }
-
-        .servico-compartilhado .servico-cabecalho {
-            background-color: #d9f99d;
-        }
-
-        .servico-compartilhado {
-            border-left-width: 4px;
-            border-left-color: #84cc16;
-        }
-
-        .servico-cabecalho {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            padding: 0.75rem 1rem;
-            background-color: #e9ecef;
-            border-bottom-width: 1px;
-            border-color: #ced4da;
-            border-top-left-radius: 0.5rem;
-            border-top-right-radius: 0.5rem;
-        }
-
-        .servico-cabecalho-info {
-            flex-grow: 1;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            margin-right: 0.5rem;
-        }
-
-        .servico-cabecalho-info .frota-destaque {
-            font-weight: bold;
-            color: #0056b3;
-        }
-
-        .servico-cabecalho-info .atividade-info {
-            color: #495057;
-            font-size: 0.9em;
-            margin-left: 0.25rem;
-        }
-
-        .servico-cabecalho-toggler {
-            font-size: 1.1em;
-            color: #495057;
-        }
-
-        .servico-detalhes {
-            padding: 1rem;
-            border-width: 1px;
-            border-top-width: 0;
-            border-color: #ced4da;
-            border-bottom-left-radius: 0.5rem;
-            border-bottom-right-radius: 0.5rem;
-        }
+        /* Barra de rolagem personalizada (fina) */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
+
+
 </head>
 
 <body class="bg-gray-50 text-gray-800">
 
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
+       
         <button id="hamburger-btn"
             class="text-2xl p-2 rounded-full hover:bg-blue-700 transition-colors">&#9776;</button>
-        <div class="flex items-center gap-x-3">
-            <img src="logo.png" alt="Logo MeuTurno" class="h-8" onerror="this.style.display='none'">
-            <h1 id="header-titulo" class="text-xl font-bold">Turno</h1>
-        </div>
+        <div class="flex:wrap text-center text-base gap-x-2">
+           <!-- <img src="logo.png" alt="Logo MeuTurno" class="h-8" onerror="this.style.display='none'">
+           -->
+            <h1 id="header-titulo" class="shadow-lg bg-blue rounded-lg text-xl p-1 font-bold">
+                MeuTurno
+            </h1>
+                  <!--   <p class="text-sm animate-pulse">Deus é fiel!
+                    </p>
+                 -->
+        </div> 
         <div class="w-10"></div>
     </header>
-    <nav id="menu-lateral"
-        class="fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-sm">
-        <div class="p-4 border-b">
-            <h2 class="text-2xl font-bold text-blue-800">MeuTurno</h2>
+
+    <nav id="menu-lateral" class="fixed top-0 left-0 h-full bg-white shadow-2xl z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-xs flex flex-col">
+    
+    <div class="p-6 border-b border-gray-100 bg-gray-50">
+        <div class="flex items-center gap-3 mb-1">
+            <img src="logo.png" alt="Logo" class="h-8 w-8" onerror="this.style.display='none'">
+            <h2 class="text-xl font-extrabold text-blue-800 tracking-tight">MeuTurno</h2>
         </div>
-        <div class="flex flex-col">
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="turno">Turno</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="servicos">Serviços</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="frotas">Frotas</a>
-            
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="relatorio">Relatório</a>
-            
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="historico">Histórico</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-   data-secao="apontamento">Apontamento Diário</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="catalogo">Catálogo de Peças</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="estatisticas">Estatísticas</a>
-            <a href="#" class="p-4 border-b text-gray-700 hover:bg-gray-100 transition-colors"
-                data-secao="config">Configurar</a>
-        </div>
-    </nav>
+        <p class="text-xs text-gray-500 font-medium ml-1">Gestão Inteligente de Campo</p>
+    </div>
+
+    <div class="flex-1 overflow-y-auto py-4 space-y-1">
+        
+        <div class="px-4 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Operacional</div>
+        
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="turno">
+            <span class="text-lg">📅</span> Turno Atual
+        </a>
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="servicos">
+                  <span class="text-lg">🔧</span> Serviços
+        </a>
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="apontamento">
+            <span class="text-lg">⏱️</span> Apontamento Diário
+        </a>
+        
+
+        <div class="px-4 mt-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Gestão</div>
+
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="historico">
+            <span class="text-lg">🗄️</span> Histórico de O.S.
+        </a>
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="frotas">
+            <span class="text-lg">🚜</span> Frotas Ativas
+        </a>
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="catalogo">
+            <span class="text-lg">📦</span> Catálogo de Peças
+        </a>
+        
+        <div class="px-4 mt-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Relatórios</div>
+
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="relatorio">
+            <span class="text-lg">📄</span> Relatório Final
+        </a>
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="estatisticas">
+            <span class="text-lg">📊</span> Estatísticas
+        </a>
+
+        <div class="my-4 border-t border-gray-100"></div>
+
+        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="config">
+            <span class="text-lg">⚙️</span> Configurações
+        </a>
+    </div>
+
+    <div class="p-4 border-t border-gray-200 bg-gray-50 text-center">
+        <p class="text-xs text-gray-400">Versão 2.0 (2025, RojaDev's CreatedBy ©)</p>
+    </div>
+</nav>
+
 
     <div id="menu-overlay"
         class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-20 opacity-0 pointer-events-none transition-opacity duration-300 ease-in-out">
@@ -208,83 +187,103 @@
     <div class="space-y-6">
 
         <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
-            <h4 class="text-lg font-bold text-blue-800 mb-4 border-b border-gray-100 pb-2 flex items-center gap-2">
-                <span>📅</span> Dados do Turno
-            </h4>
+            <div class="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h2 class="text-lg font-bold text-gray-800">Dados do Turno</h2>
+            </div>
             
-            <div>
-                <label for="dataTurno" class="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
-                <input id="dataTurno" type="date" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
-            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="dataTurno" class="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
+                    <input id="dataTurno" type="date" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+                </div>
 
-            <div class="mt-4">
-                <label for="fazenda" class="block text-xs font-bold text-gray-500 uppercase mb-1">Fazenda</label>
-                <div class="flex gap-2">
-                    <select id="fazenda" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
-                        <option value="">Carregando...</option>
+                <div>
+                    <label for="fazenda" class="block text-xs font-bold text-gray-500 uppercase mb-1">Fazenda</label>
+                    <div class="flex gap-2">
+                        <select id="fazenda" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno()" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                        <button onclick="adicionarNovaFazenda()" class="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-4 rounded-lg font-bold text-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center" title="Adicionar">
+                            <span>+</span>
+                        </button>
+                        <button onclick="removerFazendaSelecionada()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 rounded-lg font-bold shadow-sm transition-colors flex items-center justify-center" title="Apagar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="frente" class="block text-xs font-bold text-gray-500 uppercase mb-1">Frente</label>
+                    <div class="flex gap-2">
+                        <select id="frente" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                        <button onclick="adicionarNovaFrente()" class="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-4 rounded-lg font-bold text-xl shadow-sm transition-transform active:scale-95 flex items-center justify-center" title="Adicionar">
+                            <span>+</span>
+                        </button>
+                        <button onclick="removerFrenteSelecionada()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 rounded-lg font-bold shadow-sm transition-colors flex items-center justify-center" title="Apagar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="turnoLetra" class="block text-xs font-bold text-gray-500 uppercase mb-1">Turno</label>
+                    <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
+                        <option value="">Selecione...</option>
+                        <option value="A">TURNO A</option>
+                        <option value="B">TURNO B</option>
+                        <option value="C">TURNO C</option>
                     </select>
-                    <button onclick="adicionarNovaFazenda()" class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg font-bold text-xl shadow-md transition-transform active:scale-95" title="Adicionar Fazenda">+</button>
-                    <button onclick="removerFazendaSelecionada()" class="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded-lg font-bold shadow-sm transition-colors" title="Apagar Selecionada">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
                 </div>
             </div>
-
-            <div class="mt-4">
-                <label for="frente" class="block text-xs font-bold text-gray-500 uppercase mb-1">Frente</label>
-                <div class="flex gap-2">
-                    <select id="frente" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
-                        <option value="">Carregando...</option>
-                    </select>
-                    <button onclick="adicionarNovaFrente()" class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-lg font-bold text-xl shadow-md transition-transform active:scale-95" title="Adicionar Frente">+</button>
-                    <button onclick="removerFrenteSelecionada()" class="bg-red-100 hover:bg-red-200 text-red-600 px-4 rounded-lg font-bold shadow-sm transition-colors" title="Apagar Selecionada">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </div>
-            </div>
-
-                       <div class="mt-4">
-                <label for="turnoLetra" class="block text-xs font-bold text-gray-500 uppercase mb-1">Turno</label>
-                <select id="turnoLetra" class="block w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" onchange="salvarDadosParciaisTurno();iniciarSincronizacaoHistorico()" required>
-                    <option value="">Selecione...</option>
-                    <option value="A">TURNO A</option>
-                    <option value="B">TURNO B</option>
-                    <option value="C">TURNO C</option>
-                </select>
-            </div>
-
         </div>
 
         <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
-                <h4 class="text-lg font-bold text-blue-800 flex items-center gap-2">
-                    <span>👷</span> Equipe
-                </h4>
-                <button onclick="abrirPopupSelecaoEquipe()" class="bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs py-2 px-3 rounded-lg font-bold shadow-sm border border-blue-200 flex items-center gap-1 transition-colors">
-                    <span>⚙️</span> Gerir
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Equipe</h2>
+                </div>
+                <button onclick="abrirPopupSelecaoEquipe()" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2 px-4 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                    <span>⚙️</span> Gerenciar
                 </button>
             </div>
             
-            <div id="boxEquipe" class="space-y-3">
-                </div>
+            <div id="boxEquipe" class="space-y-3"></div>
         </div>
 
         <div class="bg-white p-5 border border-gray-200 rounded-xl shadow-sm">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
-                <h4 class="text-lg font-bold text-blue-800 flex items-center gap-2">
-                    <span>🚜</span> Frotas
-                </h4>
-                <button onclick="abrirPopupSelecaoFrota()" class="bg-green-50 text-green-700 hover:bg-green-100 text-xs py-2 px-3 rounded-lg font-bold shadow-sm border border-green-200 flex items-center gap-1 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                        </svg>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-800">Frotas</h2>
+                </div>
+                <button onclick="abrirPopupSelecaoFrota()" class="bg-green-600 text-white hover:bg-green-700 text-xs py-2 px-4 rounded-lg font-bold shadow-md shadow-green-100 flex items-center gap-1 transition-all active:scale-95">
                     <span>+</span> Adicionar
                 </button>
             </div>
 
-            <div id="listaFrotas" class="space-y-3">
-                </div>
+            <div id="listaFrotas" class="space-y-3"></div>
         </div>
 
     </div>
 </section>
+
 
         <section id="servicos" class="hidden"></section>
         <section id="frotas" class="hidden"></section>
@@ -294,18 +293,20 @@
         <section id="historico" class="hidden"></section>
         <section id="config" class="hidden"></section>
         
-        <section id="apontamento" class="hidden">
-    <div class="bg-white p-4 rounded-lg shadow space-y-6">
-        <h2 class="text-xl font-bold text-blue-800 border-b pb-2">Apontamento Diário (Bracell)</h2>
-
-        <div class="space-y-4">
-    
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-        <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-            <span class="text-lg">📋</span>
-            <h3 class="font-bold text-gray-800 text-sm uppercase tracking-wide">Dados do Formulário</h3>
+      <section id="apontamento" class="hidden">
+    <div class="space-y-6">
+        
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Apontamento Diário</h2>
+                <p class="text-xs text-gray-500 font-medium">Preenchimento das atividades de campo</p>
+            </div>
         </div>
-
         <div class="space-y-3">
             <div>
                 <label class="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
@@ -340,28 +341,6 @@
         </div>
     </div>
 
- <!--   <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="text-xs font-bold text-yellow-800 uppercase flex items-center gap-1">
-                <span>📏</span> Calibração Fina
-            </h3>
-            <span class="text-[10px] text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">Ajuste de Impressão</span>
-        </div>
-        
-        <div class="flex space-x-3">
-            <div class="flex-1">
-                <label class="block text-[10px] font-bold text-yellow-700 mb-1">Horizontal (X)</label>
-                <input type="number" id="ajusteXGlobal" value="0" class="w-full p-2 border border-yellow-300 rounded-lg text-sm bg-white text-center font-bold text-gray-700 placeholder-gray-300" placeholder="0">
-            </div>
-            <div class="flex-1">
-                <label class="block text-[10px] font-bold text-yellow-700 mb-1">Vertical (Y)</label>
-                <input type="number" id="ajusteYGlobal" value="0" class="w-full p-2 border border-yellow-300 rounded-lg text-sm bg-white text-center font-bold text-gray-700 placeholder-gray-300" placeholder="0">
-            </div>
-        </div>
-    </div>
-
-</div> -->
-
             <div class="mt-6">
     <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
@@ -376,21 +355,21 @@
           <div class="grid grid-cols-3 gap-2 mb-3">
         
         <button onclick="adicionarLinhaManual()" 
-            class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all group shadow-sm h-12">
+            class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-yellow-400 hover:bg-yellow-50 transition-all group shadow-sm h-12">
             <span class="text-base group-hover:scale-110 transition-transform">☕</span>
-            <span class="text-[8px] font-bold text-gray-700 group-hover:text-orange-600 uppercase leading-tight text-center">Adicionar<br>Manual</span>
+            <span class="text-sm font-bold text-gray-700 group-hover:text-yellow-600 uppercase leading-tight text-center">Adicionar<br>Manual</span>
         </button>
 
         <button onclick="abrirPopupAddPreventiva()" 
             class="flex items-center justify-center gap-1 py-2 px-1 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all group shadow-sm h-12">
             <span class="text-base group-hover:scale-110 transition-transform">📋</span>
-            <span class="text-[10px] font-bold text-purple-700 uppercase leading-tight text-center">Adicionar<br>Preventiva</span>
+            <span class="text-sm font-bold text-purple-700 uppercase leading-tight text-center">Adicionar<br>Preventiva</span>
         </button>
 
         <button onclick="abrirPopupImportarServico()" 
             class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm h-12">
             <span class="text-base group-hover:scale-110 transition-transform">🔧</span>
-            <span class="text-[8px] font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
+            <span class="text-sm font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
         </button>
 
     </div>
@@ -477,20 +456,55 @@
         <div class="flex justify-end space-x-2" id="popupBotoes"></div>
     </div>
 
-    <div id="update-popup"
-        class="hidden fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white py-3 px-6 rounded-lg shadow-lg z-[10001] font-semibold">
-        Nova versão disponível. <button onclick="window.location.reload()"
-            class="ml-2 bg-white text-blue-600 py-1 px-3 rounded-md font-bold">Atualizar</button>
-    </div>
-
-    <template id="servico-template">
-        <article class="bg-white rounded-lg shadow mb-4">
-            <div class="servico-cabecalho">
-                <div class="servico-cabecalho-info"></div><span class="servico-cabecalho-toggler"></span>
+<div id="modalUpdate" class="fixed inset-0 z-[10001] hidden">
+    
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500 opacity-0" id="modalUpdateBackdrop"></div>
+    
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden scale-90 opacity-0 transition-all duration-300 delay-100" id="modalUpdateWindow">
+        
+        <div class="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full bg-white/10 transform -skew-y-12 scale-150 origin-top-left"></div>
+            
+            <div class="relative z-10">
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md shadow-inner border border-white/20">
+                    <span class="text-3xl">🚀</span>
+                </div>
+                <h3 class="text-xl font-bold text-white tracking-tight">Nova Versão Disponível!</h3>
+                <p class="text-blue-100 text-xs mt-1 font-medium">Melhorias e correções prontas para você.</p>
             </div>
-            <div class="servico-detalhes" style="display:none;"></div>
-        </article>
-    </template>
+        </div>
+
+        <div class="p-6 bg-white">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">O que mudou:</p>
+            
+            <ul id="listaNovidades" class="text-sm text-gray-600 space-y-2.5 mb-6 pl-1">
+                </ul>
+
+            <div class="space-y-3 pt-2">
+                <button id="btnUpdateConfirm" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                    <span class="group-hover:animate-pulse">✨</span> 
+                    <span>Atualizar Agora</span>
+                </button>
+                
+                <button onclick="fecharModalUpdate()" class="w-full py-3 text-gray-400 hover:text-gray-600 text-xs font-bold transition-colors">
+                    Agora não, atualizar depois
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<template id="servico-template">
+    <article class="bg-white rounded-xl shadow-sm mb-4 border border-gray-200 transition-all hover:shadow-md">
+        <div class="servico-cabecalho flex justify-between items-center cursor-pointer p-4 bg-gray-50 border-b border-gray-100 rounded-t-xl hover:bg-gray-100 transition-colors">
+            <div class="servico-cabecalho-info flex-1 text-sm text-gray-700 font-medium pr-2 overflow-hidden text-ellipsis"></div>
+            <span class="servico-cabecalho-toggler text-gray-400 font-bold text-lg">▼</span>
+        </div>
+        <div class="servico-detalhes p-4 bg-white rounded-b-xl" style="display:none;"></div>
+    </article>
+</template>
+
 
     <script>
     // ============================================================
@@ -800,7 +814,134 @@ async function limparHistoricoAntigoLocal() {
 }
 
 
-        function registrarServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js').then(reg => { reg.onupdatefound = () => { const newWorker = reg.installing; newWorker.onstatechange = () => { if (newWorker.state === 'installed' && navigator.serviceWorker.controller) { document.getElementById('update-popup')?.classList.remove('hidden'); } }; }; }).catch(err => console.error('Erro no SW:', err)); } }
+// --- CONFIGURAÇÃO DAS NOVIDADES ---
+// EDITE AQUI SEMPRE QUE SUBIR UMA VERSÃO NOVA PARA O GITHUB
+const NOVIDADES_VERSAO = [
+    "✅ Novo visual na Linha do Tempo",
+    "✅ Correção no salvamento Offline",
+    "✅ Histórico agora mostra status colorido",
+    "⚡ Melhoria de performance"
+];
+
+let newWorker = null; // Variável para guardar o SW esperando
+
+function registrarServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+            
+            // 1. Se já tem um SW esperando (atualização baixada em background)
+            if (reg.waiting) {
+                newWorker = reg.waiting;
+                abrirModalUpdate();
+                return;
+            }
+
+            // 2. Se encontrar uma atualização nova
+            reg.onupdatefound = () => {
+                const worker = reg.installing;
+                worker.onstatechange = () => {
+                    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                        newWorker = worker;
+                        abrirModalUpdate();
+                    }
+                };
+            };
+        }).catch(err => console.error('Erro no SW:', err));
+
+        // Ouve o evento de recarregar a página quando o novo SW assumir
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                window.location.reload();
+                refreshing = true;
+            }
+        });
+    }
+}
+
+// Adicione uma propriedade 'critico'
+const UPDATE_CONFIG = {
+    critico: false, // MUDE PARA TRUE SE FOR OBRIGATÓRIO
+    novidades: [
+        "✅ Novo visual na Linha do Tempo",
+        "⚡ Melhoria de performance"
+    ]
+};
+// --- FUNÇÕES VISUAIS DO NOVO MODAL ---
+
+function abrirModalUpdate() {
+    const modal = document.getElementById('modalUpdate');
+    const backdrop = document.getElementById('modalUpdateBackdrop');
+    const windowEl = document.getElementById('modalUpdateWindow');
+    const lista = document.getElementById('listaNovidades');
+    const btn = document.getElementById('btnUpdateConfirm');
+
+    if (!modal) return;
+
+
+    // 1. Preenche a lista de novidades
+    lista.innerHTML = NOVIDADES_VERSAO.map(item => 
+        `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
+    ).join('');
+
+   // 2. Lógica Crítica
+   const btnCancelar = document.querySelector('button[onclick="fecharModalUpdate()"]');
+   
+   if (UPDATE_CONFIG.critico) {
+       // Esconde o botão de cancelar e o fundo não fecha
+       
+       btnCancelar.style.display = 'none';
+       backdrop.onclick = null; // Impede clicar fora para fechar
+       // Muda o texto para ser mais urgente
+       document.querySelector('#modalUpdateWindow h3').innerText = "Atualização Obrigatória";
+       document.querySelector('#modalUpdateWindow p').innerText = "Esta versão contém correções de segurança críticas.";
+   } else {
+       btnCancelar.style.display = 'block';
+   }
+
+
+    // 2. Define a ação do botão
+    btn.onclick = () => {
+        if (newWorker) {
+            // Manda o novo Service Worker assumir o controle
+            newWorker.postMessage({ action: 'skipWaiting' });
+            btn.innerHTML = "Atualizando...";
+            btn.disabled = true;
+        } else {
+            window.location.reload();
+        }
+    };
+
+    // 3. Mostra com animação
+    modal.classList.remove('hidden');
+    // Pequeno delay para permitir a transição CSS
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        windowEl.classList.remove('opacity-0', 'scale-90');
+        windowEl.classList.add('scale-100');
+    }, 10);
+}
+
+function fecharModalUpdate() {
+    const modal = document.getElementById('modalUpdate');
+    const backdrop = document.getElementById('modalUpdateBackdrop');
+    const windowEl = document.getElementById('modalUpdateWindow');
+
+    if (!modal) return;
+
+    // Animação de saída
+    backdrop.classList.add('opacity-0');
+    windowEl.classList.remove('scale-100');
+    windowEl.classList.add('opacity-0', 'scale-90');
+   
+    document.getElementById('btnUpdateBadge')?.classList.remove('hidden');
+
+    
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300); // Espera a transição acabar
+}
 
         // =================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
@@ -989,7 +1130,9 @@ function initDB() {
             localStorage.setItem('secaoAtiva', secaoId);
 
             // Atualiza o título do cabeçalho
-            document.getElementById('header-titulo').textContent = secaoId === 'catalogo' ? 'Catálogo de Peças' : secaoId.charAt(0).toUpperCase() + secaoId.slice(1);
+            
+            //document.getElementById('header-titulo').textContent = secaoId === 'catalogo' ? 'Catálogo de Peças' : secaoId.charAt(0).toUpperCase() + secaoId.slice(1);
+            
 
             // Pega a referência de todos os botões flutuantes
             const fabCriarServico = document.getElementById('fabCriarServico');
@@ -1012,10 +1155,62 @@ function initDB() {
             } else if (secaoId === 'frotas') {
                 if (fabAddFrotaCatalogo) fabAddFrotaCatalogo.style.display = 'flex';
             }
+            // ... código anterior da função abrir ...
+
+    // --- ATUALIZAÇÃO VISUAL DO MENU ---
+    document.querySelectorAll('#menu-lateral a').forEach(link => {
+        // Remove classes de ativo de todos
+        link.classList.remove('bg-blue-50', 'text-blue-700', 'border-l-4', 'border-blue-600');
+        link.classList.add('text-gray-600', 'hover:bg-gray-50');
+
+        // Adiciona destaque no ativo
+        if (link.getAttribute('data-secao') === secaoId) {
+            link.classList.remove('text-gray-600', 'hover:bg-gray-50');
+            link.classList.add('bg-blue-50', 'text-blue-700', 'border-l-4', 'border-blue-600');
+        }
+    });
+
+
         }
         function inicializarMenuHamburguer() { const btn = document.getElementById('hamburger-btn'); const overlay = document.getElementById('menu-overlay'); const links = document.querySelectorAll('#menu-lateral a'); const fecharMenu = () => document.body.classList.remove('menu-open'); btn.addEventListener('click', e => { e.stopPropagation(); document.body.classList.toggle('menu-open'); }); overlay.addEventListener('click', fecharMenu); links.forEach(link => link.addEventListener('click', e => { e.preventDefault(); abrir(link.getAttribute('data-secao')); fecharMenu(); })); }
         let toastTimer; function showToast(msg, type = 'info', duration = 2000) { const t = document.getElementById("toast"); if (!t) return; clearTimeout(toastTimer); t.textContent = msg; t.className = ''; t.classList.add(type); requestAnimationFrame(() => { t.classList.add('show'); }); toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration); }
-        function abrirPopup(titulo, mensagem, botoes = []) { document.getElementById('popupTitulo').innerHTML = titulo; document.getElementById('popupMensagem').innerHTML = mensagem; const divBotoes = document.getElementById('popupBotoes'); divBotoes.innerHTML = ''; if (botoes.length === 0) botoes.push({ texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }); botoes.forEach(b => { const btn = document.createElement('button'); btn.className = `py-2 px-4 rounded-md font-semibold transition-colors duration-150 ${b.classe}`; btn.innerHTML = b.texto; btn.onclick = () => { fecharPopup(); if (b.acao) b.acao(); }; divBotoes.appendChild(btn); }); document.getElementById('popupGenerico').style.display = 'block'; document.getElementById('overlayGenerico').style.display = 'block'; }
+        function abrirPopup(titulo, mensagem, botoes = []) { 
+    document.getElementById('popupTitulo').innerHTML = titulo; 
+    document.getElementById('popupMensagem').innerHTML = mensagem; 
+    const divBotoes = document.getElementById('popupBotoes'); 
+    divBotoes.innerHTML = ''; 
+    
+    if (botoes.length === 0) {
+        botoes.push({ texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }); 
+    }
+    
+    botoes.forEach(b => { 
+        const btn = document.createElement('button'); 
+        const classesBase = "py-2.5 px-5 rounded-lg text-sm font-bold transition-all active:scale-95 shadow-sm";
+        btn.className = `${classesBase} ${b.classe}`; 
+        btn.innerHTML = b.texto; 
+        
+        // --- CORREÇÃO DA LÓGICA DE FECHAMENTO ---
+        btn.onclick = () => { 
+            // 1. Executa a ação se existir
+            const resultado = b.acao ? b.acao() : undefined;
+            
+            // 2. LÓGICA ROBUSTA:
+            // Só mantém aberto se a função retornar EXPLICITAMENTE 'false'.
+            // Qualquer outra coisa (true, undefined, Promise do async) FECHA o popup.
+            if (resultado !== false) {
+                fecharPopup();
+            }
+        }; 
+        
+        divBotoes.appendChild(btn); 
+    }); 
+    
+    document.getElementById('popupGenerico').style.display = 'block'; 
+    document.getElementById('overlayGenerico').style.display = 'block'; 
+}
+
+
         function fecharPopup() { document.getElementById('popupGenerico').style.display = 'none'; document.getElementById('overlayGenerico').style.display = 'none'; }
         function abrirPopupConfirmar(titulo, mensagem, callback, acaoConfirmar = 'Confirmar') { abrirPopup(titulo, mensagem, [{ texto: acaoConfirmar, classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => callback(true) }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(false) }]); }
         function abrirPopupInput(titulo, label, placeholder, valorInicial, callback, tipoInput = 'text') { const conteudoPopup = `<label for="popup-input-field" class="block text-sm font-medium text-gray-700 mb-1">${label}</label><input type="${tipoInput}" id="popup-input-field" class="w-full p-2 border border-gray-300 rounded-md" placeholder="${placeholder}" value="${valorInicial}">`; const botoes = [{ texto: 'Confirmar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => callback(document.getElementById('popup-input-field').value) }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => callback(null) }]; abrirPopup(titulo, `<div id="popup-content-wrapper">${conteudoPopup}</div>`, botoes); setTimeout(() => document.getElementById('popup-input-field')?.focus(), 50); }
@@ -1168,7 +1363,7 @@ function renderizarEquipe() {
         }
 
         return `
-        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-4 ${corBorda}">
+        <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-8 ${corBorda}">
             
             <div class="flex flex-col min-w-0 pr-2">
                 <span class="text-base font-bold text-gray-800 truncate">
@@ -1292,26 +1487,86 @@ function atualizarSelectGenerico(elementId, dados) {
 
 // 3. Funções de CRUD (Adicionar / Remover)
 
-function adicionarNovaFazenda() {
+function adicionarNovaFazenda(callbackSucesso = null) {
     abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', async (nome) => {
         if (!nome) return;
         const nomeUpper = nome.trim().toUpperCase();
         
+        // 1. Verificação inicial (antes de ir pro servidor)
         if (listaFazendas.some(f => f.nome === nomeUpper)) {
             showToast("Esta fazenda já existe.", "error");
             return;
         }
 
         try {
-            await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
+            // 2. Salva na Nuvem
+            const docRef = await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
+            
+            // 3. CORREÇÃO AQUI: Verifica se o Sync automático já não adicionou o item
+            // enquanto esperávamos o 'await' do Firestore.
+            const jaExisteNaMemoria = listaFazendas.some(f => f.nome === nomeUpper);
+            
+            if (!jaExisteNaMemoria) {
+                listaFazendas.push({ nome: nomeUpper, docId: docRef.id });
+                listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+            }
+            
             showToast("Fazenda adicionada!", "success");
-            // Força seleção imediata
-            setTimeout(() => {
-                const el = document.getElementById('fazenda');
-                el.value = nomeUpper;
+            
+            // Atualiza select da tela principal se existir
+            const elMain = document.getElementById('fazenda');
+            if(elMain) {
+                atualizarSelectGenerico('fazenda', listaFazendas);
+                elMain.value = nomeUpper;
+            }
+
+            // Retorno para o fluxo do Popup de Contexto
+            if (callbackSucesso) {
+                callbackSucesso(nomeUpper);
+            } else {
                 salvarDadosParciaisTurno();
-            }, 500);
+            }
+
         } catch (e) { showToast("Erro ao salvar: " + e.message, "error"); }
+    });
+}
+
+function adicionarNovaFrente(callbackSucesso = null) {
+    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', async (nome) => {
+        if (!nome) return;
+        const nomeUpper = nome.trim().toUpperCase();
+        
+        if (listaFrentes.some(f => f.nome === nomeUpper)) {
+            showToast("Esta frente já existe.", "error");
+            return;
+        }
+
+        try {
+            const docRef = await firestore.collection('lista_frentes').add({ nome: nomeUpper });
+            
+            // 3. CORREÇÃO AQUI TAMBÉM: Trava de duplicidade pós-save
+            const jaExisteNaMemoria = listaFrentes.some(f => f.nome === nomeUpper);
+
+            if (!jaExisteNaMemoria) {
+                listaFrentes.push({ nome: nomeUpper, docId: docRef.id });
+                listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+            }
+            
+            showToast("Frente adicionada!", "success");
+            
+            const elMain = document.getElementById('frente');
+            if(elMain) {
+                atualizarSelectGenerico('frente', listaFrentes);
+                elMain.value = nomeUpper;
+            }
+
+            if (callbackSucesso) {
+                callbackSucesso(nomeUpper);
+            } else {
+                salvarDadosParciaisTurno();
+            }
+
+        } catch (e) { showToast("Erro ao salvar.", "error"); }
     });
 }
 
@@ -1623,7 +1878,33 @@ function confirmarSelecaoEquipe() {
         // ---------------------------------
         // MÓDULO: CATÁLOGO DE FROTAS (ONLINE)
         // ---------------------------------
-        function renderizarSecaoFrotas(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow"><h2 class="text-xl font-bold text-blue-800 mb-4">Catálogo de Frotas</h2><input type="text" id="buscaFrota" oninput="renderizarCatalogoFrotas()" placeholder="🔎 Buscar por código..." class="w-full p-3 border border-gray-300 rounded-lg mb-4"><div id="listaCatalogoFrotas" class="space-y-2"></div></div>`; renderizarCatalogoFrotas(); }
+        function renderizarSecaoFrotas(container) { 
+    container.innerHTML = `
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
+            <div class="w-10 h-10 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                </svg>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800">Catálogo de Frotas</h2>
+        </div>
+
+        <div class="relative">
+            <input type="text" id="buscaFrota" oninput="renderizarCatalogoFrotas()" 
+                placeholder="Buscar por código..." 
+                class="w-full pl-10 p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-yellow-500 outline-none bg-gray-50 text-sm">
+            <div class="absolute left-3 top-3.5 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+        </div>
+            
+        <div id="listaCatalogoFrotas" class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
+    </div>`; 
+    renderizarCatalogoFrotas(); 
+}
+
         // MODIFICADO: Aplica 'removerAcentos' na busca
         function renderizarCatalogoFrotas() {
             const listaDiv = document.getElementById('listaCatalogoFrotas');
@@ -1838,76 +2119,111 @@ function adicionarFrotasSelecionadasAoTurno() {
         // ---------------------------------
         function renderizarSecaoServicos(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow mb-4"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2">Filtrar Serviços</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="filtroServicoFrota" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Frota..." oninput="renderizarServicos()"><input type="text" id="filtroServicoDescricao" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Filtrar por Descrição..." oninput="renderizarServicos()"></div></div><div id="servicosLista" class="space-y-4"></div>`; renderizarServicos(); }
         function renderizarServicos() { const lista = document.getElementById("servicosLista"); if (!lista) return; const filtroFrota = document.getElementById('filtroServicoFrota')?.value.toLowerCase() || ""; const filtroDescricao = document.getElementById('filtroServicoDescricao')?.value.toLowerCase() || ""; const servicosFiltrados = servicos.filter(s => (!filtroFrota || s.frota.toLowerCase().includes(filtroFrota)) && (!filtroDescricao || s.descricao.toLowerCase().includes(filtroDescricao))); servicosFiltrados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); lista.innerHTML = ''; if (servicosFiltrados.length === 0) { lista.innerHTML = `<p class='text-center text-gray-500 p-4'>Nenhum serviço encontrado.</p>`; } else { servicosFiltrados.forEach(s => { const template = document.getElementById('servico-template').content.cloneNode(true); const article = template.querySelector('article'); article.id = `servico_${s.id}`; lista.appendChild(article); preencherDetalhesServico(s); }); } }
-        function preencherDetalhesServico(s) { 
-            const article = document.getElementById(`servico_${s.id}`); 
-            if (!article) return; 
-            
-            if (s.foiCompartilhado) { article.classList.add('servico-compartilhado'); } else { article.classList.remove('servico-compartilhado'); } 
-            
-            const osNaoGerada = !s.texto; 
-            if (osNaoGerada) { article.classList.add('servico-pendente-os'); } else { article.classList.remove('servico-pendente-os'); } 
-            
-            const cabecalhoInfo = article.querySelector('.servico-cabecalho-info'); 
-            const toggler = article.querySelector('.servico-cabecalho-toggler'); 
-            const detalhes = article.querySelector('.servico-detalhes'); 
-            const cabecalhoHTML = gerarTextoCabecalhoServico(s); 
-            
-            if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { cabecalhoInfo.innerHTML = cabecalhoHTML; } 
-            
-            toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;'; 
-            article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id); 
-            detalhes.style.display = s.isExpanded ? 'block' : 'none'; 
-            
-            if (!s.isExpanded) return; 
-            
-            // NOVO: Renderiza a lista de peças
-            let listaPecasHTML = '';
-            if (s.pecasUtilizadas && s.pecasUtilizadas.length > 0) {
-                listaPecasHTML = s.pecasUtilizadas.map((p, i) => `
-                    <div class="flex justify-between items-center p-2 bg-gray-100 rounded-md text-sm border-l-4 border-blue-500">
-                        <span class="truncate">
-                            <strong class="text-blue-700">${p.quantidade || '1'}x</strong> ${p.descricao}
-                            <span class="text-xs text-gray-500 ml-1">(SAP: ${p.codigoSap || 'N/D'})</span>
-                        </span>
-                        <button onclick="removerPecaUtilizada(${s.id}, ${i})" class="text-red-500 hover:text-red-700 font-bold text-lg leading-none" title="Remover Peça">&times;</button>
-                    </div>
-                `).join('');
-            } else {
-                listaPecasHTML = '<p class="text-sm text-gray-500 p-2 text-center border rounded-md">Nenhuma peça adicionada.</p>';
-            }
-
-
-            const subsistemasAtuais = subsistemas[s.sistema] || []; 
-            const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join(''); 
-            const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join(''); 
-            const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join(''); 
-            const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join(''); 
-            
-            detalhes.innerHTML = `<div class="space-y-4">
-                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Identificação da O.S</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium text-gray-700">Frota*</label><select data-id="${s.id}" data-field="frota" class="mt-1 w-full p-2 border rounded-md">${frotaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Atividade*</label><select data-id="${s.id}" data-field="atividade" class="mt-1 w-full p-2 border rounded-md">${atividadeOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Sistema*</label><select data-id="${s.id}" data-field="sistema" class="mt-1 w-full p-2 border rounded-md">${sistemaOptions}</select></div><div><label class="block text-sm font-medium text-gray-700">Subsistema*</label><select data-id="${s.id}" data-field="subsistema" class="mt-1 w-full p-2 border rounded-md">${subsistemaOptions}</select></div></div></div>
-                
-                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Peças Utilizadas</h5>
-                    <div id="lista-pecas-servico-${s.id}" class="space-y-2 mb-4">${listaPecasHTML}</div>
-                    <button onclick="abrirPopupSelecaoPecas(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-indigo-500 text-white hover:bg-indigo-600 text-sm">Adicionar Peça do Catálogo</button>
-                </div>
-                <div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-3">Operação</h5><div class="grid grid-cols-2 gap-x-4 gap-y-3"><div><label class="block text-sm font-medium">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="mt-1 w-full p-2 border rounded-md"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div><div><label class="block text-sm font-medium">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="mt-1 w-full p-2 border rounded-md"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div><div class="col-span-2"><label class="block text-sm font-medium">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="mt-1 w-full p-2 border rounded-md"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div><div><label class="block text-sm font-medium">Data inicial*</label><input type="date" data-id="${s.id}" id="data-${s.id}" data-field="data" value="${s.data}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora inicial*</label><input type="time" data-id="${s.id}" id="inicio-${s.id}" data-field="inicio" value="${s.inicio}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Data final*</label><input type="date" data-id="${s.id}" id="dataFinal-${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Hora final*</label><input type="time" data-id="${s.id}" id="fim-${s.id}" data-field="fim" value="${s.fim}" class="mt-1 w-full p-2 border rounded-md"></div></div></div><div><h5 class="text-md font-semibold text-gray-700 border-b pb-1 mb-2">Descrição*</h5><textarea data-id="${s.id}" data-field="descricao" class="w-full p-2 border rounded-md h-28" placeholder="Detalhe o problema e a solução...">${s.descricao}</textarea></div><div><div class="flex flex-col space-y-2"><button onclick="processarOS(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">${osNaoGerada ? "Gerar O.S." : "Regerar O.S."}</button>${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Excluir Serviço</button>` : ''}</div><div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4"><div class="p-3 bg-gray-50 border rounded-md whitespace-pre-line">${interpretarMarkdown(s.texto || "")}</div><div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"><button onclick="copiarTexto(${s.id}, this)" class="py-2 px-4 rounded-md font-semibold bg-gray-200 hover:bg-gray-300 text-sm">Copiar</button><button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-green-500 text-white hover:bg-green-600 text-sm">Compartilhar</button><button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-blue-500 text-white hover:bg-blue-600 text-sm">Adicionar Outro</button><button onclick="removerServico(${s.id})" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700 text-sm">Excluir</button></div></div></div></div>`; 
-            
-            // NOVO: Adiciona a validação de tempo aqui
-            const inputFim = detalhes.querySelector(`#fim-${s.id}`);
-            const inputDataFinal = detalhes.querySelector(`#dataFinal-${s.id}`);
-            const servicoValidado = servicos.find(item => item.id === s.id);
-            if(inputFim && inputDataFinal) {
-                if (!validarTempoServico(servicoValidado)) {
-                    inputFim.classList.add('campo-invalido'); 
-                    inputDataFinal.classList.add('campo-invalido');
-                } else {
-                    inputFim.classList.remove('campo-invalido');
-                    inputDataFinal.classList.remove('campo-invalido');
-                }
-            }
-            
-            detalhes.querySelectorAll('input, select, textarea').forEach(el => { el.addEventListener('change', handleServicoInputChange); el.addEventListener('input', handleServicoInputChange); }); 
+        
+        function preencherDetalhesServico(s) {
+    const article = document.getElementById(`servico_${s.id}`);
+    if (!article) return;
+    
+    // --- MUDANÇA AQUI: border-l-
+    article.className = "bg-white rounded-xl shadow-sm mb-4 border-t border-r border-b border-gray-200 transition-all hover:shadow-md border-l-4";
+    
+    const cabecalho = article.querySelector('.servico-cabecalho');
+    const osNaoGerada = !s.texto;
+    
+    cabecalho.classList.remove('bg-gray-50', 'bg-yellow-50', 'bg-green-50');
+    
+    if (s.foiCompartilhado) {
+        article.classList.add('border-green-500');
+        cabecalho.classList.add('bg-green-50');
+    } else if (osNaoGerada) {
+        // Lembre-se: Usamos yellow-400 para o visual laranja/âmbar
+        article.classList.add('border-yellow-400');
+        cabecalho.classList.add('bg-yellow-50');
+    } else {
+        article.classList.add('border-blue-500');
+        cabecalho.classList.add('bg-gray-50');
+    }
+    
+    // ... (O resto da função continua IGUAL, não precisa alterar nada abaixo) ...
+    
+    // Para facilitar, vou manter apenas o início atualizado acima.
+    // Você pode copiar o resto da função do seu código anterior ou,
+    // se preferir, posso colar a função inteira novamente.
+    
+    // --- CÓDIGO ABAIXO MANTIDO (Cópia da versão anterior) ---
+    const cabecalhoInfo = article.querySelector('.servico-cabecalho-info');
+    const toggler = article.querySelector('.servico-cabecalho-toggler');
+    const detalhes = article.querySelector('.servico-detalhes');
+    const cabecalhoHTML = gerarTextoCabecalhoServico(s);
+    
+    if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { cabecalhoInfo.innerHTML = cabecalhoHTML; }
+    
+    toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;';
+    article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id);
+    detalhes.style.display = s.isExpanded ? 'block' : 'none';
+    
+    if (!s.isExpanded) return;
+    
+    let listaPecasHTML = '';
+    if (s.pecasUtilizadas && s.pecasUtilizadas.length > 0) {
+        listaPecasHTML = s.pecasUtilizadas.map((p, i) => `
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-1">
+                <span class="truncate flex-1">
+                    <strong class="text-blue-700">${p.quantidade || '1'}x</strong> ${p.descricao}
+                    <span class="text-xs text-gray-500 ml-1 block sm:inline">SAP: ${p.codigoSap || 'N/D'}</span>
+                </span>
+                <button onclick="removerPecaUtilizada(${s.id}, ${i})" class="text-red-400 hover:text-red-600 p-1 ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        `).join('');
+    } else {
+        listaPecasHTML = '<p class="text-xs text-gray-400 italic p-2 text-center border border-dashed border-gray-200 rounded-lg">Nenhuma peça adicionada.</p>';
+    }
+    
+    const subsistemasAtuais = subsistemas[s.sistema] || [];
+    const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join('');
+    const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join('');
+    const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join('');
+    const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join('');
+    
+    const inputClass = "mt-1 w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow";
+    const labelClass = "block text-[10px] font-bold text-gray-500 uppercase mb-1";
+    
+    detalhes.innerHTML = `
+    <div class="space-y-5">
+        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
+                <span>📌</span> Identificação
+            </h5>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="col-span-1"><label class="${labelClass}">Frota*</label><select data-id="${s.id}" data-field="frota" class="${inputClass}">${frotaOptions}</select></div>
+                <div class="col-span-1"><label class="${labelClass}">Atividade*</label><select data-id="${s.id}" data-field="atividade" class="${inputClass}">${atividadeOptions}</select></div>
+                <div class="col-span-1"><label class="${labelClass}">Sistema*</label><select data-id="${s.id}" data-field="sistema" class="${inputClass}">${sistemaOptions}</select></div>
+                <div class="col-span-1"><label class="${labelClass}">Subsistema*</label><select data-id="${s.id}" data-field="subsistema" class="${inputClass}">${subsistemaOptions}</select></div>
+            </div>
+        </div>
+        <div><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⚙️</span> Peças Utilizadas</h5><div id="lista-pecas-servico-${s.id}" class="space-y-2 mb-3">${listaPecasHTML}</div><button onclick="abrirPopupSelecaoPecas(${s.id})" class="w-full py-2.5 px-4 rounded-lg font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 text-xs flex items-center justify-center gap-2 transition-colors"><span>+</span> Adicionar Peça do Catálogo</button></div>
+        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200"><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⏱️</span> Operação</h5><div class="grid grid-cols-2 gap-3"><div><label class="${labelClass}">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="${inputClass}"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div><div><label class="${labelClass}">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="${inputClass}"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div><div class="col-span-2"><label class="${labelClass}">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="${inputClass}"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div><div><label class="${labelClass}">Início (Data)</label><input type="date" data-id="${s.id}" id="data-${s.id}" data-field="data" value="${s.data}" class="${inputClass}"></div><div><label class="${labelClass}">Início (Hora)</label><input type="time" data-id="${s.id}" id="inicio-${s.id}" data-field="inicio" value="${s.inicio}" class="${inputClass}"></div><div><label class="${labelClass}">Fim (Data)</label><input type="date" data-id="${s.id}" id="dataFinal-${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="${inputClass}"></div><div><label class="${labelClass}">Fim (Hora)</label><input type="time" data-id="${s.id}" id="fim-${s.id}" data-field="fim" value="${s.fim}" class="${inputClass}"></div></div></div>
+        <div><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">Descrição Detalhada*</h5><textarea data-id="${s.id}" data-field="descricao" class="w-full p-3 border border-gray-300 rounded-lg h-28 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Descreva o problema e a solução...">${s.descricao}</textarea></div>
+        <div><div class="flex flex-col space-y-2"><button onclick="processarOS(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold text-white shadow-md transition-transform active:scale-95 ${osNaoGerada ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}">${osNaoGerada ? "✨ Gerar O.S." : "🔄 Regerar O.S."}</button>${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors">Excluir Rascunho</button>` : ''}</div><div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4 border-t border-dashed border-gray-300 pt-4"><div class="p-3 bg-gray-50 border border-gray-200 rounded-lg whitespace-pre-line text-sm text-gray-800 font-mono shadow-inner mb-3">${interpretarMarkdown(s.texto || "")}</div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button onclick="copiarTexto(${s.id}, this)" class="py-2 px-2 rounded-lg font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs shadow-sm">Copiar</button><button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-green-500 text-white hover:bg-green-600 text-xs shadow-sm">WhatsApp</button><button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-blue-500 text-white hover:bg-blue-600 text-xs shadow-sm">Duplicar</button><button onclick="removerServico(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs shadow-sm">Excluir</button></div></div></div>
+    </div>`;
+    
+    const inputFim = detalhes.querySelector(`#fim-${s.id}`);
+    const inputDataFinal = detalhes.querySelector(`#dataFinal-${s.id}`);
+    const servicoValidado = servicos.find(item => item.id === s.id);
+    if (inputFim && inputDataFinal) {
+        if (!validarTempoServico(servicoValidado)) {
+            inputFim.classList.add('campo-invalido');
+            inputDataFinal.classList.add('campo-invalido');
+        } else {
+            inputFim.classList.remove('campo-invalido');
+            inputDataFinal.classList.remove('campo-invalido');
         }
+    }
+    detalhes.querySelectorAll('input, select, textarea').forEach(el => { el.addEventListener('change', handleServicoInputChange);
+        el.addEventListener('input', handleServicoInputChange); });
+}
         
         // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
         function handleServicoInputChange(event) { 
@@ -2240,154 +2556,113 @@ function renderizarListaLinhas() {
 
     if (linhasApontamento.length === 0) {
         container.innerHTML = `
-            <div class="text-center p-6 text-gray-400 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <p>Nenhuma atividade adicionada.</p>
-                <p class="text-xs">Use os botões acima para começar.</p>
+            <div class="text-center p-6 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl">
+                <p class="text-sm text-gray-500 font-medium">Nenhuma atividade registrada.</p>
+                <p class="text-xs text-gray-400 mt-1">Toque nos botões acima para começar.</p>
             </div>`;
         return;
     }
 
     linhasApontamento.forEach((linha, index) => {
         const isServico = linha.tipo === 'servico';
+        const isSelecionado = (indiceOrigemTroca === index);
         
-        // LÓGICA VISUAL DA TROCA
-        const isSelecionadoParaTroca = (indiceOrigemTroca === index);
-        
-        // Se selecionado: Borda amarela e fundo amarelo claro
-        // Se normal (Serviço): Azul
-        // Se normal (Manual): Laranja
-        let borderClass = isServico ? 'border-blue-600' : 'border-orange-400';
+        // Cores
+        let borderClass = isServico ? 'border-l-[5px] border-blue-600' : 'border-l-[5px] border-yellow-400';
         let bgClass = 'bg-white';
-
-        if (isSelecionadoParaTroca) {
-            borderClass = 'border-yellow-400 ring-2 ring-yellow-200'; // Destaque
+        
+        if (isSelecionado) {
+            borderClass = 'border-l-[5px] border-yellow-400 ring-2 ring-yellow-200';
             bgClass = 'bg-yellow-50';
         }
 
-        // Ícone do botão de troca (Muda de cor se estiver ativo)
-        const iconTrocaColor = isSelecionadoParaTroca ? 'text-yellow-600 bg-yellow-200' : 'text-gray-400 hover:text-blue-600';
+        // Botões de Ação (Fixo à direita)
+        const acoesHtml = `
+            <div class="flex items-center gap-0.5 ml-1 pl-1 border-l border-gray-200 shrink-0">
+                <button onclick="trocarOrdem(${index})" class="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                </button>
+                <button onclick="removerLinhaApontamento(${index})" class="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        `;
+
+        // Input de Hora (Estilo unificado)
+        const inputTimeClass = "block w-[50px] h-8 text-xs font-bold text-center bg-gray-50 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none p-0";
 
         let html = '';
 
-        // --- BOTÃO DE TROCA (Comum aos dois tipos) ---
-        const btnTroca = `
-            <button onclick="trocarOrdem(${index})" class="p-1.5 rounded-full transition-colors ${iconTrocaColor} mr-1" title="Trocar Ordem">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-            </button>
-        `;
-
         if (isServico) {
-            // === CARD DE SERVIÇO ===
-            const ativTexto = linha.atividade || '';
-            const codAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[0] : ativTexto;
-            const descAtiv = ativTexto.includes(' - ') ? ativTexto.split(' - ')[1] : '';
-            const sist = linha.sistema || '?';
-            const subRaw = linha.subsistema || '?';
-            const sub = subRaw.includes(' - ') ? subRaw.split(' - ')[0] : subRaw;
-            const infoTecnica = `${codAtiv} - ${sist} - ${sub} (${descAtiv})`;
-
+            // === CARD SERVIÇO ===
+            // Formatação P### • # • #.#
+            const infoTecnica = `${linha.atividade.split(' - ')[0]} • ${linha.sistema} • ${(linha.subsistema||'?').split(' - ')[0]}`;
+            
             html = `
-            <div class="${bgClass} rounded-lg shadow-sm mb-3 border-l-4 ${borderClass} overflow-hidden transition-all duration-200">
-                
-                <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
-                    <div class="flex items-center gap-2">
-                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm">
-                            ${index + 1}
-                        </span>
-                        <span class="font-black text-gray-700 text-sm tracking-tight uppercase truncate max-w-[150px]">
-                            ${linha.frota || 'N/A'}
-                        </span>
-                    </div>
+            <div class="${bgClass} rounded-xl shadow-sm mb-3 border-l-[6px] ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
+                <div class="p-2 flex flex-col gap-2">
                     
-                    <div class="flex items-center">
-                        ${btnTroca}
-                        <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
-                            <span class="text-xl font-bold">&times;</span>
-                        </button>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
+                            <div class="min-w-0">
+                                <span class="block font-black text-sm text-gray-800 leading-none truncate">${linha.frota || 'N/A'}</span>
+                                <span class="block text-[9px] text-gray-400 font-mono mt-0.5 truncate">${infoTecnica}</span>
+                            </div>
+                        </div>
+                        ${acoesHtml}
                     </div>
-                </div>
 
-                <div class="px-3 py-2 border-b border-gray-50">
-                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Atividade</div>
-                    <div class="text-xs font-bold text-gray-800 leading-snug">
-                        ⚙️ ${infoTecnica}
-                    </div>
-                </div>
-
-                <div class="px-3 py-2 bg-blue-50 flex items-center justify-between gap-2">
-                    <div class="text-xs font-bold text-gray-700">
-                        📄 O.S: <span class="bg-white px-1 py-0.5 rounded border border-blue-100 text-blue-800">${linha.os || 'PEND'}</span>
-                    </div>
-                    
-                    <div class="flex items-center bg-white rounded border border-blue-200 px-1 shadow-sm h-8">
-                        <input type="time" value="${linha.inicio}" 
-                            onchange="atualizarLinha(${index}, 'inicio', this.value)" 
-                            class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
-                        <span class="text-blue-300 font-bold mx-0.5">-</span>
-                        <input type="time" value="${linha.fim}" 
-                            onchange="atualizarLinha(${index}, 'fim', this.value)" 
-                            class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                    <div class="flex items-center justify-between bg-gray-50 p-1.5 rounded border border-gray-100">
+                        <div class="flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-gray-200 shadow-sm">
+                            <span class="text-[9px] font-bold text-gray-400 uppercase">OS</span>
+                            <span class="text-sm font-bold text-blue-700">${linha.os || '---'}</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-1">
+                            <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
+                            <span class="text-gray-300 text-[10px]">➜</span>
+                            <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
+                        </div>
                     </div>
                 </div>
             </div>`;
 
         } else {
-            // === CARD MANUAL ===
-            const opsH = atividades.filter(a => a.startsWith('H')).map(a => {
-                const isSelected = linha.atividade === a ? 'selected' : '';
-                return `<option value="${a}" ${isSelected}>${a}</option>`;
-            }).join('');
+            // === CARD MANUAL (CORRIGIDO) ===
+            const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
+                `<option value="${a}" ${linha.atividade===a?'selected':''}>${a}</option>`
+            ).join('');
             
             html = `
-            <div class="${bgClass} rounded-lg shadow-sm mb-3 border-l-4 ${borderClass} overflow-hidden transition-all duration-200">
-                
-                <div class="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-100">
-                    <div class="flex items-center gap-2">
-                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-gray-500 text-white text-xs font-bold shadow-sm">
-                            ${index + 1}
-                        </span>
-                        <span class="font-black text-gray-700 text-xs uppercase tracking-tight">
-                            NÃO PRODUTIVA
-                        </span>
-                    </div>
-                     <div class="flex items-center">
-                        ${btnTroca}
-                        <button onclick="removerLinhaApontamento(${index})" class="text-gray-400 hover:text-red-600 p-1">
-                            <span class="text-xl font-bold">&times;</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-3 bg-orange-50/30 flex flex-col gap-2">
+            <div class="bg-white rounded-xl shadow-sm mb-3 border-l-[6px] ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
+                <div class="p-2 flex items-center gap-2">
                     
-                    <div>
+                    <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
+
+                    <div class="flex-grow min-w-0 relative">
                         <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
-                            class="w-full p-2 text-xs font-bold text-gray-800 bg-white border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 outline-none shadow-sm">
+                            class="w-full h-9 pl-2 pr-6 text-xs font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
                             ${opsH}
                         </select>
-                    </div>
-
-                    <div class="flex justify-end pt-1">
-                        <div class="flex items-center bg-white rounded border border-orange-200 px-1 shadow-sm h-8">
-                            <input type="time" value="${linha.inicio}" 
-                                onchange="atualizarLinha(${index}, 'inicio', this.value)" 
-                                class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
-                            <span class="text-orange-300 font-bold mx-0.5">-</span>
-                            <input type="time" value="${linha.fim}" 
-                                onchange="atualizarLinha(${index}, 'fim', this.value)" 
-                                class="bg-transparent text-xs font-bold text-gray-800 w-[45px] text-center p-0 border-none outline-none h-full">
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-yellow-400">
+                            <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                         </div>
                     </div>
-                </div>
 
+                    <div class="flex items-center gap-1 shrink-0">
+                        <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
+                        <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
+                        ${acoesHtml}
+                    </div>
+                </div>
             </div>`;
         }
         
         container.innerHTML += html;
     });
 }
+
 
 // ============================================================
 // MÓDULO: ADICIONAR PREVENTIVA (NOVO)
@@ -2523,7 +2798,6 @@ function atualizarSubsistemaPreventiva() {
 }
 
 function salvarPreventiva() {
-    // 1. Coleta e Limpa dados
     const os = document.getElementById('prevOS').value.trim();
     const frota = document.getElementById('prevFrota').value;
     const atividade = document.getElementById('prevAtividade').value;
@@ -2532,65 +2806,48 @@ function salvarPreventiva() {
     const inicio = document.getElementById('prevInicio').value;
     const fim = document.getElementById('prevFim').value;
 
-    // 2. NOVA VALIDAÇÃO (Destaca o campo com erro e impede o fechamento)
     let valido = true;
-    
-    // Lista de IDs e suas condições de validação
-    const camposParaValidar = {
-        'prevOS': os,
-        'prevFrota': frota,
-        'prevAtividade': atividade,
-        'prevSistema': sistema,
-        'prevSubsistema': subsistema,
-        'prevInicio': inicio,
-        'prevFim': fim,
-    };
 
-    // Aplica a classe de erro se o campo estiver vazio
-    Object.keys(camposParaValidar).forEach(id => {
+    // Validação Visual
+    const campos = ['prevOS', 'prevFrota', 'prevAtividade', 'prevSistema', 'prevSubsistema', 'prevInicio', 'prevFim'];
+    campos.forEach(id => {
         const el = document.getElementById(id);
-        const valor = camposParaValidar[id];
-        if (!valor || valor.length === 0) {
-            el.classList.add('campo-invalido');
+        if (!el.value) {
+            el.classList.add('campo-invalido', 'ring-2', 'ring-red-500');
             valido = false;
         } else {
-            el.classList.remove('campo-invalido');
+            el.classList.remove('campo-invalido', 'ring-2', 'ring-red-500');
         }
     });
 
-    if (!valido) {
-        showToast("Preencha todos os campos obrigatórios em destaque!", "error", 3000);
-        return; // IMPEDE O FECHAMENTO DO POPUP
-    }
-
-    if (inicio >= fim) {
-        document.getElementById('prevInicio').classList.add('campo-invalido');
+    if (valido && inicio >= fim) {
+        showToast("Hora final deve ser maior que a inicial.", "error");
         document.getElementById('prevFim').classList.add('campo-invalido');
-        showToast("A hora final deve ser maior que a inicial.", "error", 3000);
-        return; // IMPEDE O FECHAMENTO DO POPUP
+        return false; // 🛑 ERRO: Retorna false para manter popup aberto
     }
 
-    // 3. Adiciona à Linha do Tempo (Executa apenas se tudo for válido)
+    if (!valido) {
+        showToast("Preencha os campos obrigatórios.", "error");
+        return false; // 🛑 ERRO
+    }
+
+    // Sucesso
     linhasApontamento.push({
         id: Date.now(),
-        tipo: 'servico', 
-        atividade: atividade,
-        inicio: inicio,
-        fim: fim,
-        frota: frota,
-        os: os,
-        sistema: sistema,
-        subsistema: subsistema
+        tipo: 'servico',
+        atividade, inicio, fim, frota, os, sistema, subsistema
     });
 
     renderizarListaLinhas();
     rolarParaUltimoItemApontamento();
-    fecharPopup(); // Fecha SÓ AGORA
-    
-    marcarComoDesatualizado(); 
+    marcarComoDesatualizado();
     salvarTudo();
-    showToast("Preventiva adicionada à linha do tempo!", "success");
+    showToast("Adicionado com sucesso!", "success");
+
+    return true; // ✅ SUCESSO: Permite fechar o popup
 }
+
+
 
 
 
@@ -2637,120 +2894,141 @@ async function abrirPopupImportarServico() {
     const inputData = document.getElementById('apontamentoData');
     const dataAlvo = inputData ? inputData.value : dataHojeInputLocal();
 
-    // Filtros Atuais
+    // 1. Filtros Rígidos da UI
     const frenteInput = document.getElementById('frente');
     const turnoInput = document.getElementById('turnoLetra');
     const frenteAtual = frenteInput ? frenteInput.value.trim() : "";
     const turnoAtual = turnoInput ? turnoInput.value : "";
 
-    if (!dataAlvo) {
-        showToast("Selecione uma data primeiro.", "error");
+    if (!dataAlvo || !frenteAtual || !turnoAtual) {
+        showToast("Selecione a Data, Frente e Turno para importar serviços.", "error");
         return;
     }
 
-    showToast(`Buscando serviços...`, "info", 1000);
+    showToast(`Buscando serviços de ${frenteAtual} [${turnoAtual}]...`, "info", 1000);
+
+    let listaCombinada = [];
 
     try {
-        // A. Busca no Histórico
+        // A. Busca no Histórico (IndexedDB)
         const historico = await dbExec(STORE_HISTORICO, 'readonly', store => store.getAll());
 
-        // FILTRO INTELIGENTE (Aceita Legados)
-        const doHistorico = historico.filter(h => {
-            // 1. Data deve bater sempre
-            if (h.dataOS !== dataAlvo) return false;
-
-            // 2. Verifica Contexto
-            const itemFrente = h.frente ? h.frente.trim() : "";
-            const itemTurno = h.turno || "";
-
-            // Lógica: Se o item tem frente, ela deve ser igual a atual.
-            // MAS, se o item NÃO TEM frente (é antigo/legado), permite importar!
-            const ehLegado = itemFrente === "" || itemTurno === "";
-            const ehDaFrente = itemFrente === frenteAtual && itemTurno === turnoAtual;
-
-            return ehLegado || ehDaFrente;
-        });
+        // Filtro Rígido: Só traz o que é da mesma Frente/Turno/Data
+        const doHistorico = historico.filter(h => 
+            h.dataOS === dataAlvo &&
+            (h.frente || "").trim() === frenteAtual &&
+            (h.turno || "") === turnoAtual
+        );
 
         // B. Busca na Memória (Rascunhos)
         const idsNoHistorico = new Set(doHistorico.map(h => String(h.id)));
         const daMemoria = servicos.filter(s => 
             s.data === dataAlvo && 
-            !idsNoHistorico.has(String(s.id))
+            !idsNoHistorico.has(String(s.id)) &&
+            (s.frente || "").trim() === frenteAtual && 
+            (s.turno || "") === turnoAtual
         );
 
-        const listaCombinada = [...doHistorico, ...daMemoria];
-
-        if (listaCombinada.length === 0) {
-            showToast(`Nenhum serviço encontrado em ${formatarDataParaExibicao(dataAlvo)}.`, "info");
-            return;
-        }
-
-        listaCombinada.sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
-
-        // GERAÇÃO DO HTML (Visual Mantido)
-        const listaHtml = listaCombinada.map(s => {
-            const temOS = s.osNumero && String(s.osNumero).trim() !== "";
-            const numeroOS = temOS ? s.osNumero : "PENDENTE";
-            const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
-            
-            // Tratamento seguro de campos que podem não existir nos antigos
-            const ativTexto = s.atividade || "Atividade Desconhecida";
-            const codAtiv = ativTexto.split(' - ')[0];
-            const sist = s.sistema || "?";
-            const sub = (s.subsistema || "?").split(' - ')[0];
-            
-            const action = temOS 
-                ? `tentarImportarServico('${s.id}', '${s.frota || "?"}', '${s.atividade || ""}', '${s.sistema || ""}', '${s.subsistema || ""}', '${s.inicio || ""}', '${s.fim || ""}', '${numeroOS}')` 
-                : `explicarFaltaOS()`;
-
-            let cardClass = "bg-white border-green-200 hover:border-green-500";
-            let badgeColor = "bg-green-100 text-green-700 border-green-200";
-            let iconHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>`;
-
-            if (!temOS) {
-                cardClass = "bg-orange-50 border-orange-300";
-                badgeColor = "bg-orange-100 text-orange-700 border-orange-300";
-                iconHTML = "⚠️";
-            } 
-            
-            if (jaImportado) {
-                cardClass = "bg-blue-50 border-blue-300 shadow-inner opacity-75"; 
-                iconHTML = `<span class="text-blue-600 font-bold text-xs">✔ ADD</span>`;
-            }
-
-            return `
-            <div onclick="${!jaImportado ? action : ''}" 
-                 class="group border rounded-xl p-3 mb-2 shadow-sm flex items-center justify-between transition-all cursor-pointer active:scale-95 ${cardClass}">
-                <div class="flex-1 min-w-0 pr-2">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="font-black text-gray-700 text-xs uppercase bg-white px-1 rounded border border-gray-200">${s.frota || "N/D"}</span>
-                        <span class="text-[10px] font-bold px-1.5 rounded border ${badgeColor}">${numeroOS}</span>
-                    </div>
-                    <div class="text-xs font-bold text-gray-800 truncate">${codAtiv} - ${sist} - ${sub}</div>
-                    <div class="text-[10px] text-gray-500 mt-0.5">🕒 ${s.inicio || "--:--"} - ${s.fim || "--:--"}</div>
-                </div>
-                <div class="flex-shrink-0 pl-1">${iconHTML}</div>
-            </div>`;
-        }).join('');
-
-        const conteudoFinal = `
-            <div class="bg-gray-50 -m-5 p-4">
-                <div class="flex justify-between items-center mb-3 border-b pb-2">
-                    <span class="text-xs font-bold text-gray-500 uppercase">Dia: ${formatarDataParaExibicao(dataAlvo)}</span>
-                    <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${listaCombinada.length} itens</span>
-                </div>
-                <div class="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                    ${listaHtml}
-                </div>
-            </div>
-        `;
-
-        abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold', acao: fecharPopup }]);
+        listaCombinada = [...doHistorico, ...daMemoria];
 
     } catch (e) {
         console.error(e);
-        showToast("Erro ao listar serviços.", "error");
+        showToast("Erro ao ler banco de dados.", "error");
+        return;
     }
+
+    if (listaCombinada.length === 0) {
+        const dataExibicao = formatarDataParaExibicao(dataAlvo);
+        showToast(`Nenhum serviço encontrado para ${frenteAtual} em ${dataExibicao}.`, "info", 4000);
+        return;
+    }
+
+    listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+    // --- GERAÇÃO DO HTML (Visual Moderno) ---
+    const listaHtml = listaCombinada.map(s => {
+        const temOS = s.osNumero && String(s.osNumero).trim() !== "";
+        const numeroOS = temOS ? s.osNumero : "PENDENTE";
+        const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
+
+        const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
+        const sist = s.sistema || '?';
+        const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
+        const infoTecnica = `${codAtiv} • ${sist} • ${sub}`;
+        
+        const action = temOS 
+            ? `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
+            : `explicarFaltaOS()`;
+        
+        // Estilos Dinâmicos
+        let cardStyle = "bg-white border-l-[5px] border-green-500 hover:bg-green-50";
+        let badgeOS = "bg-green-100 text-green-800 border-green-200";
+        let iconStatus = `<span class="text-green-600 text-xl font-bold">📥</span>`; // Ícone de Download
+
+        if (!temOS) {
+            cardStyle = "bg-white border-l-[5px] border-yellow-400 hover:bg-yellow-50";
+            badgeOS = "bg-yellow-100 text-yellow-800 border-yellow-200";
+            iconStatus = `<span class="text-yellow-500 text-xl">⚠️</span>`; // Alerta
+        } 
+        
+        if (jaImportado) {
+            cardStyle = "bg-blue-50 border-l-[5px] border-blue-300 opacity-70"; 
+            badgeOS = "bg-blue-100 text-blue-800 border-blue-200";
+            iconStatus = `<span class="text-blue-600 text-xs font-bold uppercase tracking-wide border border-blue-200 px-2 py-1 rounded bg-white">Importado</span>`;
+        }
+
+        return `
+        <div onclick="${!jaImportado ? action : ''}" 
+             class="group relative rounded-lg shadow-sm mb-3 p-3 flex items-center justify-between transition-all cursor-pointer active:scale-[0.98] border border-gray-100 ${cardStyle}">
+            
+            <div class="flex-1 min-w-0 pr-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-black text-gray-800 text-sm uppercase tracking-wide">
+                        ${s.frota || 'N/D'}
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${badgeOS}">
+                        OS: ${numeroOS}
+                    </span>
+                </div>
+
+                <div class="text-xs font-bold text-gray-600 font-mono mb-1">
+                   ${infoTecnica}
+                </div>
+                
+                <div class="flex items-center gap-1">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Horário:</span>
+                    <span class="text-[11px] font-bold text-gray-700 bg-gray-100 px-1.5 rounded border border-gray-200">
+                        ${s.inicio} - ${s.fim}
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex-shrink-0 pl-2 border-l border-gray-200/50 h-full flex items-center justify-center">
+                ${iconStatus}
+            </div>
+        </div>`;
+    }).join('');
+
+    const conteudoFinal = `
+        <div class="bg-gray-50 -m-5 p-4 h-full flex flex-col">
+            <div class="flex justify-between items-center mb-4 px-1 border-b pb-3 border-gray-200">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Data Selecionada</span>
+                    <span class="text-sm font-black text-gray-800">${formatarDataParaExibicao(dataAlvo)}</span>
+                </div>
+                <span class="text-xs bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full font-bold shadow-sm">
+                    ${listaCombinada.length} itens
+                </span>
+            </div>
+            
+            <div class="overflow-y-auto pr-1 custom-scrollbar space-y-1" style="max-height: 55vh;">
+                ${listaHtml}
+            </div>
+        </div>
+    `;
+
+    // Botão de fechar grande e fácil de clicar
+    abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: fecharPopup }]);
 }
 
 
@@ -2795,7 +3073,7 @@ function explicarFaltaOS() {
     setTimeout(() => {
         const conteudo = `
             <div class="text-center p-2">
-                <div class="bg-orange-100 text-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                <div class="bg-yellow-100 text-yellow-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
                     ⚠️
                 </div>
                 <h3 class="text-lg font-bold text-gray-800 mb-2">Falta o Número da O.S.</h3>
@@ -3230,24 +3508,32 @@ function iniciarMonitoramentoFormulario() {
         // ---------------------------------
     async function renderizarSecaoHistorico(container) {
     container.innerHTML = `
-    <div class="bg-white p-4 rounded-lg shadow mb-4 space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-            <h3 class="text-lg font-bold text-blue-800">Histórico de O.S.</h3>
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-4 space-y-4">
+        <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800">Histórico de O.S.</h3>
+            </div>
             
-            <button onclick="mostrarHistorico()" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <button onclick="mostrarHistorico()" class="text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 p-2 rounded-lg transition-colors shadow-sm" title="Atualizar Lista">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Atualizar
             </button>
         </div>
         
-        <button onclick="abrirPopupApagarPorData()" class="w-full sm:w-auto py-2.5 px-4 rounded-lg font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Apagar por Data (Nuvem)
-        </button>
+        <div class="flex gap-2">
+             <button onclick="abrirPopupApagarPorData()" class="w-full py-3 rounded-lg font-bold bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-xs flex items-center justify-center gap-2 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Apagar Registros (Nuvem)</span>
+            </button>
+        </div>
     </div>
     <div id="historico_lista" class="space-y-4"></div>`;
     
@@ -3324,8 +3610,159 @@ function iniciarMonitoramentoFormulario() {
             }
         }
 
+// Funções auxiliares para preservar o estado do Popup
+function chamarAddFazendaContexto() {
+    // 1. Salva o estado atual do popup
+    const tempFrente = document.getElementById('popupQuickFrente').value;
+    const tempTurno = document.getElementById('popupQuickTurno').value;
+    
+    // 2. Chama a função de adicionar passando o callback de retorno
+    adicionarNovaFazenda((novaFazenda) => {
+        // 3. Reabre o popup restaurando tudo e selecionando a nova fazenda
+        verificarContextoHistorico(novaFazenda, tempFrente, tempTurno);
+    });
+}
 
-    async function mostrarHistorico() {
+function chamarAddFrenteContexto() {
+    const tempFazenda = document.getElementById('popupQuickFazenda').value;
+    const tempTurno = document.getElementById('popupQuickTurno').value;
+    
+    adicionarNovaFrente((novaFrente) => {
+        verificarContextoHistorico(tempFazenda, novaFrente, tempTurno);
+    });
+}
+
+
+async function verificarContextoHistorico(preSelectFazenda = null, preSelectFrente = null, preSelectTurno = null) {
+    const fazendaEl = document.getElementById('fazenda');
+    const frenteEl = document.getElementById('frente');
+    const turnoEl = document.getElementById('turnoLetra');
+    
+    // Prioridade: 1. Valor passado (retorno do add) -> 2. Valor do input principal -> 3. Vazio
+    const fazenda = preSelectFazenda !== null ? preSelectFazenda : (fazendaEl ? fazendaEl.value.trim() : '');
+    const frente = preSelectFrente !== null ? preSelectFrente : (frenteEl ? frenteEl.value.trim() : '');
+    const turno = preSelectTurno !== null ? preSelectTurno : (turnoEl ? turnoEl.value : '');
+
+    // Se já tem tudo (e não estamos no meio de um fluxo de edição forçada), libera
+    // A verificação 'preSelectFazenda === null' garante que se a função foi chamada pelo callback (com valor), o popup ABRA mesmo se já tiver dados, para confirmar.
+    if (preSelectFazenda === null && fazenda && frente && turno) return true;
+
+    // Garantia de Dados (Offline First)
+    if (listaFazendas.length === 0 || listaFrentes.length === 0) {
+        try {
+            const [fazendasDB, frentesDB] = await Promise.all([
+                dbExec(STORE_FAZENDAS, 'readonly', s => s.getAll()),
+                dbExec(STORE_FRENTES, 'readonly', s => s.getAll())
+            ]);
+            listaFazendas = fazendasDB || [];
+            listaFrentes = frentesDB || [];
+            // Ordenação
+            listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+            listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+        } catch (e) { console.warn(e); }
+    }
+
+    // --- GERAÇÃO DAS LISTAS ---
+    let htmlOptionsFazenda = '<option value="">Selecione...</option>';
+    listaFazendas.forEach(f => {
+        htmlOptionsFazenda += `<option value="${f.nome}" ${f.nome === fazenda ? 'selected' : ''}>${f.nome}</option>`;
+    });
+
+    let htmlOptionsFrente = '<option value="">Selecione...</option>';
+    listaFrentes.forEach(f => {
+        htmlOptionsFrente += `<option value="${f.nome}" ${f.nome === frente ? 'selected' : ''}>${f.nome}</option>`;
+    });
+
+    // --- CONTEÚDO DO POPUP ---
+    const conteudo = `
+        <div class="text-center space-y-4">
+            <div class="bg-blue-50 p-3 rounded-full w-14 h-14 flex items-center justify-center mx-auto mb-2">
+                <span class="text-2xl">📍</span>
+            </div>
+            <p class="text-sm text-gray-600 px-2">
+                Confirme sua localização para carregar os dados.
+            </p>
+            
+            <div class="text-left space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fazenda</label>
+                    <div class="flex gap-2">
+                        <select id="popupQuickFazenda" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            ${htmlOptionsFazenda}
+                        </select>
+                        <button onclick="chamarAddFazendaContexto()" class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg border border-green-200 transition-colors shrink-0" title="Nova Fazenda">
+                            <span class="font-bold text-lg leading-none">+</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Frente de Trabalho</label>
+                    <div class="flex gap-2">
+                        <select id="popupQuickFrente" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            ${htmlOptionsFrente}
+                        </select>
+                        <button onclick="chamarAddFrenteContexto()" class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg border border-green-200 transition-colors shrink-0" title="Nova Frente">
+                            <span class="font-bold text-lg leading-none">+</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno</label>
+                    <select id="popupQuickTurno" class="w-full p-2 border border-gray-300 rounded-lg font-bold text-gray-700 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        <option value="A" ${turno === 'A' ? 'selected' : ''}>TURNO A</option>
+                        <option value="B" ${turno === 'B' ? 'selected' : ''}>TURNO B</option>
+                        <option value="C" ${turno === 'C' ? 'selected' : ''}>TURNO C</option>
+                    </select>
+                </div>
+
+            </div>
+        </div>
+    `;
+
+    abrirPopup('Configuração Inicial', conteudo, [
+        { 
+            texto: 'Salvar e Acessar', 
+            classe: 'bg-blue-600 text-white w-full py-3 rounded-lg shadow-md hover:bg-blue-700 font-bold', 
+            acao: () => {
+                const faz = document.getElementById('popupQuickFazenda').value;
+                const fre = document.getElementById('popupQuickFrente').value;
+                const tur = document.getElementById('popupQuickTurno').value;
+
+                if (!faz || !fre || !tur) {
+                    showToast("Preencha todos os campos!", "error");
+                    return false; // Mantém aberto
+                }
+
+                if(fazendaEl) fazendaEl.value = faz;
+                if(frenteEl) frenteEl.value = fre;
+                if(turnoEl) turnoEl.value = tur;
+
+                salvarDadosParciaisTurno();
+                iniciarSincronizacaoHistorico();
+                
+                setTimeout(() => mostrarHistorico(), 50);
+                
+                return true; 
+            }
+        }
+    ]);
+
+    return false; 
+}
+
+
+
+async function mostrarHistorico() {
+        // --- MUDANÇA AQUI: Adicionado 'await' ---
+    // Agora esperamos a função verificar se tem dados e carregar as listas se precisar
+    if (!(await verificarContextoHistorico())) return; 
+    // ----------------------------------------
+
+
     const div = document.getElementById("historico_lista");
     if (!div) return;
 
@@ -3341,13 +3778,10 @@ function iniciarMonitoramentoFormulario() {
         const frenteSelecionada = frenteInput ? frenteInput.value.trim() : "";
         const turnoSelecionado = turnoInput ? turnoInput.value : "";
         
-        // 2. Filtragem RÍGIDA (Sem "Ver Todos")
+        // 2. Filtragem RÍGIDA
         const itensFiltrados = todosItens.filter(item => {
-            // Tenta normalizar a frente do item (alguns antigos podem não ter trim)
             const itemFrente = item.frente ? item.frente.trim() : "";
             const itemTurno = item.turno || "";
-            
-            // Só passa se for EXATAMENTE igual
             return itemFrente === frenteSelecionada && itemTurno === turnoSelecionado;
         });
 
@@ -3355,9 +3789,6 @@ function iniciarMonitoramentoFormulario() {
             div.innerHTML = `
                 <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                     <p class="text-gray-400 font-bold">Nenhum registro encontrado.</p>
-                    <p class="text-xs text-gray-400 mt-1">
-                        Verifique se está na Frente <b>${safeText(frenteSelecionada)}</b> e Turno <b>${safeText(turnoSelecionado)}</b> corretos.
-                    </p>
                 </div>`;
             return;
         }
@@ -3372,7 +3803,7 @@ function iniciarMonitoramentoFormulario() {
 
         const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
 
-        // 4. Renderização (Visual Limpo/Padronizado mantido)
+        // 4. Renderização (SEU DESIGN)
         div.innerHTML = datasOrdenadas.map(dataKey => {
             const itensDoDia = agrupado[dataKey].sort((a, b) => (b.inicio || "").localeCompare(a.inicio || ""));
             
@@ -3390,7 +3821,8 @@ function iniciarMonitoramentoFormulario() {
                 <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
                     ${itensDoDia.map(s => {
                         const isFinalizada = s.status === 'finalizada';
-                        const bordaLateral = isFinalizada ? 'border-green-500' : 'border-orange-500';
+                        const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
+                        // Usa uniqueId se existir (novo padrão), senão usa id (legado)
                         const safeId = s.uniqueId || s.id;
 
                         const infoTecnica = [
@@ -3441,7 +3873,7 @@ function iniciarMonitoramentoFormulario() {
                                             : `` 
                                         }
                                     </div>
-                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-700 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
                                 </div>
 
                                 <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
@@ -3482,240 +3914,231 @@ function iniciarMonitoramentoFormulario() {
     }
 }
 
+// ============================================================
+// LÓGICA DE LIMPEZA DE HISTÓRICO (MÊS/DIA)
+// ============================================================
 
+async function abrirPopupApagarPorData() {
+    const btn = event?.currentTarget;
+    const originalText = btn ? btn.innerHTML : "";
+    if (btn) {
+        btn.innerHTML = "⏳ Carregando...";
+        btn.disabled = true;
+    }
 
-
-    async function abrirPopupApagarPorData() {
     try {
-        // 1. Carrega dados locais para listar as datas
         const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        const frenteInput = document.getElementById('frente');
+        const turnoInput = document.getElementById('turnoLetra');
+        const frenteAtual = frenteInput ? frenteInput.value.trim().toUpperCase() : "";
+        const turnoAtual = turnoInput ? turnoInput.value.replace("TURNO ", "").trim() : "";
 
-        if (todosItens.length === 0) {
-            showToast('Histórico está vazio.', 'info');
+        if (!frenteAtual || !turnoAtual) {
+            showToast("Selecione Frente e Turno na tela principal.", "error");
+            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
             return;
         }
 
-        // Filtra frentes e turnos para evitar apagar dados de outros
-        const frenteAtual = document.getElementById('frente').value.trim();
-        const turnoAtual = document.getElementById('turnoLetra').value;
+        const itensDaEquipe = todosItens.filter(i => {
+            const iFrente = (i.frente || "").trim().toUpperCase();
+            const iTurno = (i.turno || "").replace("TURNO ", "").trim();
+            return iFrente === frenteAtual && iTurno === turnoAtual;
+        });
 
-        // Pega as datas únicas disponíveis para esta frente
-        const datas = [...new Set(todosItens
-            .filter(i => i.frente === frenteAtual && i.turno === turnoAtual)
-            .map(item => item.dataOS)
-        )].sort((a, b) => b.localeCompare(a));
-
-        if (datas.length === 0) {
-            showToast('Nenhum registro encontrado para esta Frente/Turno.', 'info');
+        if (itensDaEquipe.length === 0) {
+            alert(`Não encontrei registros para:\nFrente: ${frenteAtual}\nTurno: ${turnoAtual}`);
+            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
             return;
         }
 
-        const options = datas.map(d => `<option value="${d}">${formatarDataParaExibicao(d)}</option>`).join('');
-        const selectHTML = `
-            <p class="text-sm text-gray-600 mb-2">Frente: <b>${frenteAtual}</b> | Turno: <b>${turnoAtual}</b></p>
-            <select id="selectDataParaApagar" class="w-full p-2 border rounded font-bold bg-gray-50">${options}</select>
-        `;
+        const diasUnicos = [...new Set(itensDaEquipe.map(i => i.dataOS))].sort().reverse();
+        const mesesUnicos = [...new Set(diasUnicos.map(d => d.substring(0, 7)))].sort().reverse();
 
-        abrirPopupConfirmar('Apagar por Data', 
-            `Selecione a data para limpar do dispositivo e da nuvem:<br>${selectHTML}`, 
+        let listaHTML = `<div class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">`;
+
+        // 1. BLOCO DE MESES
+        if (mesesUnicos.length > 0) {
+            listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-2 px-1">Apagar Mês Inteiro</div>`;
+            
+            mesesUnicos.forEach(mes => {
+                const [ano, mesNum] = mes.split('-');
+                const qtd = itensDaEquipe.filter(i => i.dataOS.startsWith(mes)).length;
+                
+                // --- MUDANÇA AQUI: border-2 para border-4 ---
+                listaHTML += `
+                <label class="relative block cursor-pointer group">
+                    <input type="radio" name="dataExclusao" value="${mes}" class="peer sr-only">
+                    <div class="p-3 bg-white border-2 peer-checked:border-4 border-gray-200 rounded-xl transition-all duration-100
+                                peer-checked:border-red-500 peer-checked:bg-red-50
+                                hover:border-red-200 hover:bg-gray-50 flex justify-between items-center">
+                        <div>
+                            <span class="block font-bold text-gray-700 peer-checked:text-red-700">MÊS: ${mesNum}/${ano}</span>
+                            <span class="text-xs text-gray-500 peer-checked:text-red-500 font-medium">${qtd} registros</span>
+                        </div>
+                        <div class="w-6 h-6 rounded-full border-2 peer-checked:border-4 border-gray-300 bg-white peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center transition-all">
+                            <div class="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                        </div>
+                    </div>
+                </label>`;
+            });
+        }
+
+        // 2. BLOCO DE DIAS
+        listaHTML += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-4 px-1">Apagar Dia Específico</div>`;
+        
+        diasUnicos.forEach(dia => {
+            const qtd = itensDaEquipe.filter(i => i.dataOS === dia).length;
+            
+            // --- MUDANÇA AQUI: border-2 para border-4 ---
+            listaHTML += `
+            <label class="relative block cursor-pointer group">
+                <input type="radio" name="dataExclusao" value="${dia}" class="peer sr-only">
+                <div class="p-3 bg-white border-2 peer-checked:border-4 border-gray-200 rounded-xl transition-all duration-100
+                            peer-checked:border-red-500 peer-checked:bg-red-50
+                            hover:border-red-200 hover:bg-gray-50 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-gray-100 text-gray-600 font-bold p-2 rounded-lg text-xs peer-checked:bg-red-200 peer-checked:text-red-800">
+                            ${dia.split('-').reverse().slice(0, 2).join('/')}
+                        </div>
+                        <span class="text-sm font-bold text-gray-600 peer-checked:text-red-700">${qtd} itens</span>
+                    </div>
+                    <div class="w-5 h-5 rounded-full border-2 peer-checked:border-4 border-gray-300 bg-white peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center transition-all">
+                         <div class="w-1.5 h-1.5 bg-white rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                    </div>
+                </div>
+            </label>`;
+        });
+
+        listaHTML += `</div>`; 
+
+        if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+
+        // Abre o popup
+        abrirPopupConfirmar('🗑️ Central de Limpeza', 
+            `<div class="text-left mb-2"><p class="text-sm text-gray-600 mb-3">Selecione o período que deseja limpar da <b>${frenteAtual}</b>.</p>${listaHTML}</div>`, 
             async (confirmado) => {
                 if (confirmado) {
-                    const dataAlvo = document.getElementById('selectDataParaApagar').value;
+                    const selecionado = document.querySelector('input[name="dataExclusao"]:checked');
                     
-                    // Confirmação de Segurança
+                    if (!selecionado) {
+                        showToast("Selecione uma opção para apagar.", "error");
+                        return false; 
+                    }
+
+                    const valorSelecionado = selecionado.value;
+                    const isMes = valorSelecionado.length === 7;
+                    const label = isMes ? `o MÊS ${valorSelecionado}` : `o dia ${formatarDataParaExibicao(valorSelecionado)}`;
                     const codigo = Math.floor(1000 + Math.random() * 9000);
-                    abrirPopupInput(
-                        'Confirmar Exclusão', 
-                        `Para apagar tudo de <b>${formatarDataParaExibicao(dataAlvo)}</b>, digite o código <b>${codigo}</b>:`, 
-                        'Digite o código...', 
-                        '', 
-                        async (digitado) => {
-                            if (String(digitado) === String(codigo)) {
-                                await executarExclusaoEmMassa(dataAlvo, frenteAtual, turnoAtual);
-                            } else if (digitado !== null) {
-                                showToast("Código incorreto.", "error");
-                            }
-                        }, 
-                        'number'
-                    );
+
+                    setTimeout(() => {
+                        abrirPopupInput(
+                            'Confirmar Exclusão',
+                            `Para apagar <b>${label}</b>, digite <span class="text-red-600 font-black text-lg">${codigo}</span>:`,
+                            'Código...', '',
+                            (digitado) => {
+                                if (String(digitado) === String(codigo)) {
+                                    executarExclusaoEmMassa(valorSelecionado, frenteAtual, turnoAtual);
+                                } else if (digitado !== null) {
+                                    showToast("Código incorreto.", "error");
+                                }
+                            }, 'number'
+                        );
+                        setTimeout(() => document.getElementById('popup-input-field')?.focus(), 100);
+                    }, 200);
                 }
-            }
+            }, "Continuar"
         );
 
     } catch (e) {
         console.error(e);
-        showToast("Erro ao listar datas.", "error");
+        showToast("Erro ao listar.", "error");
+        if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
 }
 
-// Função auxiliar para processar a exclusão em massa
-async function executarExclusaoEmMassa(dataAlvo, frente, turno) {
-    abrirPopupLoading("Apagando registros...");
+
+async function executarExclusaoEmMassa(criterioData, frente, turno) {
+    fecharPopup();
+    const modoMes = criterioData.length === 7;
+    setTimeout(() => abrirPopupLoading(modoMes ? "Apagando Mês..." : "Apagando Dia..."), 100);
 
     try {
-        // 1. Busca itens LOCAIS para apagar
         const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
-        const itensParaApagar = todos.filter(item => 
-            item.dataOS === dataAlvo && 
-            item.frente === frente && 
-            item.turno === turno
-        );
+        const itensParaApagar = todos.filter(i => {
+            const iFrente = (i.frente || "").trim().toUpperCase();
+            const iTurno = (i.turno || "").replace("TURNO ", "").trim();
+            const bateuEquipe = (iFrente === frente && iTurno === turno);
+            if (!bateuEquipe) return false;
+            return modoMes ? i.dataOS && i.dataOS.startsWith(criterioData) : i.dataOS === criterioData;
+        });
 
         if (itensParaApagar.length === 0) {
-            fecharPopup();
-            showToast("Nada para apagar.", "info");
+            setTimeout(() => { fecharPopup(); showToast("Nenhum item encontrado.", "info"); }, 500);
             return;
         }
 
-        // 2. Apaga do IndexedDB (Loop local)
         const tx = db.transaction(STORE_HISTORICO, 'readwrite');
         const store = tx.objectStore(STORE_HISTORICO);
-        
-        itensParaApagar.forEach(item => {
-            // Garante uso do ID numérico
-            store.delete(item.uniqueId || item.id);
-        });
+        itensParaApagar.forEach(item => store.delete(item.uniqueId || item.id));
 
-        // Quando terminar de apagar localmente...
         tx.oncomplete = async () => {
-            // 3. Atualiza a tela
-            await mostrarHistorico();
-            fecharPopup();
-            showToast(`${itensParaApagar.length} itens apagados com sucesso!`, 'success');
-
-            // 4. Apaga da Nuvem em Lote (Batch) - Background
             const batch = firestore.batch();
             itensParaApagar.forEach(item => {
-                const ref = firestore.collection('historico_os').doc(String(item.id || item.uniqueId));
+                const ref = firestore.collection('historico_os').doc(String(item.uniqueId || item.id));
                 batch.delete(ref);
             });
-            
-            batch.commit().catch(err => console.warn("Erro ao sincronizar exclusão com nuvem:", err));
-        };
+            batch.commit().catch(console.warn);
 
+            setTimeout(async () => {
+                fecharPopup();
+                showToast(`Sucesso! ${itensParaApagar.length} apagados.`, 'success');
+                await mostrarHistorico();
+            }, 800);
+        };
     } catch (e) {
         fecharPopup();
         console.error(e);
-        showToast("Erro ao apagar dados.", "error");
-    }
-}
-
-
-async function executarExclusaoNuvem(dataAlvo) {
-    const frenteAtual = document.getElementById('frente').value;
-    const turnoAtual = document.getElementById('turnoLetra').value;
-
-    abrirPopupLoading("Apagando registros da nuvem...");
-
-    try {
-        // 1. Busca no Firestore usando o índice que já criamos (Frente + Turno)
-        const snapshot = await firestore.collection('historico_os')
-            .where('frente', '==', frenteAtual)
-            .where('turno', '==', turnoAtual)
-            .get();
-
-        // 2. Filtra manualmente pela data (para não precisar criar outro índice complexo)
-        const docsParaApagar = snapshot.docs.filter(doc => {
-            const dados = doc.data();
-            return dados.dataOS === dataAlvo;
-        });
-
-        if (docsParaApagar.length === 0) {
-            fecharPopup();
-            showToast("Nenhum registro encontrado na nuvem para apagar.", "info");
-            return;
-        }
-
-        // 3. Executa a exclusão em lote (Batch)
-        const batch = firestore.batch();
-        docsParaApagar.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-
-        fecharPopup();
-        showToast(`Sucesso! ${docsParaApagar.length} registros apagados da nuvem.`, "success");
-
-        // A sincronização automática (onSnapshot) vai limpar a tela do celular sozinha em instantes.
-
-    } catch (error) {
-        fecharPopup();
-        console.error("Erro ao apagar:", error);
-        showToast("Erro ao apagar. Verifique sua conexão.", "error");
+        showToast("Erro: " + e.message, "error");
     }
 }
 
 // ============================================================
-// FUNÇÕES DE AÇÃO DO HISTÓRICO (NUVEM)
+// AÇÕES DO HISTÓRICO (SINGLETONS)
 // ============================================================
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
     const osNumero = input ? input.value.trim() : "";
+    if (!osNumero) { showToast('Digite o número da O.S.', 'error'); if(input) input.focus(); return; }
 
-    if (!osNumero) {
-        showToast('Digite o número da O.S.', 'error');
-        if(input) input.focus();
-        return;
-    }
-
-    // Desabilita botão visualmente para evitar clique duplo
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
-    if(btn) {
-        btn.disabled = true;
-        btn.innerText = "...";
-    }
+    if(btn) { btn.innerText = "⏳"; btn.disabled = true; }
 
     try {
-        // 1. OPERAÇÃO LOCAL (Prioridade Total)
         const idNumerico = parseInt(id);
-        
-        // Busca e atualiza no IndexedDB
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
-        
-        if (!item) throw new Error("Item não encontrado no dispositivo.");
-
-        item.status = 'finalizada';
-        item.osNumero = osNumero;
-        item.atualizadoEm = new Date().toISOString();
-        
-        await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-
-        // 2. ATUALIZA A TELA IMEDIATAMENTE
-        showToast('O.S. finalizada (Salvo no dispositivo)!', 'success');
-        await mostrarHistorico(); 
-
-        // 3. SINCRONIZAÇÃO SILENCIOSA (Não trava se estiver offline)
-        firestore.collection('historico_os').doc(String(id)).update({
-            status: 'finalizada',
-            osNumero: osNumero,
-            atualizadoEm: item.atualizadoEm
-        }).then(() => {
-            console.log("☁️ Nuvem atualizada.");
-        }).catch(err => {
-            console.warn("⚠️ Sem rede. Sincronização pendente.", err);
-        });
-
+        if (item) {
+            item.status = 'finalizada';
+            item.osNumero = osNumero;
+            item.atualizadoEm = new Date().toISOString();
+            await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
+        }
+        showToast('O.S. Finalizada!', 'success');
+        await mostrarHistorico();
+        firestore.collection('historico_os').doc(String(id)).update({ status: 'finalizada', osNumero }).catch(console.warn);
     } catch (e) {
         console.error(e);
-        showToast('Erro ao salvar localmente: ' + e.message, 'error');
-        if(btn) {
-            btn.disabled = false;
-            btn.innerText = "OK";
-        }
+        showToast("Erro ao salvar.", "error");
+        if(btn) { btn.innerText = "OK"; btn.disabled = false; }
     }
 }
-
 
 function habilitarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
     if (!input) return;
-    
     input.disabled = false;
     input.focus();
-    input.classList.add('bg-yellow-50', 'border-yellow-400'); // Destaque visual
-    
+    input.classList.add('bg-yellow-50', 'border-yellow-400');
     btn.innerText = 'Salvar';
     btn.onclick = () => confirmarEdicaoOS(id, btn);
 }
@@ -3723,139 +4146,54 @@ function habilitarEdicaoOS(id, btn) {
 async function confirmarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
     const numero = input ? input.value.trim() : "";
-
-    if (!numero) {
-        showToast("Nº O.S não pode ser vazio.", "error");
-        if(input) input.focus();
-        return;
-    }
-
-    // Feedback visual imediato no botão
+    if (!numero) { showToast("Nº O.S não pode ser vazio.", "error"); input.focus(); return; }
+    
     const textoOriginal = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "...";
+    btn.disabled = true; btn.innerText = "...";
 
     try {
-        // 1. OPERAÇÃO LOCAL (Prioridade Máxima - IndexedDB)
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
-
-        if (!item) throw new Error("Item não encontrado no celular.");
-
-        // Atualiza o objeto
+        if (!item) throw new Error("Item não encontrado.");
         item.osNumero = numero;
         item.atualizadoEm = new Date().toISOString();
-
-        // Salva no banco local
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-
-        // 2. ATUALIZA A TELA E TRAVA A EDIÇÃO
-        showToast("Nº O.S atualizado (Salvo no dispositivo)!", 'success');
-        
-        // Em vez de recarregar tudo com mostrarHistorico(), podemos apenas ajustar a UI
-        // Mas para garantir consistência, chamamos o refresh rápido se a tela estiver visível
-        await mostrarHistorico(); 
-
-        // 3. SINCRONIZAÇÃO SILENCIOSA (Nuvem - Background)
-        firestore.collection('historico_os').doc(String(id)).update({
-            osNumero: numero,
-            atualizadoEm: item.atualizadoEm
-        }).then(() => {
-            console.log("☁️ Número da OS sincronizado com a nuvem.");
-        }).catch(err => {
-            console.warn("⚠️ Sem rede. Alteração salva localmente e será enviada depois.", err);
-        });
-
+        showToast("Nº O.S atualizado!", 'success');
+        await mostrarHistorico();
+        firestore.collection('historico_os').doc(String(id)).update({ osNumero: numero, atualizadoEm: item.atualizadoEm }).catch(console.warn);
     } catch (error) {
-        console.error(error);
-        showToast("Erro ao atualizar localmente: " + error.message, 'error');
-        // Restaura o botão em caso de erro real (ex: falha no disco)
-        btn.disabled = false;
-        btn.innerText = textoOriginal;
+        showToast("Erro: " + error.message, 'error');
+        btn.disabled = false; btn.innerText = textoOriginal;
     }
 }
 
 async function excluirHistoricoItem(id) {
     try {
-        // 1. Busca o item no banco local para verificar a quem pertence
-        // O IndexedDB usa chave numérica, garantimos a conversão
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        if (!item) { showToast('Item não encontrado.', 'error'); return; }
 
-        if (!item) {
-            showToast('Erro: Item não encontrado no dispositivo.', 'error');
-            // Se não tá no local, tenta forçar exclusão visual ou da nuvem? 
-            // Melhor não arriscar sem saber de quem é.
+        const elFrente = document.getElementById('frente');
+        const elTurno = document.getElementById('turnoLetra');
+        const mf = elFrente ? elFrente.value.trim() : "";
+        const mt = elTurno ? elTurno.value : "";
+
+        if ((item.frente||"").trim() !== mf || (item.turno||"") !== mt) {
+            abrirPopup("Permissão Negada", `<p class="text-sm">Este item pertence a <b>${item.frente}</b>. Mude seus filtros para gerenciar.</p>`);
             return;
         }
 
-        // 2. Pega o contexto atual (Quem está tentando apagar)
-        const elFrente = document.getElementById('frente');
-        const elTurno = document.getElementById('turnoLetra');
-        
-        const minhaFrente = elFrente ? elFrente.value.trim() : "";
-        const meuTurno = elTurno ? elTurno.value : "";
-
-        // 3. TRAVA DE SEGURANÇA: Verifica Propriedade
-        const itemFrente = (item.frente || "").trim();
-        const itemTurno = item.turno || "";
-
-        // Se a Frente OU o Turno forem diferentes, BLOQUEIA
-        if (itemFrente !== minhaFrente || itemTurno !== meuTurno) {
-            const msg = `
-                <div class="text-left text-sm text-gray-600 space-y-3">
-                    <p class="font-bold text-gray-800">🚫 Ação Bloqueada</p>
-                    <p>Você não pode apagar registros de outra equipe.</p>
-                    
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="bg-red-50 p-2 rounded border border-red-200">
-                            <span class="block text-red-500 font-bold mb-1">O ITEM É DA:</span>
-                            ${itemFrente}<br>Turno ${itemTurno}
-                        </div>
-                        <div class="bg-blue-50 p-2 rounded border border-blue-200">
-                            <span class="block text-blue-500 font-bold mb-1">VOCÊ ESTÁ NA:</span>
-                            ${minhaFrente}<br>Turno ${meuTurno}
-                        </div>
-                    </div>
-                    
-                    <p class="text-xs italic bg-gray-100 p-2 rounded">
-                        💡 Dica: Para gerenciar este item, troque a Frente e o Turno no topo da tela para corresponder aos do item.
-                    </p>
-                </div>
-            `;
-            // Usa sua função de popup genérico
-            abrirPopup("Permissão Negada", msg);
-            return; // PARA A EXECUÇÃO AQUI. Nada é apagado.
-        }
-
-        // 4. Se passou na validação, segue para a confirmação normal
-        const confirmado = await new Promise(resolve => 
-            abrirPopupConfirmar('Excluir Registro', 
-            'Tem certeza que deseja excluir este item do histórico? Esta ação não pode ser desfeita.', 
-            resolve)
-        );
-
-        if (confirmado) {
-            // Apaga Localmente
-            await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(idNumerico));
-            
-            // Atualiza Tela
-            await mostrarHistorico();
-            showToast('Item excluído.', 'success');
-
-            // Apaga na Nuvem (Background)
-            firestore.collection('historico_os').doc(String(id)).delete()
-                .catch(err => console.warn("Offline. Exclusão será sincronizada depois.", err));
-        }
-
-    } catch (e) {
-        console.error(e);
-        showToast('Erro ao validar permissão.', 'error');
-    }
+        abrirPopupConfirmar('Excluir Registro', 'Tem certeza? Não pode ser desfeito.', async (ok) => {
+            if(ok) {
+                await dbExec(STORE_HISTORICO, 'readwrite', s => s.delete(idNumerico));
+                await mostrarHistorico();
+                showToast('Item excluído.', 'success');
+                firestore.collection('historico_os').doc(String(id)).delete().catch(console.warn);
+            }
+        });
+    } catch (e) { console.error(e); }
 }
 
-
-// Validação simples para habilitar/desabilitar o botão OK enquanto digita
 function validarOSInput(id) {
     const input = document.getElementById(`os_input_${id}`);
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
@@ -3865,195 +4203,193 @@ function validarOSInput(id) {
     }
 }
 
-        // ---------------------------------
-        // OUTROS MÓDULOS
-        // ---------------------------------
-        /**
- * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos serviços de um dia específico no histórico.
- * @param {string} dataKey - A data (no formato YYYY-MM-DD) que serve como identificador do grupo.
- */
 function toggleHistoricoDia(dataKey) {
-    const listaServicos = document.getElementById(`historico-dia-${dataKey}`);
-    const toggler = document.getElementById(`toggler-dia-${dataKey}`);
-
-    if (listaServicos && toggler) {
-        // Verifica se a lista de serviços está escondida
-        const isHidden = listaServicos.style.display === 'none';
-        
-        // Alterna a exibição e o ícone
-        listaServicos.style.display = isHidden ? 'block' : 'none';
-        toggler.innerHTML = isHidden ? '&#9650;' : '&#9660;'; // Seta para cima (▲) / Seta para baixo (▼)
-    }
-}
-/**
- * NOVA FUNÇÃO: Controla a visibilidade (expandir/recolher) dos botões de ação
- * de um item específico no histórico.
- * @param {number} uniqueId - O ID único do item de serviço no histórico.
- */
-function toggleBotoesHistorico(uniqueId) {
-    const containerBotoes = document.getElementById(`botoes-historico-${uniqueId}`);
-    if (containerBotoes) {
-        const isHidden = containerBotoes.style.display === 'none' || containerBotoes.classList.contains('hidden');
-        
-        if (isHidden) {
-            containerBotoes.classList.remove('hidden');
-            containerBotoes.style.display = 'grid'; // Força grid para manter o layout
-        } else {
-            containerBotoes.classList.add('hidden');
-            containerBotoes.style.display = 'none';
-        }
+    const lista = document.getElementById(`historico-dia-${dataKey}`);
+    const icon = document.getElementById(`toggler-dia-${dataKey}`);
+    if (lista && icon) {
+        const hidden = lista.style.display === 'none';
+        lista.style.display = hidden ? 'block' : 'none';
+        icon.innerHTML = hidden ? '&#9650;' : '&#9660;';
     }
 }
 
+function toggleBotoesHistorico(id) {
+    const box = document.getElementById(`botoes-historico-${id}`);
+    if (box) {
+        const hidden = box.classList.contains('hidden');
+        hidden ? box.classList.remove('hidden') : box.classList.add('hidden');
+        if(hidden) box.style.display = 'grid'; else box.style.display = 'none';
+    }
+}
 
 // ============================================================
-// MÓDULO: HISTÓRICO NA NUVEM (COM FILTRO)
+// SINCRONIZAÇÃO E MIGRAÇÃO (SINGLETONS)
 // ============================================================
 
-                let unsubscribeHistorico = null; 
+let unsubscribeHistorico = null;
 
+function iniciarSincronizacaoHistorico() {
+    const frente = document.getElementById('frente').value;
+    const turno = document.getElementById('turnoLetra').value;
+    if (!frente || !turno) return;
 
-        function iniciarSincronizacaoHistorico() {
-            const frente = document.getElementById('frente').value;
-            const turno = document.getElementById('turnoLetra').value;
+    if (unsubscribeHistorico) { unsubscribeHistorico(); unsubscribeHistorico = null; }
 
-            // 1. Validação: Se não tiver filtros selecionados, não gasta internet
-            if (!frente || !turno) return;
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 90);
+    const dataString = dataLimite.toISOString().split('T')[0];
 
-            // 2. Limpeza: Desconecta o "cano" anterior para não baixar dados duplicados
-            if (unsubscribeHistorico) {
-                unsubscribeHistorico();
-                unsubscribeHistorico = null;
-            }
+    unsubscribeHistorico = firestore.collection('historico_os')
+        .where('frente', '==', frente)
+        .where('turno', '==', turno)
+        .where('dataOS', '>=', dataString)
+        .onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+            if (snapshot.empty) return;
+            const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+            const store = tx.objectStore(STORE_HISTORICO);
+            let changed = false;
 
-            console.log(`📡 Conectando Histórico (90 dias): ${frente} [${turno}]`);
+            snapshot.docChanges().forEach(change => {
+                const d = change.doc.data();
+                d.uniqueId = parseInt(change.doc.id);
+                if (change.type === 'added' || change.type === 'modified') { store.put(d); changed = true; }
+                if (change.type === 'removed') { store.delete(d.uniqueId); changed = true; }
+            });
 
-            // 3. PROTEÇÃO DE COTA (A Lógica dos 90 Dias)
-            const dataLimite = new Date();
-            dataLimite.setDate(dataLimite.getDate() - 90); // Subtrai 90 dias de hoje
-            const dataString = dataLimite.toISOString().split('T')[0]; // Formata YYYY-MM-DD
-
-            try {
-                // A query abaixo diz ao servidor: "Só me mande o que for DEPOIS dessa data"
-                unsubscribeHistorico = firestore.collection('historico_os')
-                    .where('frente', '==', frente)
-                    .where('turno', '==', turno)
-                    .where('dataOS', '>=', dataString) // <--- O ESCUDO DE PROTEÇÃO ESTÁ AQUI
-                    .onSnapshot(async (snapshot) => {
-                        
-                        // Se não tem nada novo, não faz nada (Economia de processamento)
-                        if (snapshot.empty) return;
-
-                        const tx = db.transaction(STORE_HISTORICO, 'readwrite');
-                        const store = tx.objectStore(STORE_HISTORICO);
-                        let houveMudanca = false;
-
-                        // Processa apenas as mudanças (Delta)
-                        snapshot.docChanges().forEach(change => {
-                            houveMudanca = true;
-                            const dados = change.doc.data();
-                            // Garante ID numérico para o banco local
-                            dados.uniqueId = parseInt(change.doc.id); 
-
-                            if (change.type === 'added' || change.type === 'modified') {
-                                store.put(dados);
-                            }
-                            if (change.type === 'removed') {
-                                store.delete(dados.uniqueId);
-                            }
-                        });
-
-                        tx.oncomplete = () => {
-                            // Atualiza a tela apenas se necessário
-                            if (houveMudanca && document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
-                                mostrarHistorico();
-                            }
-                        };
-                    }, (error) => {
-                        console.error("Erro Sync Histórico:", error);
-                        // Se der erro de índice, avisa no console (normal na 1ª vez)
-                        if (error.code === 'failed-precondition') {
-                            console.warn("⚠️ Link para criar índice no console do navegador.");
-                        }
-                    });
-            } catch (e) {
-                console.error("Erro fatal ao iniciar sync:", e);
-            }
-        }
-
-
-
+            tx.oncomplete = () => {
+                if (changed && !document.getElementById('historico').classList.contains('hidden')) mostrarHistorico();
+            };
+        }, console.warn);
+}
 
 async function migrarDadosLocaisParaNuvem() {
-    // Pequeno delay para garantir que os selects carregaram
     await new Promise(r => setTimeout(r, 1500));
-
-    const frenteAtual = document.getElementById('frente').value;
-    const turnoAtual = document.getElementById('turnoLetra').value;
-
-    if (!frenteAtual || !turnoAtual) return;
+    const f = document.getElementById('frente')?.value.trim();
+    const t = document.getElementById('turnoLetra')?.value;
+    if (!f || !t) return;
 
     try {
-        // Pega tudo que está no celular
-        const todosLocais = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
-        
-        // Identifica itens "órfãos" (sem frente/turno)
-        const itensLegados = todosLocais.filter(item => !item.frente || !item.turno);
+        const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        const legados = todos.filter(i => !i.frente || !i.turno);
+        if (legados.length === 0) return;
 
-        if (itensLegados.length === 0) return; // Nada a fazer
-
-        showToast(`Migrando ${itensLegados.length} O.S. antigas para a nuvem...`, "info");
-
+        const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+        const store = tx.objectStore(STORE_HISTORICO);
         const batch = firestore.batch();
-        itensLegados.forEach(item => {
-            const docRef = firestore.collection('historico_os').doc(String(item.id));
-            const itemAtualizado = {
-                ...item,
-                frente: frenteAtual, // Assume a frente atual
-                turno: turnoAtual,   // Assume o turno atual
-                migradoEm: new Date().toISOString()
-            };
-            batch.set(docRef, itemAtualizado, { merge: true });
+
+        legados.forEach(i => {
+            i.frente = f; i.turno = t; i.migradoEm = new Date().toISOString();
+            store.put(i);
+            batch.set(firestore.collection('historico_os').doc(String(i.uniqueId || i.id)), i, { merge: true });
         });
 
-        await batch.commit();
-        showToast("Dados antigos salvos na nuvem com sucesso!", "success");
-        
-    } catch (e) {
-        console.error("Erro migração:", e);
-    }
+        tx.oncomplete = () => {
+            if(document.getElementById('historico_lista')) mostrarHistorico();
+            batch.commit().catch(console.warn);
+            showToast(`Migrados ${legados.length} itens antigos.`, "info");
+        };
+    } catch(e) { console.error("Erro migração:", e); }
 }
 
+// ============================================================
+// OUTROS MÓDULOS (MANTIDOS)
+// ============================================================
+// (Cole aqui o restante das funções: renderizarEstatisticas, Relatorio, Config, etc)
+
+
         async function renderizarSecaoEstatisticas(container) { const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); const totalHorasParadas = calcularHorasParadasCorretivasTotais(); const dmTurnoAtual = calcularDMGeral(maquinasPrincipais, totalHorasParadas); const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()); const osPorDia = {}; osHistorico.forEach(item => { const dataKey = item.dataOS.split('-').reverse().join('/'); osPorDia[dataKey] = (osPorDia[dataKey] || 0) + 1; }); const labels = Object.keys(osPorDia).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'))).slice(-15); const data = labels.map(label => osPorDia[label]); container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Estatísticas do Turno</h2><div class="p-4 border border-gray-200 rounded-lg text-center"><h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4><p class="text-4xl font-bold text-green-600">${dmTurnoAtual}%</p><p class="text-sm text-gray-500 mt-1">Base: ${maquinasPrincipais.length} máquinas. Considera paradas corretivas de todas as frotas.</p></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">O.S. Registradas (Últimos 15 dias)</h4><canvas id="graficoHistoricoOS"></canvas></div></div>`; const ctx = document.getElementById('graficoHistoricoOS'); if (graficoOS) graficoOS.destroy(); if (ctx) { graficoOS = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Nº de O.S.', data, backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); } }
-        async function renderizarSecaoRelatorio(container) { container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6"><div id="aviso_relatorio_desatualizado" class="hidden p-3 mb-4 text-sm text-yellow-700 bg-yellow-100 rounded-lg" role="alert"><span class="font-medium">Atenção!</span> Existem serviços novos ou alterados desde que este relatório foi gerado. Clique em "Gerar Relatório Final" para o atualizar.</div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Visualização</h4><div id="relatorio_formatado" class="p-3 bg-gray-50 border rounded-md min-h-[100px] whitespace-pre-line"></div><textarea id="relatorio_bruto" class="hidden mt-1 w-full p-2 border rounded-md font-mono h-64"></textarea><input type="hidden" id="relatorio_snapshot"></div><div class="p-4 border border-gray-200 rounded-lg"><h4 class="text-lg font-semibold text-blue-700 mb-3 border-b pb-2 text-center">Ações</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onclick="gerarRelatorioFinal()" class="py-2 px-4 rounded-md font-semibold bg-blue-600 text-white hover:bg-blue-700">Gerar Relatório Final</button><button onclick="compartilharRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-gray-500 hover:bg-gray-600 text-white">Compartilhar</button><button onclick="toggleEdicaoRelatorio(this)" class="py-2 px-4 rounded-md font-semibold bg-yellow-500 hover:bg-yellow-600 text-white">Editar Relatório</button><button onclick="limparRelatorio()" class="py-2 px-4 rounded-md font-semibold bg-red-600 text-white hover:bg-red-700">Limpar Relatório</button></div></div></div>`; try { const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)); const relatorioSalvo = dados?.relatorio || ''; const snapshotSalvo = dados?.relatorioGeradoComServicos || '[]'; if (relatorioSalvo) { document.getElementById('relatorio_bruto').value = relatorioSalvo; document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorioSalvo); document.getElementById('relatorio_snapshot').value = snapshotSalvo; if (snapshotSalvo !== JSON.stringify(servicos)) { document.getElementById('aviso_relatorio_desatualizado').classList.remove('hidden'); } } } catch (e) { console.error("Erro ao carregar relatório salvo:", e); } }
+        async function renderizarSecaoRelatorio(container) { 
+    container.innerHTML = `
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
+        
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
+            <div class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800">Relatório Final</h2>
+        </div>
+
+        <div id="aviso_relatorio_desatualizado" class="hidden p-3 mb-4 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2" role="alert">
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <span class="font-medium">Atenção:</span> Dados alterados. Gere o relatório novamente.
+        </div>
+
+        <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-4">
+            <h4 class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider">Visualização</h4>
+            <div id="relatorio_formatado" class="text-sm text-gray-700 whitespace-pre-line font-mono bg-white p-3 border rounded shadow-sm min-h-[150px]"></div>
+            <textarea id="relatorio_bruto" class="hidden mt-1 w-full p-2 border rounded-md font-mono h-64 text-sm"></textarea>
+            <input type="hidden" id="relatorio_snapshot">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onclick="gerarRelatorioFinal()" class="py-3 px-4 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Gerar Relatório
+            </button>
+            <button onclick="compartilharRelatorio()" class="py-3 px-4 rounded-lg font-bold bg-green-600 text-white hover:bg-green-700 shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                Enviar WhatsApp
+            </button>
+            <button onclick="toggleEdicaoRelatorio(this)" class="py-3 px-4 rounded-lg font-bold bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm transition-colors flex items-center justify-center gap-2">
+                ✏️ Editar
+            </button>
+            <button onclick="limparRelatorio()" class="py-3 px-4 rounded-lg font-bold bg-white border border-red-200 text-red-600 hover:bg-red-50 shadow-sm transition-colors flex items-center justify-center gap-2">
+                🗑️ Limpar
+            </button>
+        </div>
+    </div>`; 
+    
+    // Lógica de recuperação de dados (Mantida)
+    try { 
+        const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)); 
+        const relatorioSalvo = dados?.relatorio || ''; 
+        const snapshotSalvo = dados?.relatorioGeradoComServicos || '[]'; 
+        if (relatorioSalvo) { 
+            document.getElementById('relatorio_bruto').value = relatorioSalvo; 
+            document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorioSalvo); 
+            document.getElementById('relatorio_snapshot').value = snapshotSalvo; 
+            if (snapshotSalvo !== JSON.stringify(servicos)) { 
+                document.getElementById('aviso_relatorio_desatualizado').classList.remove('hidden'); 
+            } 
+        } 
+    } catch (e) { console.error("Erro ao carregar relatório salvo:", e); } 
+}
+
+
         async function gerarRelatorioFinal() { 
+    // 1. Validação Básica (Campos Vazios do Turno)
     if (!validarCamposTurnoBasicos()) return; 
 
+    // 2. NOVA VALIDAÇÃO ESTRITA: Verifica se existe ALGUM campo vermelho na tela
+    const camposComErro = document.querySelectorAll('.campo-invalido');
+    if (camposComErro.length > 0) {
+        showToast(`Existem ${camposComErro.length} campos com erro (vermelho). Corrija antes de gerar.`, 'error');
+        
+        // Tenta focar no primeiro erro encontrado para ajudar o usuário
+        camposComErro[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        camposComErro[0].focus();
+        return;
+    }
+
+    // --- Lógica de Geração (Mantida) ---
     const data = document.getElementById("dataTurno").value; 
     const fazenda = document.getElementById("fazenda").value.trim().toUpperCase(); 
     const frente = document.getElementById("frente").value.trim().toUpperCase(); 
     const turnoLetra = document.getElementById("turnoLetra").value; 
     const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome.toUpperCase()} - ${item.matricula}`).join('\n') : "EQUIPE NÃO INFORMADA"; 
     
-    // FILTRAGEM DE SERVIÇOS VÁLIDOS/GERADOS (Para Relatório Limpo)
     const servicosGerados = servicos.filter(s => s.texto && s.texto.trim() !== '');
 
-    // 1. MÁQUINAS PRINCIPAIS (BASE para o DM Geral)
     const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina'); 
     const horasPlanejadasTotaisGeral = maquinasPrincipais.reduce((soma, f) => soma + (f.horas || 0), 0);
-    
-    // 2. HORAS PARADAS TOTAIS (Numerador do DM Geral - Inclui TODAS as frotas)
     const horasParadasTotais = calcularHorasParadasCorretivasTotais(servicosGerados);
-    
-    // 3. CÁLCULO FINAL DO DM GERAL (Apenas máquinas principais na base)
     const dmGeral = calcularDMGeral(maquinasPrincipais, horasParadasTotais); 
-    
     const mediaHorasPorMaquina = maquinasPrincipais.length > 0 ? (horasPlanejadasTotaisGeral / maquinasPrincipais.length) : 0; 
     
-    // Geração do Cabeçalho
     let relatorio = `*MANUTENÇÃO ${frente} BRACELL*\n\n📅 *DATA:* ${formatarDataParaExibicao(data)}\n*FAZENDA:* ${fazenda}\n*FRENTE:* ${frente}\n*TURNO:* ${turnoLetra}\n*EQUIPE:*\n${equipeTexto}\n\n*QTD DE MÁQUINAS PRINCIPAIS:* ${maquinasPrincipais.length}\n*HORAS PLANEJADAS (por máquina):* ${mediaHorasPorMaquina.toFixed(2).replace('.', ',')}h\n*HORAS PLANEJADAS TOTAIS (máquinas):* ${horasPlanejadasTotaisGeral.toFixed(2).replace('.', ',')}h\n*HORAS TOTAIS PARADAS (corretivas):* ${horasParadasTotais.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadasTotais)})\n\n🟢 *DM DO TURNO:* ${dmGeral}%\n\n--- DETALHAMENTO POR FROTA ---\n`; 
     
-    // DETALHAMENTO POR FROTA (Itera sobre todas as frotas que tiveram serviço gerado)
     const frotasComServico = [...new Set(servicosGerados.map(s => s.frota))].sort(); 
     
     frotasComServico.forEach(nomeFrota => { 
@@ -4062,21 +4398,15 @@ async function migrarDadosLocaisParaNuvem() {
         
         const horasPlanejadasFrota = frota.horas || 0;
         const servicosDaFrotaGerados = servicosGerados.filter(s => s.frota === nomeFrota);
-        
         const horasParadaDaFrota = servicosDaFrotaGerados.filter(s => s.tipo === "CORRETIVA" && s.parada === "sim").reduce((total, s) => total + calcularDuracaoServico(s).horas, 0);
         
-        // CÁLCULO DM POR FROTA INDIVIDUAL: 
-        let dmFrota = "100.00"; // Padrão
-
+        let dmFrota = "100.00"; 
         if (horasPlanejadasFrota > 0) {
-            // Máquina Principal: Cálculo normal (usa Horas Planejadas como denominador)
             const horasOperando = Math.max(0, horasPlanejadasFrota - horasParadaDaFrota);
             dmFrota = ((horasOperando / horasPlanejadasFrota) * 100).toFixed(2); 
         } else if (horasParadaDaFrota > 0) {
-            // Frota sem H.P. (Implemento/Apoio) que Parou: Forçamos 0.00%
             dmFrota = "0.00"; 
         } 
-        // Se horas planejadas = 0 e parada = 0, dmFrota permanece 100.00% (Implícito)
 
         relatorio += `\n🚜 *${frota.nome.toUpperCase()}* ${getTipoTexto(frota.tipo)}\nHoras Planejada: ${horasPlanejadasFrota.toFixed(2).replace('.', ',')}h\nHoras Parada (Corretivas): ${horasParadaDaFrota.toFixed(2).replace('.', ',')}h (${calcularDuracaoEmHorasMinutos(horasParadaDaFrota)})\n*DM:* ${dmFrota}%\n*RELATÓRIO DE SERVIÇOS:*\n\n`; 
         
@@ -4088,25 +4418,100 @@ async function migrarDadosLocaisParaNuvem() {
             const emoji = s.tipo === "CORRETIVA" ? "🔧" : (s.tipo === "CONDICIONAL" ? "⏳" : "✨"); 
             
             relatorio += `${s.descricao.trim()}\n  (${codAtiv} - ${codSistema} - ${codSub}) ${emoji} [${s.tipo}]\n  ⏱️ Duração: ${duracao.texto} (Decimal: ${duracao.horas.toFixed(2).replace('.', ',')}h)\n`; 
-            
             if (s.oportunidade) { relatorio += `Oportunidade: ${s.oportunidade}\n`; } 
             relatorio += '\n'; 
         }); 
     }); 
     
+    // Atualiza a tela
     document.getElementById('relatorio_bruto').value = relatorio; 
     document.getElementById('relatorio_formatado').innerHTML = interpretarMarkdown(relatorio); 
     document.getElementById('relatorio_snapshot').value = JSON.stringify(servicos); 
+    
+    // Esconde o aviso de desatualizado (pois acabamos de atualizar)
     document.getElementById('aviso_relatorio_desatualizado').classList.add('hidden'); 
+    
     salvarTudo(true); 
-    showToast('Relatório gerado e salvo!', 'successo!'); 
+    showToast('Relatório gerado e validado!', 'success'); 
 }
 
+
         function calcularDuracaoEmHorasMinutos(horasDecimais) { if (isNaN(horasDecimais) || horasDecimais <= 0) return "0min"; const h = Math.floor(horasDecimais); const m = Math.round((horasDecimais - h) * 60); let texto = ""; if (h > 0) texto += `${h}h `; if (m > 0) texto += `${m}min`; return texto.trim() || "0min"; }
-        function compartilharRelatorio() { const texto = document.getElementById("relatorio_bruto").value; if (!texto.trim()) { showToast("Gere o relatório primeiro.", "error"); return; } window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); }
-        function toggleEdicaoRelatorio(button) { const textarea = document.getElementById("relatorio_bruto"); const div = document.getElementById("relatorio_formatado"); if (textarea.classList.contains('hidden')) { textarea.value = div.innerText; textarea.classList.remove('hidden'); div.classList.add('hidden'); button.innerText = 'Salvar Edição'; button.classList.replace('bg-yellow-500', 'bg-green-500'); } else { div.innerHTML = interpretarMarkdown(textarea.value); textarea.classList.add('hidden'); div.classList.remove('hidden'); button.innerText = 'Editar Relatório'; button.classList.replace('bg-green-500', 'bg-yellow-500'); showToast('Relatório atualizado.', 'success'); } }
-        async function limparRelatorio() { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Limpar Relatório', 'Deseja limpar o relatório atual?', resolve)); if (confirmado) { document.getElementById('relatorio_bruto').value = ''; document.getElementById('relatorio_formatado').innerHTML = ''; showToast('Relatório limpo.', 'success'); } }
-        function renderizarSecaoConfig(container) { container.innerHTML = `<div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto space-y-6"><h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">Configurações</h2><div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg"><h3 class="text-lg font-semibold text-gray-800">Catálogo de Peças</h3><div class="space-y-4 mt-2"><label for="fileImportExcel" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-600 hover:bg-teal-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">⬆️ Importar Catálogo (Excel)</label><input type="file" id="fileImportExcel" accept=".xlsx, .xls" class="hidden" onchange="importarCatalogoExcel(event)"><label for="fileImportCatalogo" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-md font-semibold transition-colors">⬆️ Importar Catálogo (CSV)</label><input type="file" id="fileImportCatalogo" accept=".csv" class="hidden" onchange="importarCatalogoCSV(event)"><button onclick="exportarCatalogoCSV()" class="w-full flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">⬇️ Exportar Catálogo (CSV)</button><button onclick="iniciarLimpezaCatalogo()" class="w-full flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 text-white py-3 px-4 rounded-md font-semibold transition-colors">🗑️ Limpar Catálogo Remoto (com senha)</button></div><p class="text-xs text-gray-500 mt-2">A importação/limpeza do catálogo afeta todos os utilizadores.</p></div><div class="space-y-2 text-center p-4 bg-gray-50 rounded-lg"><h3 class="text-lg font-semibold text-gray-800">Backup e Restauro</h3><div class="space-y-4 mt-2"><button onclick="gerarBackupCompleto()" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-md font-semibold transition-colors">🗄️ Exportar Dados Completos</button><div class="text-center"><label for="fileBackupCompletoInput" class="w-full cursor-pointer flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-3 px-4 rounded-md font-semibold transition-colors">🔄 Importar Dados Completos</label><input type="file" id="fileBackupCompletoInput" accept=".json" class="hidden" onchange="restaurarBackupCompleto(event)"><p class="text-xs text-gray-500 mt-1">Atenção: <strong class="text-red-600">Isto substituirá todos os dados atuais.</strong></p></div></div></div><div class="space-y-2 text-center p-4 bg-red-50 rounded-lg"><h3 class="text-lg font-semibold text-red-700">Zona de Perigo</h3><div class="space-y-4 mt-2"><button onclick="limparServicosTurnoAtual()" class="w-full py-3 px-4 rounded-md font-semibold bg-red-500 text-white hover:bg-red-600">🗑️ Limpar Serviços do Turno Atual</button><button onclick="resetarAplicacao()" class="w-full py-3 px-4 rounded-md font-semibold bg-red-700 text-white hover:bg-red-800">🗑️ Resetar Todos os Dados da Aplicação</button></div></div><div class="space-y-2 text-center mt-6"><h3 class="text-lg font-semibold text-gray-800">Desenvolvimento</h3><button onclick="forcarLimpezaCacheEAtualizar()" class="w-full md:w-3/4 lg:w-1/2 mx-auto py-3 px-4 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">🧹 Forçar Atualização de Cache</button><p class="text-xs text-gray-500 mt-1">Use se as alterações visuais não aparecerem.</p></div></div>`; }
+        function compartilharRelatorio() { 
+    // 1. Verifica se está desatualizado
+    const avisoDesatualizado = document.getElementById('aviso_relatorio_desatualizado');
+    if (avisoDesatualizado && !avisoDesatualizado.classList.contains('hidden')) {
+        showToast("⚠️ O relatório está desatualizado! Clique em 'Gerar Relatório' primeiro.", "error");
+        // Rola a tela até o botão de gerar para indicar a ação
+        document.querySelector('button[onclick="gerarRelatorioFinal()"]').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    // 2. Verifica se tem texto
+    const texto = document.getElementById("relatorio_bruto").value; 
+    if (!texto.trim()) { 
+        showToast("Gere o relatório primeiro.", "error"); 
+        return; 
+    } 
+    
+    // 3. Compartilha
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); 
+}
+
+        function renderizarSecaoConfig(container) { 
+    container.innerHTML = `
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl mx-auto space-y-6">
+        
+        <div class="text-center border-b border-gray-100 pb-4">
+            <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Configurações</h2>
+        </div>
+
+        <div class="space-y-4">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    📦 Catálogo de Peças
+                </h3>
+                <div class="grid gap-2">
+                    <label class="flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 px-4 rounded-lg font-bold text-sm cursor-pointer transition-colors">
+                        ⬆️ Importar Excel
+                        <input type="file" class="hidden" accept=".xlsx, .xls" onchange="importarCatalogoExcel(event)">
+                    </label>
+                    <button onclick="iniciarLimpezaCatalogo()" class="flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2.5 px-4 rounded-lg font-bold text-sm transition-colors">
+                        🗑️ Limpar Catálogo
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                    💾 Backup e Restauro
+                </h3>
+                <div class="grid gap-2">
+                    <button onclick="gerarBackupCompleto()" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-bold text-sm shadow-sm transition-all active:scale-95">
+                        ⬇️ Baixar Backup
+                    </button>
+                    <label class="flex items-center justify-center gap-2 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 py-2.5 px-4 rounded-lg font-bold text-sm cursor-pointer transition-colors">
+                        ⬆️ Restaurar Backup
+                        <input type="file" class="hidden" accept=".json" onchange="restaurarBackupCompleto(event)">
+                    </label>
+                </div>
+            </div>
+            
+            <div class="pt-2 text-center">
+                <button onclick="resetarAplicacao()" class="text-xs text-red-400 hover:text-red-600 font-bold underline">
+                    Resetar Aplicativo (Fábrica)
+                </button>
+            </div>
+        </div>
+    </div>`; 
+}
+
         async function limparServicosTurnoAtual() { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Limpar Serviços', 'Tem a certeza que deseja apagar TODOS os serviços do turno atual?', resolve)); if (confirmado) { servicos = []; salvarTudo(); showToast('Serviços do turno atual limpos.', 'success'); if (document.getElementById('servicosLista')) renderizarServicos(); } }
         async function resetarAplicacao() { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Resetar Aplicação', '<strong>Atenção!</strong><br>Isto apagará TODOS os dados. Faça um backup antes. Deseja continuar?', resolve)); if (confirmado) { try { if (db) db.close(); const deleteRequest = indexedDB.deleteDatabase(DB_NAME); deleteRequest.onsuccess = () => { showToast("Dados resetados. A aplicação será recarregada.", 'success'); setTimeout(() => window.location.reload(), 1500); }; deleteRequest.onerror = () => showToast("Erro ao apagar o banco de dados.", 'error'); deleteRequest.onblocked = () => showToast("A exclusão foi bloqueada. Feche outras abas desta aplicação.", 'error'); } catch (e) { showToast("Erro ao tentar resetar a aplicação.", 'error'); } } }
         async function gerarBackupCompleto() { try { const dadosTurno = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; const dadosHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll()) || []; if (Object.keys(dadosTurno).length <= 1 && dadosHistorico.length === 0) { showToast("Nenhum dado para fazer backup.", 'info'); return; } const dadosParaBackup = { turno: dadosTurno, historico: dadosHistorico }; const blob = new Blob([JSON.stringify(dadosParaBackup, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_meuturno_${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url); showToast("Backup gerado com sucesso!", 'success'); } catch (err) { showToast("Erro ao gerar o backup.", 'error'); } }
@@ -4161,7 +4566,33 @@ async function migrarDadosLocaisParaNuvem() {
         async function executarLimpezaCatalogo() { const confirmado = await new Promise(resolve => abrirPopupConfirmar('ÚLTIMO AVISO', 'Tem a certeza absoluta de que deseja apagar TODOS os itens do catálogo para TODOS os utilizadores? Esta ação é irreversível.', resolve, 'Sim, apagar tudo')); if (!confirmado) return; showToast("A iniciar limpeza do catálogo... Isto pode demorar.", "info"); try { const querySnapshot = await firestore.collection('catalogo').get(); if (querySnapshot.empty) { showToast("O catálogo já está vazio.", "info"); return; } const batchSize = 499; for (let i = 0; i < querySnapshot.docs.length; i += batchSize) { const lote = querySnapshot.docs.slice(i, i + batchSize); const batch = firestore.batch(); lote.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); } showToast("Catálogo limpo com sucesso!", "success"); } catch (error) { console.error("Erro ao limpar o catálogo:", error); showToast("Ocorreu um erro durante a limpeza.", "error"); } }
         async function importarCatalogoExcel(event) { const file = event.target.files[0]; if (!file) return; const confirmado = await new Promise(resolve => abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão ignorados.', resolve)); if (!confirmado) { event.target.value = ''; return; } abrirPopupLoading("A ler o ficheiro Excel. Por favor, aguarde..."); const reader = new FileReader(); reader.onload = async (e) => { try { await new Promise(resolve => setTimeout(resolve, 50)); const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, { type: 'array' }); const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName]; const itensDoExcel = XLSX.utils.sheet_to_json(worksheet, { header: ["codigoSap", "partNumber", "descricao"], defval: "" }); if (itensDoExcel.length === 0) { throw new Error("Nenhum item válido encontrado no ficheiro Excel."); } const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap).trim()).filter(sap => sap)); const itensNovos = itensDoExcel.filter(item => { const sap = String(item.codigoSap || '').trim(); return sap && !codigosSapExistentes.has(sap); }); if (itensNovos.length === 0) { showToast("Importação concluída. Nenhum item novo para adicionar.", "success"); fecharPopup(); return; } document.querySelector('#popupGenerico #popupMensagem').innerHTML = `<p>A enviar ${itensNovos.length} itens novos para a base de dados...</p>`; await enviarLoteParaFirestore(itensNovos); showToast(`Importação concluída! ${itensNovos.length} itens novos foram adicionados.`, "success"); } catch (error) { showToast(`Erro: ${error.message}`, "error"); } finally { fecharPopup(); event.target.value = ''; } }; reader.readAsArrayBuffer(file); }
         async function enviarLoteParaFirestore(itens) { const batchSize = 499; for (let i = 0; i < itens.length; i += batchSize) { const lote = itens.slice(i, i + batchSize); const batch = firestore.batch(); lote.forEach(item => { const docRef = firestore.collection('catalogo').doc(); const itemData = { codigoSap: item.codigoSap || '', partNumber: item.partNumber || '', descricao: item.descricao || '' }; batch.set(docRef, itemData); }); await batch.commit(); } }
-        async function renderizarSecaoCatalogo(container) { try { catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll()); } catch (e) { console.error("Erro ao carregar catálogo do IndexedDB:", e); catalogoLocal = []; } container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-4"><h2 class="text-xl font-bold text-blue-800">Catálogo de Peças</h2><div><label for="buscaCatalogo" class="sr-only">Buscar</label><input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" placeholder="🔎 Buscar por SAP, Part Number ou Descrição..." class="w-full p-3 border border-gray-300 rounded-lg"></div><div id="listaCatalogo" class="space-y-2"></div></div>`; renderizarCatalogo(); }
+        async function renderizarSecaoCatalogo(container) { 
+    try { catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll()); } catch (e) { catalogoLocal = []; } 
+    
+    container.innerHTML = `
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
+            <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
+        </div>
+
+        <div class="relative">
+            <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" 
+                placeholder="Buscar SAP, Part Number ou Descrição..." 
+                class="w-full pl-10 p-3 border border-gray-300 rounded-lg mb-2 focus:ring-2 focus:ring-purple-500 outline-none bg-gray-50 text-sm">
+            <div class="absolute left-3 top-3.5 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+        </div>
+        <div id="listaCatalogo" class="space-y-2 mt-4"></div>
+    </div>`; 
+    renderizarCatalogo(); 
+}
+
 
         function renderizarCatalogo() {
             const listaDiv = document.getElementById('listaCatalogo');
