@@ -118,6 +118,17 @@
         </div> 
         <div class="w-10"></div>
     </header>
+        <div class="w-10"></div>
+</header>
+
+<div id="btnUpdateBadge" class="hidden bg-blue-700 text-center py-2 shadow-inner border-t border-blue-800 transition-all duration-500 relative z-20">
+    <button onclick="abrirModalUpdate()" class="bg-white text-blue-800 hover:bg-blue-50 text-xs font-bold px-4 py-1.5 rounded-full animate-pulse shadow-sm flex items-center justify-center mx-auto gap-2 transition-transform active:scale-95">
+        <span class="text-lg">🎁</span> 
+        <span>Nova Versão Disponível - Toque para atualizar</span> 
+    </button>
+</div>
+<nav id="menu-lateral" class="...">
+
 
     <nav id="menu-lateral" class="fixed top-0 left-0 h-full bg-white shadow-2xl z-30 transform -translate-x-full transition-transform duration-300 ease-in-out w-3/4 max-w-xs flex flex-col">
     
@@ -2120,7 +2131,6 @@ function adicionarFrotasSelecionadasAoTurno() {
 function renderizarSecaoServicos(container) { 
     container.innerHTML = `
     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
-        
         <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
             <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2135,11 +2145,39 @@ function renderizarSecaoServicos(container) {
         </div>
 
         <div id="servicosLista" class="space-y-4"></div>
-        
     </div>`; 
     
     renderizarServicos(); 
 }
+
+function renderizarServicos() { 
+    const lista = document.getElementById("servicosLista"); 
+    if (!lista) return; 
+    
+    // Apenas ordena, sem filtrar por texto
+    const servicosOrdenados = [...servicos]; 
+    servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
+    
+    lista.innerHTML = ''; 
+    
+    if (servicosOrdenados.length === 0) { 
+        lista.innerHTML = `
+        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
+            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
+            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
+        </div>`; 
+    } else { 
+        servicosOrdenados.forEach(s => { 
+            const template = document.getElementById('servico-template').content.cloneNode(true); 
+            const article = template.querySelector('article'); 
+            article.id = `servico_${s.id}`; 
+            lista.appendChild(article); 
+            preencherDetalhesServico(s); 
+        }); 
+    } 
+}
+
+
 function renderizarServicos() { 
     const lista = document.getElementById("servicosLista"); 
     if (!lista) return; 
