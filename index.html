@@ -823,42 +823,45 @@ async function limparHistoricoAntigoLocal() {
     } catch (err) { console.error("Erro main:", err); }
 }
 
+// ============================================================
+// GESTÃO INTELIGENTE DE ATUALIZAÇÕES (PWA)
+// ============================================================
 
-// --- CONFIGURAÇÃO DAS NOVIDADES ---
-// EDITE AQUI SEMPRE QUE SUBIR UMA VERSÃO NOVA PARA O GITHUB
-const NOVIDADES_VERSAO = [
-    "✅ Novo visual na Linha do Tempo",
-    "✅ Correção no salvamento Offline",
-    "✅ Histórico agora mostra status colorido",
-    "⚡ Melhoria de performance"
-];
+// 1. CONFIGURAÇÃO DA VERSÃO ATUAL
+const UPDATE_CONFIG = {
+    critico: true, // TRUE = Abre o modal na cara e bloqueia / FALSE = Mostra só o presente 🎁
+    novidades: [
+        "✅ Novo visual na Linha do Tempo",
+        "⚡ Melhoria de performance",
+        "🐛 Correção crítica de segurança"
+    ]
+};
 
-let newWorker = null; // Variável para guardar o SW esperando
+let newWorker = null; // Armazena o SW que está esperando
 
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js').then(reg => {
             
-            // 1. Se já tem um SW esperando (atualização baixada em background)
+            // A. Se já tem um SW esperando (baixou em background antes)
             if (reg.waiting) {
-                newWorker = reg.waiting;
-                abrirModalUpdate();
+                tratarNovaVersaoEncontrada(reg.waiting);
                 return;
             }
 
-            // 2. Se encontrar uma atualização nova
+            // B. Se encontrou uma atualização agora
             reg.onupdatefound = () => {
                 const worker = reg.installing;
                 worker.onstatechange = () => {
+                    // Só age quando o download terminar (state: installed)
                     if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                        newWorker = worker;
-                        abrirModalUpdate();
+                        tratarNovaVersaoEncontrada(worker);
                     }
                 };
             };
-        }).catch(err => console.error('Erro no SW:', err));
+        }).catch(err => console.error('Erro ao registrar SW:', err));
 
-        // Ouve o evento de recarregar a página quando o novo SW assumir
+        // C. Recarrega a página quando o SW novo assumir o controle
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (!refreshing) {
@@ -869,62 +872,90 @@ function registrarServiceWorker() {
     }
 }
 
-// Adicione uma propriedade 'critico'
-const UPDATE_CONFIG = {
-    critico: false, // MUDE PARA TRUE SE FOR OBRIGATÓRIO
-    novidades: [
-        "✅ Novo visual na Linha do Tempo",
-        "⚡ Melhoria de performance"
-    ]
-};
-// --- FUNÇÕES VISUAIS DO NOVO MODAL ---
+// 2. CÉREBRO DA DECISÃO (Crítico vs Normal)
+function tratarNovaVersaoEncontrada(worker) {
+    newWorker = worker;
 
+    if (UPDATE_CONFIG.critico) {
+        // CRÍTICO: Abre o modal imediatamente e força a atenção
+        console.log("🚨 Atualização Crítica Detectada!");
+        abrirModalUpdate(); 
+    } else {
+        // NORMAL: Mostra apenas o badge (presente) e deixa o usuário decidir
+        console.log("🎁 Atualização Normal Disponível.");
+        mostrarNotificacaoUpdate(); 
+    }
+}
+
+// Mostra o botão de presente (Badge)
+function mostrarNotificacaoUpdate() {
+    const badge = document.getElementById('btnUpdateBadge');
+    if (badge) {
+        badge.classList.remove('hidden');
+        if (navigator.vibrate) navigator.vibrate(200);
+    }
+}
+
+// Abre o Modal (Com comportamento dinâmico baseado na config)
 function abrirModalUpdate() {
     const modal = document.getElementById('modalUpdate');
     const backdrop = document.getElementById('modalUpdateBackdrop');
     const windowEl = document.getElementById('modalUpdateWindow');
     const lista = document.getElementById('listaNovidades');
-    const btn = document.getElementById('btnUpdateConfirm');
+    const btnConfirmar = document.getElementById('btnUpdateConfirm');
+    
+    // Seleciona o botão de cancelar (que pode ser escondido)
+    // Nota: Adicionei um ID 'btnUpdateCancel' no HTML abaixo para facilitar, 
+    // ou buscamos pelo onclick se você não mudou o HTML.
+    const btnCancelar = modal.querySelector('button[onclick="fecharModalUpdate()"]'); 
+    const tituloModal = modal.querySelector('h3');
+    const textoModal = modal.querySelector('.bg-gradient-to-r p');
 
     if (!modal) return;
 
-
-    // 1. Preenche a lista de novidades
-    lista.innerHTML = NOVIDADES_VERSAO.map(item => 
+    // 1. Preenche Novidades
+    lista.innerHTML = UPDATE_CONFIG.novidades.map(item => 
         `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
     ).join('');
 
-   // 2. Lógica Crítica
-   const btnCancelar = document.querySelector('button[onclick="fecharModalUpdate()"]');
-   
-   if (UPDATE_CONFIG.critico) {
-       // Esconde o botão de cancelar e o fundo não fecha
-       
-       btnCancelar.style.display = 'none';
-       backdrop.onclick = null; // Impede clicar fora para fechar
-       // Muda o texto para ser mais urgente
-       document.querySelector('#modalUpdateWindow h3').innerText = "Atualização Obrigatória";
-       document.querySelector('#modalUpdateWindow p').innerText = "Esta versão contém correções de segurança críticas.";
-   } else {
-       btnCancelar.style.display = 'block';
-   }
+    // 2. Aplica Lógica CRÍTICA vs NORMAL
+    if (UPDATE_CONFIG.critico) {
+        // MODO CRÍTICO
+        if (btnCancelar) btnCancelar.style.display = 'none'; // Esconde "Agora não"
+        backdrop.onclick = null; // Impede clicar fora para fechar
+        
+        // Muda textos para tom de urgência
+        if(tituloModal) tituloModal.innerText = "Atualização Obrigatória";
+        if(textoModal) textoModal.innerText = "Melhorias críticas necessárias para continuar.";
+    } else {
+        // MODO NORMAL
+        if (btnCancelar) btnCancelar.style.display = 'block'; // Mostra "Agora não"
+        backdrop.onclick = () => fecharModalUpdate(); // Permite clicar fora
+        
+        // Textos amigáveis
+        if(tituloModal) tituloModal.innerText = "Nova Versão Disponível!";
+        if(textoModal) textoModal.innerText = "Melhorias e correções prontas para você.";
+    }
 
-
-    // 2. Define a ação do botão
-    btn.onclick = () => {
+    // 3. Ação do Botão Atualizar
+    btnConfirmar.onclick = () => {
         if (newWorker) {
-            // Manda o novo Service Worker assumir o controle
             newWorker.postMessage({ action: 'skipWaiting' });
-            btn.innerHTML = "Atualizando...";
-            btn.disabled = true;
+            btnConfirmar.innerHTML = "Atualizando...";
+            btnConfirmar.disabled = true;
         } else {
             window.location.reload();
         }
     };
 
-    // 3. Mostra com animação
+    // 4. Exibe o Modal
     modal.classList.remove('hidden');
-    // Pequeno delay para permitir a transição CSS
+    
+    // Se for crítico, esconde o badge de fundo pra focar no modal
+    if (UPDATE_CONFIG.critico) {
+        document.getElementById('btnUpdateBadge')?.classList.add('hidden');
+    }
+
     setTimeout(() => {
         backdrop.classList.remove('opacity-0');
         windowEl.classList.remove('opacity-0', 'scale-90');
@@ -933,25 +964,27 @@ function abrirModalUpdate() {
 }
 
 function fecharModalUpdate() {
+    // Só permite fechar se NÃO for crítico
+    if (UPDATE_CONFIG.critico) return;
+
     const modal = document.getElementById('modalUpdate');
     const backdrop = document.getElementById('modalUpdateBackdrop');
     const windowEl = document.getElementById('modalUpdateWindow');
 
     if (!modal) return;
 
-    // Animação de saída
     backdrop.classList.add('opacity-0');
     windowEl.classList.remove('scale-100');
     windowEl.classList.add('opacity-0', 'scale-90');
    
+    // Se fechou o modal, garante que o badge (presente) continue visível para lembrar depois
     document.getElementById('btnUpdateBadge')?.classList.remove('hidden');
-
-    
 
     setTimeout(() => {
         modal.classList.add('hidden');
-    }, 300); // Espera a transição acabar
+    }, 300);
 }
+
 
         // ================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
@@ -4543,6 +4576,69 @@ async function migrarDadosLocaisParaNuvem() {
     // 3. Compartilha
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); 
 }
+
+// --- FUNÇÕES AUXILIARES DO RELATÓRIO ---
+
+function toggleEdicaoRelatorio(button) {
+    const textarea = document.getElementById("relatorio_bruto");
+    const div = document.getElementById("relatorio_formatado");
+    
+    if (!textarea || !div) return;
+
+    if (textarea.classList.contains('hidden')) {
+        // 1. Entrar no modo Edição
+        // Pega o texto atual visível e joga para a caixa de edição
+        // (Usamos innerText para preservar quebras de linha visuais)
+        if (!textarea.value) textarea.value = div.innerText; 
+        
+        textarea.classList.remove('hidden');
+        div.classList.add('hidden');
+        
+        // Muda o botão para "Salvar" (Verde)
+        button.innerHTML = '💾 Salvar';
+        button.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+    } else {
+        // 2. Salvar e Sair
+        // Processa o Markdown básico e volta para visualização
+        div.innerHTML = interpretarMarkdown(textarea.value);
+        
+        textarea.classList.add('hidden');
+        div.classList.remove('hidden');
+        
+        // Volta o botão para "Editar" (Amarelo)
+        button.innerHTML = '✏️ Editar';
+        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+        button.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+        
+        // Persiste a alteração manual no banco de dados
+        salvarTudo(); 
+        showToast('Edição manual salva.', 'success');
+    }
+}
+
+async function limparRelatorio() {
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar(
+            'Limpar Relatório', 
+            'Tem certeza que deseja apagar o texto do relatório?<br><br>Isso <b>não apaga</b> os serviços lançados, apenas o texto gerado aqui.', 
+            resolve
+        )
+    );
+
+    if (confirmado) {
+        document.getElementById('relatorio_bruto').value = '';
+        document.getElementById('relatorio_formatado').innerHTML = '';
+        
+        // Esconde o aviso de desatualizado se estiver aparecendo
+        const aviso = document.getElementById('aviso_relatorio_desatualizado');
+        if(aviso) aviso.classList.add('hidden');
+
+        salvarTudo();
+        showToast('Campo de relatório limpo.', 'success');
+    }
+}
+
 
         function renderizarSecaoConfig(container) { 
     container.innerHTML = `
