@@ -4577,6 +4577,69 @@ async function migrarDadosLocaisParaNuvem() {
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); 
 }
 
+// --- FUNÇÕES AUXILIARES DO RELATÓRIO ---
+
+function toggleEdicaoRelatorio(button) {
+    const textarea = document.getElementById("relatorio_bruto");
+    const div = document.getElementById("relatorio_formatado");
+    
+    if (!textarea || !div) return;
+
+    if (textarea.classList.contains('hidden')) {
+        // 1. Entrar no modo Edição
+        // Pega o texto atual visível e joga para a caixa de edição
+        // (Usamos innerText para preservar quebras de linha visuais)
+        if (!textarea.value) textarea.value = div.innerText; 
+        
+        textarea.classList.remove('hidden');
+        div.classList.add('hidden');
+        
+        // Muda o botão para "Salvar" (Verde)
+        button.innerHTML = '💾 Salvar';
+        button.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+    } else {
+        // 2. Salvar e Sair
+        // Processa o Markdown básico e volta para visualização
+        div.innerHTML = interpretarMarkdown(textarea.value);
+        
+        textarea.classList.add('hidden');
+        div.classList.remove('hidden');
+        
+        // Volta o botão para "Editar" (Amarelo)
+        button.innerHTML = '✏️ Editar';
+        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+        button.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+        
+        // Persiste a alteração manual no banco de dados
+        salvarTudo(); 
+        showToast('Edição manual salva.', 'success');
+    }
+}
+
+async function limparRelatorio() {
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar(
+            'Limpar Relatório', 
+            'Tem certeza que deseja apagar o texto do relatório?<br><br>Isso <b>não apaga</b> os serviços lançados, apenas o texto gerado aqui.', 
+            resolve
+        )
+    );
+
+    if (confirmado) {
+        document.getElementById('relatorio_bruto').value = '';
+        document.getElementById('relatorio_formatado').innerHTML = '';
+        
+        // Esconde o aviso de desatualizado se estiver aparecendo
+        const aviso = document.getElementById('aviso_relatorio_desatualizado');
+        if(aviso) aviso.classList.add('hidden');
+
+        salvarTudo();
+        showToast('Campo de relatório limpo.', 'success');
+    }
+}
+
+
         function renderizarSecaoConfig(container) { 
     container.innerHTML = `
     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl mx-auto space-y-6">
