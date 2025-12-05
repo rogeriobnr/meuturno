@@ -1,7 +1,7 @@
 'use strict';
 
 // Mude a versão para forçar a atualização nos clientes
-const CACHE_NAME = 'meuturno-cache-v25';
+const CACHE_NAME = 'meuturno-cache-v23';
 
 const urlsToCache = [
   './',
@@ -11,13 +11,11 @@ const urlsToCache = [
   './icon-192.png', 
   './icon-512.png',
   './fundo_apontamento.jpg',
-  // Arquivos Locais
-  './libs/tailwind.css',
-  './libs/jspdf.js',
-  './libs/firebase-app.js',
-  './libs/firebase-firestore.js',
-  './libs/xlsx.js',
-  './libs/chart.js'
+  'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js', 
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js',
+  'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js' 
 ];
 
 // 1. INSTALAÇÃO: Apenas baixa os arquivos para o cache novo
