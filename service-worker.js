@@ -1,7 +1,7 @@
 'use strict';
 
 // Mude a versão para forçar a atualização nos clientes
-const CACHE_NAME = 'meuturno-cache-v26';
+const CACHE_NAME = 'meuturno-cache-v25';
 
 const urlsToCache = [
   './',
