@@ -4264,27 +4264,59 @@ function habilitarEdicaoOS(id, btn) {
 
 async function confirmarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
+    // Pega o valor, mas não bloqueia se for vazio
     const numero = input ? input.value.trim() : "";
-    if (!numero) { showToast("Nº O.S não pode ser vazio.", "error"); input.focus(); return; }
-    
+
+    // Feedback visual imediato no botão
     const textoOriginal = btn.innerText;
-    btn.disabled = true; btn.innerText = "...";
+    btn.disabled = true;
+    btn.innerText = "...";
 
     try {
         const idNumerico = parseInt(id);
+        
+        // 1. Busca o item no banco local
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
-        if (!item) throw new Error("Item não encontrado.");
+
+        if (!item) throw new Error("Item não encontrado no celular.");
+
+        // --- NOVA LÓGICA INTELIGENTE ---
+        // Se tem número, finaliza. Se apagou o número, volta para pendente.
+        const novoStatus = numero === "" ? "pendente" : "finalizada";
+
+        // Atualiza o objeto na memória
         item.osNumero = numero;
+        item.status = novoStatus;
         item.atualizadoEm = new Date().toISOString();
+
+        // 2. Salva no IndexedDB (Local)
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-        showToast("Nº O.S atualizado!", 'success');
-        await mostrarHistorico();
-        firestore.collection('historico_os').doc(String(id)).update({ osNumero: numero, atualizadoEm: item.atualizadoEm }).catch(console.warn);
+
+        // Feedback para o usuário
+        const msg = numero ? "Nº O.S atualizado!" : "Nº removido. Status voltou para Pendente.";
+        showToast(msg, 'success');
+        
+        // Atualiza a lista para pintar de verde (finalizada) ou amarelo (pendente)
+        await mostrarHistorico(); 
+
+        // 3. Sincroniza com a Nuvem (Firestore)
+        firestore.collection('historico_os').doc(String(id)).update({
+            osNumero: numero,
+            status: novoStatus, // Envia o novo status também!
+            atualizadoEm: item.atualizadoEm
+        }).catch(err => {
+            console.warn("⚠️ Sem rede. Alteração salva localmente.", err);
+        });
+
     } catch (error) {
-        showToast("Erro: " + error.message, 'error');
-        btn.disabled = false; btn.innerText = textoOriginal;
+        console.error(error);
+        showToast("Erro ao atualizar: " + error.message, 'error');
+        // Restaura o botão em caso de erro
+        btn.disabled = false;
+        btn.innerText = textoOriginal;
     }
 }
+
 
 async function excluirHistoricoItem(id) {
     try {
