@@ -986,19 +986,20 @@ function fecharModalUpdate() {
 }
 
 
-        // ================================================================================
-        // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
-        // =================================================================================
-       const STORE_FAZENDAS = 'lista_fazendas';
+// ================================================================================
+// 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
+// =================================================================================
+const STORE_FAZENDAS = 'lista_fazendas';
 const STORE_FRENTES = 'lista_frentes';
 const STORE_EQUIPE = 'lista_equipe';
+const STORE_APONTAMENTOS = 'apontamentos_diarios';
 
 function initDB() {
     return new Promise((resolve, reject) => {
         if (db) return resolve(db);
         
-        // INCREMENTEI A VERSÃO PARA 22
-        const request = indexedDB.open(DB_NAME, 22); 
+        // AUMENTEI A VERSÃO PARA 23 (Importante!)
+        const request = indexedDB.open(DB_NAME, 23); 
         
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
@@ -1013,16 +1014,19 @@ function initDB() {
             if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
+            if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
 
-            // --- NOVA STORE EQUIPE ---
-            if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) {
-                currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
+            // --- NOVA STORE PARA APONTAMENTOS ---
+            // A chave será composta: "DATA_FRENTE_TURNO" (ex: 2025-12-04_MÓDULO 1_B)
+            if (!currentDb.objectStoreNames.contains(STORE_APONTAMENTOS)) {
+                currentDb.createObjectStore(STORE_APONTAMENTOS, { keyPath: 'idComposto' });
             }
         };
         request.onsuccess = e => { db = e.target.result; resolve(db); };
         request.onerror = e => { console.error("Erro DB:", e); reject(e); };
     });
 }
+
 
         async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
 
@@ -1141,80 +1145,78 @@ function initDB() {
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
         function abrir(secaoId) {
-            // Esconde todas as secções
-            document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+    // Esconde todas as secções
+    document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
 
-            // Mostra a secção ativa e chama a sua função de renderização
-            const secaoAtiva = document.getElementById(secaoId);
-            if (secaoAtiva) {
-                secaoAtiva.classList.remove('hidden');
-                
-                  // --- LÓGICA INTELIGENTE DE ECONOMIA ---
+    // Mostra a secção ativa
+    const secaoAtiva = document.getElementById(secaoId);
+    if (secaoAtiva) {
+        secaoAtiva.classList.remove('hidden');
+        
+        // --- LÓGICA DE CARREGAMENTO POR DEMANDA ---
+        
         if (secaoId === 'catalogo') {
-            // Só baixa o catálogo se o usuário entrar nesta tela!
             sincronizarCatalogoPecas();
-            renderizarCatalogo(); // Renderiza o que já tem no cache local enquanto baixa
+            renderizarCatalogo(); 
         }
         
-        // --- NOVA LÓGICA DE ECONOMIA DE FROTAS ---
-    if (secaoId === 'frotas') {
-        sincronizarCatalogoFrotas(); 
-        renderizarCatalogoFrotas();
+        if (secaoId === 'frotas') {
+            sincronizarCatalogoFrotas(); 
+            renderizarCatalogoFrotas();
+        }
+        
+        // --- MUDANÇA AQUI: Só chama o render se for APONTAMENTO ---
+        if (secaoId === 'apontamento') {
+             // Aqui a mágica acontece: O render dispara o popup de confirmação
+             renderizarSecaoApontamento(secaoAtiva);
+        }
+        
+        // Para as outras seções que têm renderizadores específicos
+        // (Ex: estatisticas, relatorio, historico)
+        const renderFunc = window[`renderizarSecao${secaoId.charAt(0).toUpperCase() + secaoId.slice(1)}`];
+        // Evita chamar renderizarSecaoApontamento duas vezes
+        if (typeof renderFunc === 'function' && secaoId !== 'apontamento') {
+            renderFunc(secaoAtiva);
+        }
     }
-        // --------------------------------------
-                
-                const renderFunc = window[`renderizarSecao${secaoId.charAt(0).toUpperCase() + secaoId.slice(1)}`];
-                if (typeof renderFunc === 'function') {
-                    renderFunc(secaoAtiva);
-                }
-            }
 
-            // NOVO: Salva a seção ativa no LocalStorage
-            localStorage.setItem('secaoAtiva', secaoId);
+    // Salva a seção ativa para persistência
+    localStorage.setItem('secaoAtiva', secaoId);
 
-            // Atualiza o título do cabeçalho
-            
-            //document.getElementById('header-titulo').textContent = secaoId === 'catalogo' ? 'Catálogo de Peças' : secaoId.charAt(0).toUpperCase() + secaoId.slice(1);
-            
-
-            // Pega a referência de todos os botões flutuantes
-            const fabCriarServico = document.getElementById('fabCriarServico');
-            const fabAddItemCatalogo = document.getElementById('fabAddItemCatalogo');
-            const fabAddFrotaCatalogo = document.getElementById('fabAddFrotaCatalogo');
-            const fabCadastroRapidoFrota = document.getElementById('fabCadastroRapidoFrota');
-
-            // Esconde todos eles por padrão
-            if (fabCriarServico) fabCriarServico.style.display = 'none';
-            if (fabAddItemCatalogo) fabAddItemCatalogo.style.display = 'none';
-            if (fabAddFrotaCatalogo) fabAddFrotaCatalogo.style.display = 'none';
-            if (fabCadastroRapidoFrota) fabCadastroRapidoFrota.style.display = 'none';
-
-            // Mostra os botões corretos para a secção atual
-            if (secaoId === 'servicos') {
-                if (fabCriarServico) fabCriarServico.style.display = 'flex';
-                if (fabCadastroRapidoFrota) fabCadastroRapidoFrota.style.display = 'flex';
-            } else if (secaoId === 'catalogo') {
-                if (fabAddItemCatalogo) fabAddItemCatalogo.style.display = 'flex';
-            } else if (secaoId === 'frotas') {
-                if (fabAddFrotaCatalogo) fabAddFrotaCatalogo.style.display = 'flex';
-            }
-            // ... código anterior da função abrir ...
-
-    // --- ATUALIZAÇÃO VISUAL DO MENU ---
+    // Atualiza visual do menu
     document.querySelectorAll('#menu-lateral a').forEach(link => {
-        // Remove classes de ativo de todos
         link.classList.remove('bg-blue-50', 'text-blue-700', 'border-l-4', 'border-blue-600');
         link.classList.add('text-gray-600', 'hover:bg-gray-50');
 
-        // Adiciona destaque no ativo
         if (link.getAttribute('data-secao') === secaoId) {
             link.classList.remove('text-gray-600', 'hover:bg-gray-50');
             link.classList.add('bg-blue-50', 'text-blue-700', 'border-l-4', 'border-blue-600');
         }
     });
+    
+    // Controle dos botões FAB (Flutuantes)
+    const fabs = [
+        'fabCriarServico', 'fabAddItemCatalogo', 
+        'fabAddFrotaCatalogo', 'fabCadastroRapidoFrota'
+    ];
+    
+    // Esconde todos primeiro
+    fabs.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'none';
+    });
 
+    // Mostra apenas os necessários
+    if (secaoId === 'servicos') {
+        document.getElementById('fabCriarServico').style.display = 'flex';
+        document.getElementById('fabCadastroRapidoFrota').style.display = 'flex';
+    } else if (secaoId === 'catalogo') {
+        document.getElementById('fabAddItemCatalogo').style.display = 'flex';
+    } else if (secaoId === 'frotas') {
+        document.getElementById('fabAddFrotaCatalogo').style.display = 'flex';
+    }
+}
 
-        }
         function inicializarMenuHamburguer() { const btn = document.getElementById('hamburger-btn'); const overlay = document.getElementById('menu-overlay'); const links = document.querySelectorAll('#menu-lateral a'); const fecharMenu = () => document.body.classList.remove('menu-open'); btn.addEventListener('click', e => { e.stopPropagation(); document.body.classList.toggle('menu-open'); }); overlay.addEventListener('click', fecharMenu); links.forEach(link => link.addEventListener('click', e => { e.preventDefault(); abrir(link.getAttribute('data-secao')); fecharMenu(); })); }
         let toastTimer; function showToast(msg, type = 'info', duration = 2000) { const t = document.getElementById("toast"); if (!t) return; clearTimeout(toastTimer); t.textContent = msg; t.className = ''; t.classList.add(type); requestAnimationFrame(() => { t.classList.add('show'); }); toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration); }
         function abrirPopup(titulo, mensagem, botoes = []) { 
@@ -2632,38 +2634,142 @@ const COORD_FORM = {
     }
 };
 // Inicializa a tela de apontamento
-function renderizarSecaoApontamento() {
-    const sel = document.getElementById('apontamentoColaborador');
-    const dataTurno = document.getElementById('dataTurno');
-    const dataApont = document.getElementById('apontamentoData');
+async function renderizarSecaoApontamento(container) {
+    // 1. Pega o contexto atual do Turno Principal
+    const dataHoje = document.getElementById('dataTurno').value || dataHojeInputLocal();
+    const frenteAtual = document.getElementById('frente').value;
+    const turnoAtual = document.getElementById('turnoLetra').value;
 
-    if (sel) {
-        sel.innerHTML = equipe.length 
+    // 2. Se não tiver contexto definido, bloqueia e pede para definir
+    if (!frenteAtual || !turnoAtual) {
+        // Chama o popup de contexto que já criamos, mas forçando a reabertura da seção depois
+        verificarContextoHistorico(null, null, null).then(sucesso => {
+            if(sucesso) renderizarSecaoApontamento(container); // Tenta de novo
+            else abrir('turno'); // Se cancelar, volta pro início
+        });
+        return;
+    }
+
+    // 3. Popup de Confirmação (Check-in)
+    const confirmacao = await new Promise(resolve => {
+        abrirPopupConfirmar(
+            '📋 Iniciar Apontamento',
+            `Você vai realizar o apontamento para:<br><br>
+             <b>Data:</b> ${formatarDataParaExibicao(dataHoje)}<br>
+             <b>Frente:</b> ${frenteAtual}<br>
+             <b>Turno:</b> ${turnoAtual}<br><br>
+             Confirma esses dados?`,
+            resolve,
+            'Sim, Iniciar'
+        );
+    });
+
+    if (!confirmacao) {
+        // Se não confirmar, abre o popup de seleção para ele mudar
+        // Passamos true no callback para recarregar a seção após a escolha
+        verificarContextoHistorico(null, null, null).then(() => {
+            renderizarSecaoApontamento(container);
+        });
+        return;
+    }
+
+    // 4. Se confirmou, desenha a tela
+    container.innerHTML = `
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+        <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+        </div>
+        <div>
+            <h2 class="text-xl font-bold text-gray-800">Apontamento Diário</h2>
+            <p class="text-xs text-gray-500 font-medium">
+                ${frenteAtual} | Turno ${turnoAtual}
+            </p>
+        </div>
+    </div>
+
+    <div class="space-y-3 mt-4">
+         <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><span>🏭</span> Tipo de Oficina</label>
+            <select id="apontamentoTipoOficina" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium" onchange="salvarApontamentoAutomatico()">
+                <option value="externa">Oficina Externa (Campo)</option>
+                <option value="interna">Oficina Interna (Automotiva)</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><span>👤</span> Colaborador</label>
+            <select id="apontamentoColaborador" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium" onchange="salvarApontamentoAutomatico()"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Setor</label>
+                <input type="text" id="apontamentoSetor" value="Manutenção Silvicultura" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm" onchange="salvarApontamentoAutomatico()">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Data do Apontamento</label>
+                <input type="date" id="apontamentoData" class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold" 
+                       value="${dataHoje}" onchange="carregarApontamentoPorData(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg">🕒</span>
+                Linha do Tempo
+            </h3>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-3">
+            <button onclick="adicionarLinhaManual()" class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-yellow-400 hover:bg-yellow-50 transition-all group shadow-sm h-12">
+                <span class="text-base">☕</span> <span class="text-[10px] font-bold uppercase text-gray-600">Manual</span>
+            </button>
+            <button onclick="abrirPopupAddPreventiva()" class="flex items-center justify-center gap-1 py-2 px-1 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-all group shadow-sm h-12">
+                <span class="text-base">📋</span> <span class="text-[10px] font-bold uppercase text-purple-700">Preventiva</span>
+            </button>
+            <button onclick="abrirPopupImportarServico()" class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all group shadow-sm h-12">
+                <span class="text-base">🔧</span> <span class="text-[10px] font-bold uppercase text-blue-700">Importar</span>
+            </button>
+        </div>
+
+        <div id="listaLinhasApontamento" class="space-y-3 min-h-[100px]"></div>
+    </div>
+
+    <div class="pt-4 mt-4 border-t border-gray-200">
+        <div class="grid grid-cols-3 gap-2">
+            <button id="btnGerarPreview" onclick="gerarPreviewApontamento()" class="flex flex-col items-center justify-center py-3 px-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow active:scale-95 transition-all">
+                <span class="text-[10px] font-bold uppercase">Atualizar</span>
+            </button>
+            <button onclick="baixarApontamento('jpg')" class="flex flex-col items-center justify-center py-3 px-1 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow active:scale-95 transition-all">
+                <span class="text-[10px] font-bold uppercase">Salvar JPG</span>
+            </button>
+            <button onclick="baixarOuCompartilharPDF()" class="flex flex-col items-center justify-center py-3 px-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow active:scale-95 transition-all">
+                <span class="text-[10px] font-bold uppercase">PDF / Enviar</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="overflow-auto border border-gray-300 rounded mt-4 bg-gray-200 flex justify-center p-2">
+        <canvas id="canvasApontamento" class="max-w-full h-auto shadow-lg bg-white"></canvas>
+    </div>
+    `;
+
+    // Popula o select de equipe
+    const selEquipe = document.getElementById('apontamentoColaborador');
+    if(selEquipe) {
+        selEquipe.innerHTML = equipe.length 
             ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
             : '<option>Sem equipe definida</option>';
     }
-    
-    // 1. SINCRONIZAÇÃO DE DATAS: O apontamento usa a data do turno principal
-    if (dataTurno && dataApont) {
-        dataApont.value = dataTurno.value;
-    }
 
-    // 2. Inicializar Linhas (DDS Padrão)
-    if (linhasApontamento.length === 0) {
-        linhasApontamento.push({
-            id: Date.now(),
-            tipo: 'manual',
-            atividade: 'H02 - DDS',
-            inicio: '07:00',
-            fim: '07:20',
-            os: '', frota: '', sistema: '', subsistema: ''
-        });
-    }
+    // CARREGA OS DADOS SALVOS (AQUI É A MÁGICA)
+    await carregarApontamentoPorData(dataHoje);
     
-    // 3. Renderizar
-    renderizarListaLinhas();
-    iniciarMonitoramentoFormulario();
+    // Inicia sincronização em background para garantir backup na nuvem
+    sincronizarApontamentosNuvem();
 }
+
 
 function renderizarListaLinhas() {
     const container = document.getElementById('listaLinhasApontamento');
@@ -2994,14 +3100,14 @@ function adicionarLinhaManual() {
     // ADICIONE ESTA LINHA:
     rolarParaUltimoItemApontamento(); 
     marcarComoDesatualizado(); 
-    salvarTudo();
+    salvarApontamentoAutomatico();
 }
 
 function removerLinhaApontamento(index) {
     linhasApontamento.splice(index, 1);
     renderizarListaLinhas();
     marcarComoDesatualizado(); 
-    salvarTudo();
+    salvarApontamentoAutomatico();
 }
 
 // Popup para escolher qual serviço importar
@@ -3181,7 +3287,7 @@ function importarServicoFinalizado(originalId, frota, atividade, sistema, subsis
     showToast(`Serviço ${os} importado!`, "success");
     rolarParaUltimoItemApontamento();
     marcarComoDesatualizado();
-    salvarTudo();
+    salvarApontamentoAutomatico();
 }
 
 //explica o.s pendente 
@@ -3361,7 +3467,7 @@ function trocarOrdem(index) {
     renderizarListaLinhas();
     showToast("Ordem atualizada!", "success");
     marcarComoDesatualizado();
-    salvarTudo();
+    salvarApontamentoAutomatico();
 }
 
 
@@ -3569,6 +3675,135 @@ async function baixarOuCompartilharPDF() {
         console.error(error);
         if (error.name !== 'AbortError') showToast("Erro ao processar PDF", "error");
     }
+}
+//módulo de salvamento de linha do tempo
+function sincronizarApontamentosNuvem() {
+    const data = document.getElementById('apontamentoData')?.value;
+    const frente = document.getElementById('frente')?.value;
+    const turno = document.getElementById('turnoLetra')?.value;
+
+    if (!data || !frente || !turno) return;
+    
+    const idDoc = gerarIdApontamento(data, frente, turno);
+
+    // Escuta alterações no documento específico deste dia
+    firestore.collection('apontamentos_diarios').doc(idDoc)
+        .onSnapshot(doc => {
+            if (!doc.exists) return;
+            const dados = doc.data();
+            
+            // Verifica se a versão da nuvem é mais nova que a local
+            // (Lógica simplificada: se chegou algo, atualiza a tela)
+            // CUIDADO: Isso pode sobrescrever o que o usuário está digitando se a latência for alta.
+            // Para MVP, vamos apenas atualizar se a lista de linhas for diferente.
+            
+            if (JSON.stringify(dados.linhas) !== JSON.stringify(linhasApontamento)) {
+                console.log("🔄 Atualização remota do apontamento recebida.");
+                linhasApontamento = dados.linhas || [];
+                renderizarListaLinhas();
+                
+                // Salva no local para garantir consistência
+                dbExec(STORE_APONTAMENTOS, 'readwrite', s => s.put(dados));
+            }
+        });
+}
+
+async function salvarApontamentoAutomatico() {
+    const data = document.getElementById('apontamentoData').value;
+    const frente = document.getElementById('frente').value;
+    const turno = document.getElementById('turnoLetra').value;
+
+    if (!data || !frente || !turno) return;
+
+    const idComposto = gerarIdApontamento(data, frente, turno);
+
+    const dadosSalvar = {
+        idComposto: idComposto, // Chave
+        data: data,
+        frente: frente,
+        turno: turno,
+        linhas: linhasApontamento,
+        cabecalho: {
+            tipoOficina: document.getElementById('apontamentoTipoOficina')?.value,
+            colaborador: document.getElementById('apontamentoColaborador')?.value,
+            setor: document.getElementById('apontamentoSetor')?.value
+        },
+        atualizadoEm: new Date().toISOString()
+    };
+
+    try {
+        // 1. Salva Local (IndexedDB)
+        await dbExec(STORE_APONTAMENTOS, 'readwrite', s => s.put(dadosSalvar));
+        
+        // 2. Salva Nuvem (Firestore) - Fire and Forget
+        firestore.collection('apontamentos_diarios').doc(idComposto).set(dadosSalvar, { merge: true })
+            .catch(err => console.warn("Offline: Apontamento salvo localmente.", err));
+
+        // Também atualiza o "Turno Atual" (Store antiga) para manter compatibilidade
+        // se você ainda usa `salvarTudo()` em outros lugares
+        // salvarTudo(); 
+
+    } catch (e) {
+        console.error("Erro ao salvar automático:", e);
+    }
+}
+
+
+async function carregarApontamentoPorData(dataSelecionada) {
+    const frente = document.getElementById('frente').value;
+    const turno = document.getElementById('turnoLetra').value;
+    
+    // ID Composto Único (Chave Primária)
+    const idBusca = gerarIdApontamento(dataSelecionada, frente, turno);
+    
+    abrirPopupLoading("Carregando apontamento...");
+
+    try {
+        // Busca no IndexedDB
+        const registro = await dbExec(STORE_APONTAMENTOS, 'readonly', s => s.get(idBusca));
+        
+        if (registro) {
+            // Achou! Carrega na tela
+            linhasApontamento = registro.linhas || [];
+            
+            // Restaura cabeçalho se existir
+            if(registro.cabecalho) {
+                if(document.getElementById('apontamentoTipoOficina')) document.getElementById('apontamentoTipoOficina').value = registro.cabecalho.tipoOficina || 'externa';
+                if(document.getElementById('apontamentoColaborador')) document.getElementById('apontamentoColaborador').value = registro.cabecalho.colaborador || '';
+                if(document.getElementById('apontamentoSetor')) document.getElementById('apontamentoSetor').value = registro.cabecalho.setor || '';
+            }
+
+            showToast(`Apontamento de ${formatarDataParaExibicao(dataSelecionada)} carregado.`, 'success');
+        } else {
+            // Não achou (Novo dia), inicia limpo (ou com DDS padrão)
+            linhasApontamento = [{
+                id: Date.now(),
+                tipo: 'manual',
+                atividade: 'H02 - DDS',
+                inicio: '07:00',
+                fim: '07:20',
+                os: '', frota: '', sistema: '', subsistema: ''
+            }];
+            showToast(`Iniciando novo apontamento para ${formatarDataParaExibicao(dataSelecionada)}.`, 'info');
+        }
+
+        renderizarListaLinhas();
+        marcarComoDesatualizado(); // Força atualizar o preview
+        fecharPopup(); // Fecha o loading
+
+    } catch (e) {
+        console.error(e);
+        fecharPopup();
+        showToast("Erro ao carregar dados.", "error");
+    }
+}
+
+
+function gerarIdApontamento(data, frente, turno) {
+    // Normaliza para evitar erros de espaços ou maiúsculas
+    const f = (frente || "").trim().toUpperCase();
+    const t = (turno || "").trim().toUpperCase();
+    return `${data}_${f}_${t}`;
 }
 
 
