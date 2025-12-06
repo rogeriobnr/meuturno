@@ -118,8 +118,7 @@
         </div> 
         <div class="w-10"></div>
     </header>
-        <div class="w-10"></div>
-</header>
+
 
 <div id="btnUpdateBadge" class="hidden bg-blue-700 text-center py-2 shadow-inner border-t border-blue-800 transition-all duration-500 relative z-20">
     <button onclick="abrirModalUpdate()" class="bg-white text-blue-800 hover:bg-blue-50 text-xs font-bold px-4 py-1.5 rounded-full animate-pulse shadow-sm flex items-center justify-center mx-auto gap-2 transition-transform active:scale-95">
@@ -351,18 +350,18 @@
         </div>
     </div>
 
-            <div class="mt-6">
-    <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
-            <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg">🕒</span>
-            Linha do Tempo
-        </h3>
-        <span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-            Sequência do Dia
-        </span>
-    </div>
+    <div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg">🕒</span>
+                Linha do Tempo
+            </h3>
+            <span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                Sequência do Dia
+            </span>
+        </div>
 
-          <div class="grid grid-cols-3 gap-2 mb-3">
+        <div class="grid grid-cols-3 gap-2 mb-3">
         
         <button onclick="adicionarLinhaManual()" 
             class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-yellow-400 hover:bg-yellow-50 transition-all group shadow-sm h-12">
@@ -382,7 +381,7 @@
             <span class="text-sm font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
         </button>
 
-    </div>
+        </div>
 
 
 
@@ -392,7 +391,7 @@
         </div>
     </div>
 </div>
-         </div>        
+                 
 
 <div class="pt-4 mt-4 border-t border-gray-200">
     <div class="grid grid-cols-3 gap-2">
@@ -428,20 +427,9 @@
         <div class="overflow-auto border border-gray-300 rounded mt-4 bg-gray-200 flex justify-center p-2">
             <canvas id="canvasApontamento" class="max-w-full h-auto shadow-lg bg-white"></canvas>
         </div>
-    </div>
+    
 </section>
 
-
-
-        <button id="fabAddFrotaCatalogo" onclick="abrirPopupTipoFrota()"
-            class="fixed bottom-12 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-30"
-            style="display: none;" title="Adicionar Frota ao Catálogo">🚜</button>
-        <button id="fabAddItemCatalogo" onclick="abrirPopupFormularioItemCatalogo()"
-            class="fixed bottom-12 right-5 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-30"
-            style="display: none;" title="Adicionar Item ao Catálogo">+</button>
-        <button id="fabCriarServico" onclick="adicionarServico()"
-            class="fixed bottom-12 right-5 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center text-3xl shadow-lg z-30"
-            style="display: none;" title="Adicionar Novo Serviço">+</button>
         <button id="fabAddFrotaCatalogo" onclick="abrirPopupTipoFrota()"
             class="fixed bottom-12 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-30"
             style="display: none;" title="Adicionar Frota ao Catálogo">🚜</button>
@@ -2182,32 +2170,7 @@ function renderizarSecaoServicos(container) {
     renderizarServicos(); 
 }
 
-function renderizarServicos() { 
-    const lista = document.getElementById("servicosLista"); 
-    if (!lista) return; 
-    
-    // Apenas ordena, sem filtrar por texto
-    const servicosOrdenados = [...servicos]; 
-    servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
-    
-    lista.innerHTML = ''; 
-    
-    if (servicosOrdenados.length === 0) { 
-        lista.innerHTML = `
-        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
-            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
-            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
-        </div>`; 
-    } else { 
-        servicosOrdenados.forEach(s => { 
-            const template = document.getElementById('servico-template').content.cloneNode(true); 
-            const article = template.querySelector('article'); 
-            article.id = `servico_${s.id}`; 
-            lista.appendChild(article); 
-            preencherDetalhesServico(s); 
-        }); 
-    } 
-}
+
 
 
 function renderizarServicos() { 
