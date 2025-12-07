@@ -1713,87 +1713,41 @@ function atualizarSelectGenerico(elementId, dados) {
 }
 
 // 3. Funções de CRUD (Adicionar / Remover)
+// --- FAZENDAS ---
 
 function adicionarNovaFazenda(callbackSucesso = null) {
-    abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', async (nome) => {
+    abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', (nome) => {
         if (!nome) return;
         const nomeUpper = nome.trim().toUpperCase();
         
-        // 1. Verificação inicial (antes de ir pro servidor)
+        // 1. Validação Local
         if (listaFazendas.some(f => f.nome === nomeUpper)) {
             showToast("Esta fazenda já existe.", "error");
             return;
         }
 
-        try {
-            // 2. Salva na Nuvem
-            const docRef = await firestore.collection('lista_fazendas').add({ nome: nomeUpper });
-            
-            // 3. CORREÇÃO AQUI: Verifica se o Sync automático já não adicionou o item
-            // enquanto esperávamos o 'await' do Firestore.
-            const jaExisteNaMemoria = listaFazendas.some(f => f.nome === nomeUpper);
-            
-            if (!jaExisteNaMemoria) {
-                listaFazendas.push({ nome: nomeUpper, docId: docRef.id });
-                listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
-            }
-            
-            showToast("Fazenda adicionada!", "success");
-            
-            // Atualiza select da tela principal se existir
-            const elMain = document.getElementById('fazenda');
-            if(elMain) {
-                atualizarSelectGenerico('fazenda', listaFazendas);
-                elMain.value = nomeUpper;
-            }
+        // 2. Nuvem (Fire and Forget)
+        const novoItem = { nome: nomeUpper };
+        firestore.collection('lista_fazendas').add(novoItem).catch(() => {});
 
-            // Retorno para o fluxo do Popup de Contexto
-            if (callbackSucesso) {
-                callbackSucesso(nomeUpper);
-            } else {
-                salvarDadosParciaisTurno();
-            }
+        // 3. Atualização Otimista (RAM)
+        // Adiciona com ID temporário para aparecer na hora
+        const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
+        listaFazendas.push(itemLocal);
+        listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
 
-        } catch (e) { showToast("Erro ao salvar: " + e.message, "error"); }
-    });
-}
+        // 4. Salva no IndexedDB (Pra não sumir no F5)
+        dbExec(STORE_FAZENDAS, 'readwrite', s => s.put(itemLocal));
 
-function adicionarNovaFrente(callbackSucesso = null) {
-    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', async (nome) => {
-        if (!nome) return;
-        const nomeUpper = nome.trim().toUpperCase();
-        
-        if (listaFrentes.some(f => f.nome === nomeUpper)) {
-            showToast("Esta frente já existe.", "error");
-            return;
+        // 5. Atualiza UI
+        showToast("Fazenda adicionada!", "success");
+        if (document.getElementById('fazenda')) {
+            atualizarSelectGenerico('fazenda', listaFazendas);
+            document.getElementById('fazenda').value = nomeUpper;
         }
 
-        try {
-            const docRef = await firestore.collection('lista_frentes').add({ nome: nomeUpper });
-            
-            // 3. CORREÇÃO AQUI TAMBÉM: Trava de duplicidade pós-save
-            const jaExisteNaMemoria = listaFrentes.some(f => f.nome === nomeUpper);
-
-            if (!jaExisteNaMemoria) {
-                listaFrentes.push({ nome: nomeUpper, docId: docRef.id });
-                listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
-            }
-            
-            showToast("Frente adicionada!", "success");
-            
-            const elMain = document.getElementById('frente');
-            if(elMain) {
-                atualizarSelectGenerico('frente', listaFrentes);
-                elMain.value = nomeUpper;
-            }
-
-            if (callbackSucesso) {
-                callbackSucesso(nomeUpper);
-            } else {
-                salvarDadosParciaisTurno();
-            }
-
-        } catch (e) { showToast("Erro ao salvar.", "error"); }
+        if (callbackSucesso) callbackSucesso(nomeUpper);
+        else salvarDadosParciaisTurno();
     });
 }
 
@@ -1804,24 +1758,34 @@ function removerFazendaSelecionada() {
     const docId = option.dataset.docId;
 
     if (!nome || !docId) {
-        showToast("Selecione uma fazenda da lista para remover.", "error");
+        showToast("Selecione para remover.", "error");
         return;
     }
 
-    abrirPopupConfirmar("Apagar Fazenda", `Deseja remover <b>${nome}</b>? <br>Isso afetará todos os usuários.`, async (ok) => {
+    abrirPopupConfirmar("Apagar Fazenda", `Remover <b>${nome}</b>?`, (ok) => {
         if (ok) {
-            try {
-                await firestore.collection('lista_fazendas').doc(docId).delete();
-                showToast("Fazenda removida.", "success");
-                select.value = "";
-                salvarDadosParciaisTurno();
-            } catch (e) { showToast("Erro ao remover.", "error"); }
+            // 1. Nuvem
+            firestore.collection('lista_fazendas').doc(docId).delete().catch(() => {});
+
+            // 2. RAM
+            listaFazendas = listaFazendas.filter(f => f.docId !== docId);
+
+            // 3. IndexedDB
+            dbExec(STORE_FAZENDAS, 'readwrite', s => s.delete(docId));
+
+            // 4. UI
+            showToast("Fazenda removida.", "success");
+            select.value = "";
+            atualizarSelectGenerico('fazenda', listaFazendas);
+            salvarDadosParciaisTurno();
         }
     });
 }
 
-function adicionarNovaFrente() {
-    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', async (nome) => {
+// --- FRENTES (Mesma Lógica) ---
+
+function adicionarNovaFrente(callbackSucesso = null) {
+    abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', (nome) => {
         if (!nome) return;
         const nomeUpper = nome.trim().toUpperCase();
         
@@ -1830,15 +1794,23 @@ function adicionarNovaFrente() {
             return;
         }
 
-        try {
-            await firestore.collection('lista_frentes').add({ nome: nomeUpper });
-            showToast("Frente adicionada!", "success");
-            setTimeout(() => {
-                const el = document.getElementById('frente');
-                el.value = nomeUpper;
-                salvarDadosParciaisTurno();
-            }, 500);
-        } catch (e) { showToast("Erro ao salvar.", "error"); }
+        const novoItem = { nome: nomeUpper };
+        firestore.collection('lista_frentes').add(novoItem).catch(() => {});
+
+        const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
+        listaFrentes.push(itemLocal);
+        listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+
+        dbExec(STORE_FRENTES, 'readwrite', s => s.put(itemLocal));
+
+        showToast("Frente adicionada!", "success");
+        if (document.getElementById('frente')) {
+            atualizarSelectGenerico('frente', listaFrentes);
+            document.getElementById('frente').value = nomeUpper;
+        }
+
+        if (callbackSucesso) callbackSucesso(nomeUpper);
+        else salvarDadosParciaisTurno();
     });
 }
 
@@ -1849,18 +1821,20 @@ function removerFrenteSelecionada() {
     const docId = option.dataset.docId;
 
     if (!nome || !docId) {
-        showToast("Selecione uma frente da lista para remover.", "error");
+        showToast("Selecione para remover.", "error");
         return;
     }
 
-    abrirPopupConfirmar("Apagar Frente", `Deseja remover <b>${nome}</b>?`, async (ok) => {
+    abrirPopupConfirmar("Apagar Frente", `Remover <b>${nome}</b>?`, (ok) => {
         if (ok) {
-            try {
-                await firestore.collection('lista_frentes').doc(docId).delete();
-                showToast("Frente removida.", "success");
-                select.value = "";
-                salvarDadosParciaisTurno();
-            } catch (e) { showToast("Erro ao remover.", "error"); }
+            firestore.collection('lista_frentes').doc(docId).delete().catch(() => {});
+            listaFrentes = listaFrentes.filter(f => f.docId !== docId);
+            dbExec(STORE_FRENTES, 'readwrite', s => s.delete(docId));
+
+            showToast("Frente removida.", "success");
+            select.value = "";
+            atualizarSelectGenerico('frente', listaFrentes);
+            salvarDadosParciaisTurno();
         }
     });
 }
@@ -2090,13 +2064,31 @@ async function salvarNovoColaborador() {
     }
 }
 
-
 function removerColaboradorDoBanco(docId, nome) {
-    if(confirm(`Tem certeza que deseja apagar ${nome} do BANCO DE DADOS? Isso sumirá para todos.`)) {
-        firestore.collection('lista_equipe').doc(docId).delete();
-        // Atualiza a lista visualmente
-        setTimeout(abrirPopupSelecaoEquipe, 500);
-    }
+    // Substitui o confirm() nativo pelo seu Popup Visual
+    abrirPopupConfirmar(
+        'Excluir do Banco de Dados', 
+        `Tem certeza que deseja apagar <strong>${nome}</strong> permanentemente?<br><br><span class="text-sm font-bold text-red-500">Isso removerá o colaborador para todos os usuários.</span>`, 
+        (confirmado) => {
+            if (confirmado) {
+                // 1. Nuvem (Fire and Forget - Não trava se offline)
+                firestore.collection('lista_equipe').doc(docId).delete()
+                    .then(() => console.log("☁️ Colaborador apagado na nuvem"))
+                    .catch(err => console.warn("💤 Exclusão na fila offline"));
+                
+                // 2. RAM (Atualização Otimista Instantânea)
+                listaEquipeCache = listaEquipeCache.filter(c => c.docId !== docId);
+                
+                // 3. IndexedDB (Persistência Local)
+                dbExec(STORE_EQUIPE, 'readwrite', s => s.delete(docId));
+
+                // 4. UI (Reabre o popup de lista atualizado instantaneamente)
+                abrirPopupSelecaoEquipe();
+                showToast("Colaborador removido.", "success");
+            }
+        },
+        'Sim, Apagar' // Texto do botão de confirmação
+    );
 }
 
 // 4. CONFIRMAR SELEÇÃO (ATUALIZA O TURNO)
@@ -2207,8 +2199,44 @@ function confirmarSelecaoEquipe() {
                 }
             );
         }
-        async function salvarFrotaCatalogo(nome, tipo) { if (!nome) { showToast('O código da frota não pode ser vazio.', 'error'); return; } if (catalogoFrotas.some(f => f.nome === nome)) { showToast('Esta frota já existe no catálogo.', 'error'); return; } const novaFrota = { nome, tipo }; try { await firestore.collection('catalogoFrotas').add(novaFrota); showToast('Frota adicionada ao catálogo!', 'success'); } catch (error) { showToast('Erro ao salvar a frota.', 'error'); } }
-        async function removerFrotaCatalogo(docId) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir do Catálogo', `Deseja remover esta frota permanentemente do catálogo?`, resolve)); if (confirmado) { try { await firestore.collection('catalogoFrotas').doc(docId).delete(); showToast('Frota removida do catálogo.', 'success'); } catch (error) { showToast('Erro ao remover a frota.', 'error'); } } }
+        async function salvarFrotaCatalogo(nome, tipo) {
+    if (!nome) { showToast('Código vazio.', 'error'); return; }
+    if (catalogoFrotas.some(f => f.nome === nome)) { showToast('Já existe.', 'error'); return; }
+    
+    const novaFrota = { nome, tipo };
+
+    // 1. Nuvem (Sem await)
+    firestore.collection('catalogoFrotas').add(novaFrota).catch(() => {});
+
+    // 2. RAM & IndexedDB
+    const itemLocal = { ...novaFrota, docId: 'temp_' + Date.now() };
+    catalogoFrotas.push(itemLocal);
+    
+    // ATENÇÃO: É vital salvar no IndexedDB 'catalogoFrotas'
+    dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal));
+
+    showToast('Frota adicionada!', 'success');
+}
+
+async function removerFrotaCatalogo(docId) {
+    const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir', `Remover do catálogo?`, resolve));
+    
+    if (confirmado) {
+        // 1. Nuvem
+        firestore.collection('catalogoFrotas').doc(docId).delete().catch(() => {});
+
+        // 2. RAM
+        catalogoFrotas = catalogoFrotas.filter(f => f.docId !== docId);
+
+        // 3. IndexedDB
+        dbExec(STORE_FROTAS, 'readwrite', s => s.delete(docId));
+
+        // 4. UI
+        renderizarCatalogoFrotas(); // Atualiza a lista visualmente
+        showToast('Frota removida.', 'success');
+    }
+}
+
         // MODIFICADO: Adiciona campo de busca e renderiza o catálogo ordenado
 // MODIFICADO: Inclui botão "Cancelar" explícito na lista de botões
 function abrirPopupSelecaoFrota() {
