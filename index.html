@@ -999,7 +999,7 @@ function mostrarNotificacaoUpdate() {
     }
 }
 
-// Abre o Modal (Com comportamento dinâmico baseado na config)
+// --- Função Principal: Abre o Modal e Gerencia a Atualização "Nuclear" ---
 function abrirModalUpdate() {
     const modal = document.getElementById('modalUpdate');
     const backdrop = document.getElementById('modalUpdateBackdrop');
@@ -1007,78 +1007,89 @@ function abrirModalUpdate() {
     const lista = document.getElementById('listaNovidades');
     const btnConfirmar = document.getElementById('btnUpdateConfirm');
     
-    // Seleciona o botão de cancelar (que pode ser escondido)
-    // Nota: Adicionei um ID 'btnUpdateCancel' no HTML abaixo para facilitar, 
-    // ou buscamos pelo onclick se você não mudou o HTML.
+    // Botões e Textos
     const btnCancelar = modal.querySelector('button[onclick="fecharModalUpdate()"]'); 
     const tituloModal = modal.querySelector('h3');
     const textoModal = modal.querySelector('.bg-gradient-to-r p');
 
     if (!modal) return;
 
-    // 1. Preenche Novidades
-    lista.innerHTML = UPDATE_CONFIG.novidades.map(item => 
-        `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
-    ).join('');
+    // 1. Preenche a lista de Novidades (Vindo do seu objeto UPDATE_CONFIG)
+    if (lista && UPDATE_CONFIG && UPDATE_CONFIG.novidades) {
+        lista.innerHTML = UPDATE_CONFIG.novidades.map(item => 
+            `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
+        ).join('');
+    }
 
-    // 2. Aplica Lógica CRÍTICA vs NORMAL
+    // 2. Configura Modo Crítico vs Normal
     if (UPDATE_CONFIG.critico) {
-        // MODO CRÍTICO
         if (btnCancelar) btnCancelar.style.display = 'none'; // Esconde "Agora não"
-        backdrop.onclick = null; // Impede clicar fora para fechar
-        
-        // Muda textos para tom de urgência
+        backdrop.onclick = null; // Bloqueia clique fora
         if(tituloModal) tituloModal.innerText = "Atualização Obrigatória";
         if(textoModal) textoModal.innerText = "Melhorias críticas necessárias para continuar.";
     } else {
-        // MODO NORMAL
-        if (btnCancelar) btnCancelar.style.display = 'block'; // Mostra "Agora não"
-        backdrop.onclick = () => fecharModalUpdate(); // Permite clicar fora
-        
-        // Textos amigáveis
+        if (btnCancelar) btnCancelar.style.display = 'block';
+        backdrop.onclick = () => fecharModalUpdate();
         if(tituloModal) tituloModal.innerText = "Nova Versão Disponível!";
         if(textoModal) textoModal.innerText = "Melhorias e correções prontas para você.";
     }
 
-    // 3. Ação do Botão Atualizar (COM VISUAL E LIMPEZA)
+    // 3. AÇÃO DO BOTÃO "ATUALIZAR AGORA" (Lógica de Limpeza Profunda)
     btnConfirmar.onclick = async () => {
-        // A. Chama a cortina visual imediatamente
+        // A. Ativa a Cortina Visual imediatamente
         mostrarTelaDeCarregamento();
         
-        // B. Pequeno delay para garantir que a UI renderizou antes de travar o processo
+        // B. Pequeno delay para o navegador renderizar a cortina antes de processar
         await new Promise(r => setTimeout(r, 100));
 
         try {
             console.log("🔄 Iniciando protocolo de atualização limpa...");
 
-            // PASSO 1: Manda o SW novo assumir (se existir)
+            // PASSO 1: Manda o SW novo assumir (se existir na espera)
             if (newWorker) {
                 newWorker.postMessage({ action: 'skipWaiting' });
             }
 
-            // PASSO 2: Mata o SW antigo
+            // PASSO 2: Mata o Service Worker antigo (Desregistra)
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (const registration of registrations) {
                     await registration.unregister();
+                    console.log("SW Desregistrado.");
                 }
             }
 
-            // PASSO 3: Limpeza Nuclear do Cache
+            // PASSO 3: Limpeza Nuclear do Cache (Apaga arquivos físicos)
             if ('caches' in window) {
                 const keys = await caches.keys();
+                // Apaga TODOS os caches para garantir que não sobrem arquivos velhos (v34, v35...)
                 await Promise.all(keys.map(key => caches.delete(key)));
-                console.log("🧹 Cache apagado.");
+                console.log("🧹 Cache completamente apagado.");
             }
 
         } catch (e) {
-            console.error("Erro na atualização:", e);
-            // Mesmo com erro, forçamos o reload
+            console.error("Erro durante a limpeza de atualização:", e);
+            // Continua mesmo com erro para forçar o reload
         } finally {
-            // PASSO 4: Recarrega a página (A cortina continua lá até o reload completar)
+            // PASSO 4: Recarrega a página forçando a ida ao servidor (true)
+            // A cortina continua visível até a página piscar
             window.location.reload(true);
         }
     };
+
+    // 4. Exibe o Modal com Animação
+    modal.classList.remove('hidden');
+    
+    // Esconde o badge flutuante para focar no modal
+    document.getElementById('btnUpdateBadge')?.classList.add('hidden');
+
+    // Animação de entrada
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        windowEl.classList.remove('opacity-0', 'scale-90');
+        windowEl.classList.add('scale-100');
+    }, 10);
+}
 
 function fecharModalUpdate() {
     // Só permite fechar se NÃO for crítico
@@ -5571,8 +5582,9 @@ function sincronizarCatalogoFrotas() {
     });
 
 // --- Função Visual: Cortina de Atualização ---
+// --- Função Visual: Cortina de Atualização (Bloqueia a tela enquanto limpa o cache) ---
 function mostrarTelaDeCarregamento() {
-    // Cria o elemento overlay
+    // Cria o elemento overlay dinamicamente
     const overlay = document.createElement('div');
     overlay.className = "fixed inset-0 bg-blue-900 z-[10005] flex flex-col items-center justify-center transition-opacity duration-300";
     overlay.innerHTML = `
@@ -5584,10 +5596,9 @@ function mostrarTelaDeCarregamento() {
         </div>
         <h2 class="mt-6 text-xl font-bold text-white animate-pulse">Atualizando Sistema...</h2>
         <p class="mt-2 text-blue-200 text-sm">Limpando cache e baixando melhorias.</p>
-        <p class="mt-8 text-xs text-blue-400 font-mono">Por favor, aguarde.</p>
+        <p class="mt-8 text-xs text-blue-400 font-mono">Por favor, aguarde o recarregamento.</p>
     `;
     
-    // Adiciona ao corpo da página
     document.body.appendChild(overlay);
 }
 
