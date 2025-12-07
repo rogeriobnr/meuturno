@@ -2041,40 +2041,55 @@ async function salvarNovoColaborador() {
         return;
     }
 
-    // 2. Trava de Duplicidade
+    // 2. Trava de Duplicidade (Verifica no cache local)
     const jaExiste = listaEquipeCache.some(colab => colab.matricula === matricula);
     if (jaExiste) {
-        const dono = listaEquipeCache.find(c => c.matricula === matricula).nome;
+        const dono = listaEquipeCache.find(c => c.matricula === matricula)?.nome || "Outro";
         showToast(`Erro: Matrícula já usada por ${dono}.`, "error");
         document.getElementById('newColabMat').focus();
         return;
     }
 
-    // 3. Salvar e Atualizar
+    // 3. Salvar (Modo Offline-Safe)
     try {
-        // Adiciona ao banco
-        await firestore.collection('lista_equipe').add({ nome, matricula });
-        
+        const novoColab = { nome, matricula };
+
+        // --- MUDANÇA PRINCIPAL AQUI ---
+        // Não usamos 'await' na chamada de rede. Isso evita o travamento offline.
+        // O Firebase gerencia a fila de envio internamente.
+        firestore.collection('lista_equipe').add(novoColab)
+            .then(() => console.log("☁️ Enviado para nuvem"))
+            .catch(err => console.warn("💤 Salvo na fila offline:", err));
+
+        // 4. Feedback Imediato (Atualização Otimista)
+        showToast("Colaborador cadastrado!", "success");
+
         // Remove o modal de cadastro da tela
         const modal = document.getElementById('modal-novo-colab');
         if (modal) modal.remove();
         
-        showToast("Colaborador cadastrado!", "success");
-        
-        // --- A CORREÇÃO ESTÁ AQUI ---
-        // Em vez de apenas mostrar o popup antigo (que estaria desatualizado),
-        // chamamos a função principal novamente para gerar o HTML novo com o membro novo.
+        // Garante que o overlay de fundo esteja visível para o popup de seleção
+        const overlay = document.getElementById('overlayGenerico');
+        if (overlay) overlay.style.display = 'block';
+
+        // 5. Atualização Visual Forçada (Caso o listener demore)
+        // Adicionamos manualmente ao cache local temporário para aparecer na lista agora
+        // (O listener do Firebase vai corrigir isso depois automaticamente)
+        if (!listaEquipeCache.some(c => c.matricula === matricula)) {
+            listaEquipeCache.push({ ...novoColab, docId: 'temp_' + Date.now() });
+            listaEquipeCache.sort((a, b) => a.nome.localeCompare(b.nome));
+        }
+
+        // Reabre a lista de seleção atualizada
         setTimeout(() => {
-            // Garante que o overlay de fundo esteja visível
-            document.getElementById('overlayGenerico').style.display = 'block';
-            // Reconstrói a lista
             abrirPopupSelecaoEquipe(); 
-        }, 200); // Pequeno delay para garantir que o dado local foi atualizado
+        }, 100);
 
     } catch (e) {
-        showToast("Erro ao salvar: " + e.message, "error");
+        showToast("Erro ao processar: " + e.message, "error");
     }
 }
+
 
 function removerColaboradorDoBanco(docId, nome) {
     if(confirm(`Tem certeza que deseja apagar ${nome} do BANCO DE DADOS? Isso sumirá para todos.`)) {
@@ -5115,9 +5130,109 @@ function renderizarCatalogo() {
 }
 
 function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
-        async function salvarItemCatalogo() { const docId = document.getElementById('popup-docId').value; const codigoSap = document.getElementById('popup-sap').value.trim(); const partNumber = document.getElementById('popup-partnumber').value.trim(); const descricao = document.getElementById('popup-descricao').value.trim(); if (!codigoSap && !partNumber && !descricao) { showToast("Preencha pelo menos um campo para salvar o item.", "error"); return; } const itemData = { codigoSap, partNumber, descricao }; try { if (docId) { await firestore.collection('catalogo').doc(docId).update(itemData); showToast("Item atualizado com sucesso!", "success"); } else { await firestore.collection('catalogo').add(itemData); showToast("Item adicionado com sucesso!", "success"); } fecharPopup(); } catch (error) { console.error("Erro ao salvar item no Firebase:", error); showToast("Erro ao salvar o item.", "error"); } }
+async function salvarItemCatalogo() {
+    const docId = document.getElementById('popup-docId').value;
+    const codigoSap = document.getElementById('popup-sap').value.trim();
+    const partNumber = document.getElementById('popup-partnumber').value.trim();
+    const descricao = document.getElementById('popup-descricao').value.trim();
+
+    // 1. Validação
+    if (!codigoSap && !partNumber && !descricao) {
+        showToast("Preencha pelo menos um campo para salvar o item.", "error");
+        return;
+    }
+
+    const itemData = { codigoSap, partNumber, descricao };
+
+    try {
+        if (docId) {
+            // === MODO EDIÇÃO (Offline Safe) ===
+            
+            // 1. Manda para a nuvem sem esperar (removemos o await)
+            firestore.collection('catalogo').doc(docId).update(itemData)
+                .then(() => console.log("☁️ Edição enviada"))
+                .catch(err => console.warn("💤 Edição na fila offline"));
+
+            // 2. Atualiza a memória local IMEDIATAMENTE (Otimista)
+            const index = catalogoLocal.findIndex(i => i.docId === docId);
+            if (index !== -1) {
+                // Mantém o ID e atualiza os dados
+                catalogoLocal[index] = { ...catalogoLocal[index], ...itemData };
+            }
+
+        } else {
+            // === MODO ADIÇÃO (Offline Safe) ===
+
+            // 1. Manda para a nuvem sem esperar
+            firestore.collection('catalogo').add(itemData)
+                .then(() => console.log("☁️ Novo item enviado"))
+                .catch(err => console.warn("💤 Novo item na fila offline"));
+
+            // 2. Adiciona na memória local IMEDIATAMENTE (Otimista)
+            // Criamos um ID temporário para ele não sumir até sincronizar
+            catalogoLocal.push({ 
+                ...itemData, 
+                docId: 'temp_' + Date.now() 
+            });
+        }
+
+        // 3. Feedback Instantâneo
+        showToast("Item salvo com sucesso!", "success");
+        fecharPopup();
+
+        // 4. Re-renderiza a lista para o usuário ver a mudança agora
+        // Ordena para manter a consistência
+        catalogoLocal.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+        renderizarCatalogo();
+
+    } catch (error) {
+        console.error("Erro interno:", error);
+        showToast("Erro ao processar item.", "error");
+    }
+}
         function editarItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); if (item) { abrirPopupFormularioItemCatalogo(item); } else { showToast("Item não encontrado para edição.", "error"); } }
-        async function excluirItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); const itemIdentifier = item?.descricao || item?.codigoSap || item?.partNumber || docId; const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir Item', `Tem a certeza que deseja excluir o item <strong>${itemIdentifier}</strong>?`, resolve)); if (confirmado) { try { await firestore.collection('catalogo').doc(docId).delete(); showToast("Item excluído com sucesso!", "success"); } catch (error) { console.error("Erro ao excluir item no Firebase:", error); showToast("Erro ao excluir o item.", "error"); } } }
+        
+    async function excluirItemCatalogo(docId) {
+    // 1. Encontra o item para mostrar o nome
+    const item = catalogoLocal.find(i => i.docId === docId);
+    const itemIdentifier = item?.descricao || item?.codigoSap || "Item";
+
+    // 2. Confirmação
+    const confirmado = await new Promise(resolve => 
+        abrirPopupConfirmar(
+            'Excluir Item', 
+            `Tem certeza que deseja excluir <strong>${itemIdentifier}</strong>?`, 
+            resolve
+        )
+    );
+
+    if (confirmado) {
+        try {
+            // === AÇÃO 1: Nuvem (Fire and Forget) ===
+            firestore.collection('catalogo').doc(docId).delete()
+                .then(() => console.log("☁️ Apagado na nuvem"))
+                .catch(err => console.warn("💤 Exclusão na fila offline"));
+
+            // === AÇÃO 2: Memória RAM (Tela) ===
+            catalogoLocal = catalogoLocal.filter(i => i.docId !== docId);
+
+            // === AÇÃO 3: IndexedDB (O Segredo para não voltar ao atualizar) ===
+            // Apaga do armazenamento físico do celular IMEDIATAMENTE
+            // Não usamos await para não travar a tela
+            dbExec('catalogo', 'readwrite', store => store.delete(docId))
+                .catch(err => console.error("Erro ao limpar IndexedDB", err));
+
+            // 4. Atualiza a tela
+            renderizarCatalogo();
+            showToast("Item excluído.", "success");
+
+        } catch (error) {
+            console.error(error);
+            showToast("Erro ao excluir.", "error");
+        }
+    }
+}
+
         function calcularDuracaoServico(servico) { if (!servico.inicio || !servico.fim || !servico.data || !servico.dataFinal) return { horas: 0, texto: "0min" }; const inicio = new Date(`${servico.data}T${servico.inicio}`); const fim = new Date(`${servico.dataFinal}T${servico.fim}`); if (isNaN(inicio.getTime()) || isNaN(fim.getTime()) || fim < inicio) return { horas: 0, texto: "Inválido" }; const diffMin = (fim - inicio) / 60000; const h = Math.floor(diffMin / 60); const m = Math.round(diffMin % 60); let texto = ""; if (h > 0) texto += `${h}h `; if (m > 0) texto += `${m}min`; return { horas: diffMin / 60, texto: texto.trim() || "0min" }; }
         // MODIFICADO: Agora aceita uma lista de serviços como argumento (padrão para todos)
 function calcularHorasParadasCorretivasTotais(listaServicos = servicos) { 
@@ -5305,6 +5420,26 @@ function sincronizarCatalogoFrotas() {
     </div>
 </div>
 
+<script>
+    // Script de Diagnóstico Rápido de Arquivos
+    const arquivosCriticos = [
+  './libs/tailwind.css',
+  './libs/jspdf.js',
+  './libs/firebase-app.js',
+  './libs/firebase-firestore.js',
+  './libs/xlsx.js',
+  './libs/chart.js'
+    ];
+
+    arquivosCriticos.forEach(url => {
+        fetch(url, { method: 'HEAD' })
+            .then(res => {
+                if (!res.ok) console.error(`❌ ARQUIVO FALTANDO: ${url} (Erro ${res.status})`);
+                else console.log(`✅ Arquivo OK: ${url}`);
+            })
+            .catch(err => console.error(`❌ Erro ao buscar ${url}:`, err));
+    });
+</script>
 
 
 </body>
