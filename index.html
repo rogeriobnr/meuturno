@@ -8,13 +8,18 @@
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
    
+
+<link rel="preload" href="./libs/tailwind.css" as="style">
+<link rel="preload" href="./libs/firebase-app.js" as="script">
+
 <link href="./libs/tailwind.css" rel="stylesheet">
-<script src="./libs/jspdf.js"></script>
+
+<script src="./libs/jspdf.js" defer></script>
+<script src="./libs/xlsx.js" defer></script>
+<script src="./libs/chart.js" defer></script>
+
 <script src="./libs/firebase-app.js"></script>
 <script src="./libs/firebase-firestore.js"></script>
-<script src="./libs/xlsx.js"></script>
-<script src="./libs/chart.js"></script>
-
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -5609,8 +5614,29 @@ function mostrarTelaDeCarregamento() {
     document.body.appendChild(overlay);
 }
 
-
+    window.addEventListener('load', () => {
+        // Verifica se o objeto 'firebase' existe na memória
+        if (typeof firebase === 'undefined') {
+            console.error("⚠️ Falha Crítica: As bibliotecas não carregaram. Tentando auto-reparo...");
+            
+            // Só recarrega UMA vez para não criar loop infinito
+            if (!sessionStorage.getItem('tentativa_reparo')) {
+                sessionStorage.setItem('tentativa_reparo', 'true');
+                // O 'true' força ignorar o cache e ir no servidor
+                window.location.reload(true);
+            } else {
+                console.error("❌ Auto-reparo falhou. Verifique sua conexão.");
+                // Opcional: Mostrar um alerta visual para o usuário aqui
+                // alert("Erro de conexão. Verifique sua internet e recarregue a página.");
+            }
+        } else {
+            // Se carregou tudo certo, limpa a flag
+            sessionStorage.removeItem('tentativa_reparo');
+        }
+    });
+    
     </script>
+    
   <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden relative">
         
