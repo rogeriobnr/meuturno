@@ -1040,31 +1040,45 @@ function abrirModalUpdate() {
         if(textoModal) textoModal.innerText = "Melhorias e correções prontas para você.";
     }
 
-    // 3. Ação do Botão Atualizar
-    btnConfirmar.onclick = () => {
-        if (newWorker) {
-            newWorker.postMessage({ action: 'skipWaiting' });
-            btnConfirmar.innerHTML = "Atualizando...";
-            btnConfirmar.disabled = true;
-        } else {
-            window.location.reload();
+    // 3. Ação do Botão Atualizar (COM VISUAL E LIMPEZA)
+    btnConfirmar.onclick = async () => {
+        // A. Chama a cortina visual imediatamente
+        mostrarTelaDeCarregamento();
+        
+        // B. Pequeno delay para garantir que a UI renderizou antes de travar o processo
+        await new Promise(r => setTimeout(r, 100));
+
+        try {
+            console.log("🔄 Iniciando protocolo de atualização limpa...");
+
+            // PASSO 1: Manda o SW novo assumir (se existir)
+            if (newWorker) {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            }
+
+            // PASSO 2: Mata o SW antigo
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+
+            // PASSO 3: Limpeza Nuclear do Cache
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(key => caches.delete(key)));
+                console.log("🧹 Cache apagado.");
+            }
+
+        } catch (e) {
+            console.error("Erro na atualização:", e);
+            // Mesmo com erro, forçamos o reload
+        } finally {
+            // PASSO 4: Recarrega a página (A cortina continua lá até o reload completar)
+            window.location.reload(true);
         }
     };
-
-    // 4. Exibe o Modal
-    modal.classList.remove('hidden');
-    
-    // Se for crítico, esconde o badge de fundo pra focar no modal
-    if (UPDATE_CONFIG.critico) {
-        document.getElementById('btnUpdateBadge')?.classList.add('hidden');
-    }
-
-    setTimeout(() => {
-        backdrop.classList.remove('opacity-0');
-        windowEl.classList.remove('opacity-0', 'scale-90');
-        windowEl.classList.add('scale-100');
-    }, 10);
-}
 
 function fecharModalUpdate() {
     // Só permite fechar se NÃO for crítico
@@ -5537,6 +5551,45 @@ function sincronizarCatalogoFrotas() {
         tratarErroOffline(error, 'Frotas');
     });
 }
+    // Script de Diagnóstico Rápido de Arquivos
+    const arquivosCriticos = [
+    './libs/tailwind.css',
+    './libs/jspdf.js',
+    './libs/firebase-app.js',
+    './libs/firebase-firestore.js',
+    './libs/xlsx.js',
+    './libs/chart.js'
+    ];
+    
+    arquivosCriticos.forEach(url => {
+    fetch(url, { method: 'HEAD' })
+    .then(res => {
+    if (!res.ok) console.error(`❌ ARQUIVO FALTANDO: ${url} (Erro ${res.status})`);
+    else console.log(`✅ Arquivo OK: ${url}`);
+    })
+    .catch(err => console.error(`❌ Erro ao buscar ${url}:`, err));
+    });
+
+// --- Função Visual: Cortina de Atualização ---
+function mostrarTelaDeCarregamento() {
+    // Cria o elemento overlay
+    const overlay = document.createElement('div');
+    overlay.className = "fixed inset-0 bg-blue-900 z-[10005] flex flex-col items-center justify-center transition-opacity duration-300";
+    overlay.innerHTML = `
+        <div class="relative">
+            <div class="w-20 h-20 border-4 border-blue-200 border-t-transparent rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-2xl">🚀</span>
+            </div>
+        </div>
+        <h2 class="mt-6 text-xl font-bold text-white animate-pulse">Atualizando Sistema...</h2>
+        <p class="mt-2 text-blue-200 text-sm">Limpando cache e baixando melhorias.</p>
+        <p class="mt-8 text-xs text-blue-400 font-mono">Por favor, aguarde.</p>
+    `;
+    
+    // Adiciona ao corpo da página
+    document.body.appendChild(overlay);
+}
 
     </script>
   <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -5617,26 +5670,6 @@ function sincronizarCatalogoFrotas() {
     </div>
 </div>
 
-<script>
-    // Script de Diagnóstico Rápido de Arquivos
-    const arquivosCriticos = [
-  './libs/tailwind.css',
-  './libs/jspdf.js',
-  './libs/firebase-app.js',
-  './libs/firebase-firestore.js',
-  './libs/xlsx.js',
-  './libs/chart.js'
-    ];
-
-    arquivosCriticos.forEach(url => {
-        fetch(url, { method: 'HEAD' })
-            .then(res => {
-                if (!res.ok) console.error(`❌ ARQUIVO FALTANDO: ${url} (Erro ${res.status})`);
-                else console.log(`✅ Arquivo OK: ${url}`);
-            })
-            .catch(err => console.error(`❌ Erro ao buscar ${url}:`, err));
-    });
-</script>
 
 
 </body>

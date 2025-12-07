@@ -2,7 +2,7 @@
 
 // 1. VERSÃO ATUALIZADA (V27-FIX)
 // A mudança do nome força o navegador a reinstalar o Service Worker e limpar o cache antigo
-const CACHE_NAME = 'meuturno-cache-v35';
+const CACHE_NAME = 'meuturno-cache-v36';
 
 const urlsToCache = [
   './',
