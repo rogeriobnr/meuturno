@@ -102,6 +102,12 @@
 
 <body class="bg-gray-50 text-gray-800">
 
+<div id="app-loader" class="fixed inset-0 bg-blue-800 z-[99999] flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+    <h1 class="text-2xl font-bold text-white tracking-wider animate-pulse">MeuTurno</h1>
+    <p class="text-blue-200 text-xs mt-2 font-mono">Carregando recursos...</p>
+</div>
+
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-20">
        
         <button id="hamburger-btn"
@@ -563,7 +569,7 @@ function concluirOnboarding() {
         let catalogoFrotas = [];
         let catalogoLocal = [];
 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 7;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 23;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -601,13 +607,16 @@ const Guardian = {
         quotaWarningPercent: 0.8
     },
 
-    // 1. Inicialização
+    // 1. Inicialização Otimizada
     init: async function() {
         console.log("🛡️ Guardian: Iniciando protocolos de proteção...");
         this.setupGlobalErrorHandling();
         this.sanitizeLocalStorage();
-        await this.checkStorageQuota();
-        this.injectSafeRender();
+        this.injectSafeRender(); // Importante rodar antes de qualquer render
+        
+        // OTIMIZAÇÃO: Não use 'await' aqui. Deixe verificar em segundo plano 
+        // para não atrasar a abertura do app para o usuário.
+        this.checkStorageQuota(); 
     },
 
     // 2. Prevenção de Corrupção (O "Bug do Null")
@@ -771,60 +780,95 @@ async function limparHistoricoAntigoLocal() {
     }
 }
 
-        // =================================================================================
-        // 2. INICIALIZAÇÃO E LÓGICA DO PWA
-        // =================================================================================
-        async function main() {
-            await Guardian.init(); 
+// =================================================================================
+// 2. INICIALIZAÇÃO E LÓGICA DO PWA
+// =================================================================================
+
+async function main() {
+    const loader = document.getElementById('app-loader');
+    
     try {
-        registrarServiceWorker();
-        await initDB();
+        // 1. SEGURANÇA (Prioridade Máxima)
+        // Inicia o Guardian para injetar o 'safeText' antes de qualquer renderização HTML
+        await Guardian.init();
         
+        // 2. SERVICE WORKER
+        // Inicia o suporte offline e verifica atualizações
+        registrarServiceWorker();
+        
+        // 3. BANCO DE DADOS (IndexedDB)
+        // Tenta iniciar o DB com timeout de 5s para não travar na tela branca caso o dispositivo esteja lento
+        const dbPromise = initDB();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout DB")), 5000));
+        
+        await Promise.race([dbPromise, timeoutPromise])
+            .catch(err => console.warn("⚠️ DB demorou, iniciando interface mesmo assim...", err));
+        
+        // 4. SINCRONIZAÇÃO (Firebase Listeners)
+        // Inicia os ouvintes em background (não bloqueia a UI)
         sincronizarCatalogoFrotas();
-        iniciarSincronizacaoAuxiliares();
+        iniciarSincronizacaoAuxiliares(); // Fazendas e Frentes
         iniciarSincronizacaoEquipe();
         
+        // 5. CARREGAMENTO DE DADOS
+        // Busca os dados do turno atual no cache local
         await carregarDadosIniciais();
         
-           // --- NOVO: FAXINA DE DADOS VELHOS ---
-        // Roda em segundo plano sem travar o app
-        setTimeout(() => limparHistoricoAntigoLocal(), 5000); // Espera 5s para não pesar a inicialização
-        // ------------------------------------
+        // 6. PROCESSOS DE FUNDO
+        // Faxina de histórico antigo (roda depois de 5s para não pesar na inicialização)
+        setTimeout(() => limparHistoricoAntigoLocal(), 5000);
+        // Tenta migrar dados legados se houver conexão
+        migrarDadosLocaisParaNuvem();
         
+        // 7. RENDERIZAÇÃO DA INTERFACE
         renderizarLayoutInicial();
         inicializarMenuHamburguer();
-        verificarOnboarding(); 
-        // --- NOVAS CHAMADAS DE LÓGICA ---
-        migrarDadosLocaisParaNuvem();     // Salva o legado
-        iniciarSincronizacaoHistorico();  // Baixa o novo
-        // -------------------------------
-
-        const secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+        verificarOnboarding(); // Tutorial inicial se for novo usuário
+        
+        // 8. HISTÓRICO E NAVEGAÇÃO
+        iniciarSincronizacaoHistorico();
+        
+        // Recuperação segura da última seção visitada (Persistência de tela)
+        let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+        // Validação de segurança: se o ID salvo não existe no HTML, volta para 'turno'
+        if (!document.getElementById(secaoInicial)) {
+            secaoInicial = 'turno';
+            localStorage.setItem('secaoAtiva', 'turno');
+        }
         abrir(secaoInicial);
         
-    } catch (err) { console.error("Erro main:", err); }
+    } catch (err) {
+        console.error("Erro Crítico no Main:", err);
+        // Fallback de emergência para não deixar o usuário travado no Loader
+        try { 
+            renderizarLayoutInicial();
+            abrir('turno'); 
+        } catch (e) {
+            console.error("Falha fatal na renderização de emergência", e);
+        }
+    } finally {
+        // 9. REMOÇÃO DO LOADER (Sempre executa)
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+        }
+    }
 }
 
-// ============================================================
-// GESTÃO INTELIGENTE DE ATUALIZAÇÕES (PWA)
-// ============================================================
+// Inicia a aplicação quando o DOM estiver pronto
+document.addEventListener("DOMContentLoaded", main);
 
-// 1. CONFIGURAÇÃO DA VERSÃO ATUAL
-const UPDATE_CONFIG = {
-    critico: true, // TRUE = Abre o modal na cara e bloqueia / FALSE = Mostra só o presente 🎁
-    novidades: [
-        "✅ Novo visual na Linha do Tempo",
-        "⚡ Melhoria de performance",
-        "🐛 Correção crítica de segurança"
-    ]
-};
-
-let newWorker = null; // Armazena o SW que está esperando
+// =================================================================================
+// 2. INICIALIZAÇÃO E LÓGICA DO PWA (Service Worker)
+// =================================================================================
 
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js').then(reg => {
-            
+        // Registra o SW
+        navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => {
+            console.log('SW Registrado:', reg.scope);
+
             // A. Se já tem um SW esperando (baixou em background antes)
             if (reg.waiting) {
                 tratarNovaVersaoEncontrada(reg.waiting);
@@ -836,12 +880,14 @@ function registrarServiceWorker() {
                 const worker = reg.installing;
                 worker.onstatechange = () => {
                     // Só age quando o download terminar (state: installed)
+                    // e se já existir um controlador (não é a primeira visita)
                     if (worker.state === 'installed' && navigator.serviceWorker.controller) {
                         tratarNovaVersaoEncontrada(worker);
                     }
                 };
             };
-        }).catch(err => console.error('Erro ao registrar SW:', err));
+        })
+        .catch(err => console.error('Erro ao registrar SW:', err));
 
         // C. Recarrega a página quando o SW novo assumir o controle
         let refreshing = false;
@@ -971,42 +1017,69 @@ function fecharModalUpdate() {
         // ================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
         // =================================================================================
-       const STORE_FAZENDAS = 'lista_fazendas';
-const STORE_FRENTES = 'lista_frentes';
-const STORE_EQUIPE = 'lista_equipe';
+        const STORE_FAZENDAS = 'lista_fazendas';
+        const STORE_FRENTES = 'lista_frentes';
+        const STORE_EQUIPE = 'lista_equipe';
+
+
 
 function initDB() {
     return new Promise((resolve, reject) => {
         if (db) return resolve(db);
         
-        // INCREMENTEI A VERSÃO PARA 22
-        const request = indexedDB.open(DB_NAME, 23); 
+        // Usa a constante DB_VERSION definida no topo
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
         
+        // 1. PROTEÇÃO CRÍTICA: Se houver outra aba aberta numa versão antiga
+        request.onblocked = (event) => {
+            console.warn("⚠️ Banco de dados bloqueado.");
+            alert("O sistema está a ser atualizado! Por favor, feche todas as outras abas/janelas do MeuTurno para continuar.");
+        };
+
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
+            console.log(`📦 Atualizando DB: v${e.oldVersion} -> v${e.newVersion}`);
             
-            // Stores Antigas (Mantidas)
+            // Lógica de Criação das Stores (Idempotente)
             if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
+            
             if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { 
                 const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true }); 
                 hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false }); 
             }
+            
             if (!currentDb.objectStoreNames.contains('catalogo')) currentDb.createObjectStore('catalogo', { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
-
-            // --- NOVA STORE EQUIPE ---
+            
+            // Nova store de Equipe
             if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) {
                 currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
             }
         };
-        request.onsuccess = e => { db = e.target.result; resolve(db); };
-        request.onerror = e => { console.error("Erro DB:", e); reject(e); };
+
+        request.onsuccess = e => { 
+            db = e.target.result; 
+            
+            // Recarrega se detectar nova versão em outra aba
+            db.onversionchange = () => {
+                db.close();
+                window.location.reload();
+            };
+            
+            resolve(db); 
+        };
+
+        request.onerror = e => { 
+            console.error("Erro DB:", e); 
+            reject(e.target.error); 
+        };
     });
 }
 
-        async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
+
+async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
 
         // =================================================================================
         // 4. GESTÃO DE DADOS GLOBAIS
@@ -1262,37 +1335,29 @@ function initDB() {
         function formatarDataParaExibicao(dataStr) { if (!dataStr || !/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return "Sem Data"; const [ano, mes, dia] = dataStr.split('-'); return `${dia}/${mes}/${ano}`; }
         function interpretarMarkdown(texto) { if (!texto) return ""; return texto.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
         function minimizarServico(id) { const servico = servicos.find(s => s.id === id); if (servico && servico.isExpanded) { toggleDetalhesServico(id); } }
-                function gerarTextoCabecalhoServico(servico) {
-            const frota = servico.frota || "N/D";
-            const codAtividade = (servico.atividade || "P000").split(" - ")[0];
-            const codSistema = servico.sistema || "0";
-            const codSubsistema = (servico.subsistema || "0.0").split(" - ")[0];
-            const horaInicio = servico.inicio || "--:--";
-            const horaFim = servico.fim || "--:--";
-            const infoServico = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`;
+        function gerarTextoCabecalhoServico(servico) {
+    // SEGURANÇA: Todos os campos visuais passam por safeText
+    const frota = safeText(servico.frota || "N/D");
+    const codAtividade = safeText((servico.atividade || "P000").split(" - ")[0]);
+    const codSistema = safeText(servico.sistema || "0");
+    const codSubsistema = safeText((servico.subsistema || "0.0").split(" - ")[0]);
+    const horaInicio = safeText(servico.inicio || "--:--");
+    const horaFim = safeText(servico.fim || "--:--");
+    
+    const infoServico = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`;
 
-            // --- INÍCIO DA MODIFICAÇÃO ---
+    let tipoSpan = '';
+    if (servico.tipo === 'CORRETIVA') {
+        tipoSpan = ` <span class="font-bold italic text-red-700">Corretiva</span>`;
+    } else if (servico.tipo === 'CONDICIONAL') {
+        tipoSpan = ` <span class="font-bold italic text-blue-600">Condicional</span>`;
+    } else if (servico.tipo === 'MELHORIA') {
+        tipoSpan = ` <span class="font-bold italic text-yellow-600">Melhoria</span>`;
+    }
 
-            // 1. Criamos uma variável para guardar o texto do tipo de manutenção.
-            let tipoSpan = '';
+    return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| ${infoServico}</span>${tipoSpan}`;
+}
 
-            // 2. Verificamos o tipo do serviço e definimos o HTML correspondente.
-            if (servico.tipo === 'CORRETIVA') {
-                // Se for 'CORRETIVA', criamos um span com texto vermelho escuro, negrito e itálico.
-                tipoSpan = ` <span class="font-bold italic text-red-700">Corretiva</span>`;
-            } else if (servico.tipo === 'CONDICIONAL') {
-                // Se for 'CONDICIONAL', criamos um span com texto azul, negrito e itálico.
-                tipoSpan = ` <span class="font-bold italic text-blue-600">Condicional</span>`;
-            } else if (servico.tipo === 'MELHORIA') {
-                // Se for 'MELHORIA', criamos um span com texto amarelo, negrito e itálico.
-                tipoSpan = ` <span class="font-bold italic text-yellow-600">Melhoria</span>`;
-            }
-
-            // 3. Juntamos o texto original com o nosso novo span.
-            return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| ${infoServico}</span>${tipoSpan}`;
-            
-            // --- FIM DA MODIFICAÇÃO ---
-        }
         
         // NOVO: Função auxiliar para validar o tempo de um serviço
         function validarTempoServico(servico) {
@@ -1344,15 +1409,16 @@ function renderizarEquipe() {
         return; 
     } 
     
+    // APLICAÇÃO DE SEGURANÇA: safeText() nos dados dinâmicos
     box.innerHTML = equipe.map((item, i) => `
         <div class="flex items-center justify-between p-4 mb-4 bg-white rounded-xl shadow-sm border-l-4 border-blue-500 transition-all hover:shadow-md">
             <div class="flex items-center gap-4">
                 <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base">
-                    ${item.nome.charAt(0)}
+                    ${safeText(item.nome.charAt(0))}
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-base font-bold text-gray-800 leading-tight">${item.nome}</span>
-                    <span class="text-xs text-gray-500 font-medium mt-0.5">Mat: ${item.matricula}</span>
+                    <span class="text-base font-bold text-gray-800 leading-tight">${safeText(item.nome)}</span>
+                    <span class="text-xs text-gray-500 font-medium mt-0.5">Mat: ${safeText(item.matricula)}</span>
                 </div>
             </div>
             <button onclick="removerEquipe(${i})" class="text-gray-300 hover:text-red-500 p-2 transition-colors bg-gray-50 rounded-full hover:bg-red-50">
@@ -1365,7 +1431,7 @@ function renderizarEquipe() {
 }
 
 
-        function renderizarFrotasDoTurno() { 
+function renderizarFrotasDoTurno() { 
     const div = document.getElementById('listaFrotas'); 
     if (!div) return; 
     
@@ -1377,25 +1443,19 @@ function renderizarEquipe() {
     frotasTurno.sort((a, b) => a.nome.localeCompare(b.nome)); 
     
     div.innerHTML = frotasTurno.map((f, i) => {
-        // CORES PADRÃO (Seguras para TrebEdit/CDN)
-        // Usando classes comuns: blue-500, green-500, gray-400
         let corBorda = 'border-blue-500'; 
+        if (f.tipo === 'caminhao') corBorda = 'border-green-500';
+        else if (f.tipo === 'implemento') corBorda = 'border-gray-400';
 
-        if (f.tipo === 'caminhao') {
-            corBorda = 'border-green-500';
-        } else if (f.tipo === 'implemento') {
-            corBorda = 'border-gray-400';
-        }
-
+        // APLICAÇÃO DE SEGURANÇA: safeText() no nome da frota
         return `
         <div class="flex items-center justify-between p-3 mb-2 bg-white rounded-lg shadow-sm border-l-4 ${corBorda}">
-            
             <div class="flex flex-col min-w-0 pr-2">
                 <span class="text-base font-bold text-gray-800 truncate">
-                    ${f.nome}
+                    ${safeText(f.nome)}
                 </span>
                 <span class="text-xs font-bold uppercase tracking-wide w-max px-2 py-0.5 rounded mt-1 text-gray-500 bg-gray-100">
-                    ${getTipoTexto(f.tipo)}
+                    ${safeText(getTipoTexto(f.tipo))}
                 </span>
             </div>
 
@@ -1414,12 +1474,11 @@ function renderizarEquipe() {
                     </svg>
                 </button>
             </div>
-
         </div>`;
     }).join(''); 
 }
 
-        async function removerFrotaDoTurno(index) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Remover Frota do Turno', 'Tem certeza?', resolve)); if (confirmado) { frotasTurno.splice(index, 1); renderizarFrotasDoTurno(); salvarTudo(); showToast('Frota removida do turno.', 'success'); } }
+async function removerFrotaDoTurno(index) { const confirmado = await new Promise(resolve => abrirPopupConfirmar('Remover Frota do Turno', 'Tem certeza?', resolve)); if (confirmado) { frotasTurno.splice(index, 1); renderizarFrotasDoTurno(); salvarTudo(); showToast('Frota removida do turno.', 'success'); } }
         function atualizarHorasFrotaTurno(index, novasHoras) { const horas = parseFloat(novasHoras); if (!isNaN(horas) && horas > 0) { frotasTurno[index].horas = horas; salvarTudo(); showToast('Horas da frota atualizadas.', 'success'); } else { showToast('Valor de horas inválido.', 'error'); renderizarFrotasDoTurno(); } }
         
 // ============================================================
@@ -1696,24 +1755,26 @@ function iniciarSincronizacaoEquipe() {
 function abrirPopupSelecaoEquipe() {
     listaEquipeCache.sort((a, b) => a.nome.localeCompare(b.nome));
 
-    const listaHTML = listaEquipeCache.map(colab => {
+            const listaHTML = listaEquipeCache.map(colab => {
         const jaNoTurno = equipe.some(e => e.matricula === colab.matricula);
         const checked = jaNoTurno ? 'checked' : '';
         const style = jaNoTurno ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
         
+        // [CORREÇÃO DE SEGURANÇA] safeText no nome e na matrícula
         return `
         <div class="flex items-center justify-between p-3 mb-2 border rounded-md ${style} hover:bg-gray-50 transition-colors">
             <label class="flex items-center flex-grow cursor-pointer gap-3">
                 <input type="checkbox" class="w-6 h-6 text-blue-600 rounded focus:ring-blue-500 checkbox-equipe" 
-                    value="${colab.matricula}" data-nome="${colab.nome}" ${checked}>
+                    value="${safeText(colab.matricula)}" data-nome="${safeText(colab.nome)}" ${checked}>
                 <div class="flex flex-col">
-                    <span class="font-bold text-gray-800 text-sm">${colab.nome}</span>
-                    <span class="text-xs text-gray-500">Mat: ${colab.matricula}</span>
+                    <span class="font-bold text-gray-800 text-sm">${safeText(colab.nome)}</span>
+                    <span class="text-xs text-gray-500">Mat: ${safeText(colab.matricula)}</span>
                 </div>
             </label>
-            <button onclick="removerColaboradorDoBanco('${colab.docId}', '${colab.nome}')" class="text-gray-300 hover:text-red-500 p-2 text-lg" title="Apagar do Banco">🗑️</button>
+            <button onclick="removerColaboradorDoBanco('${colab.docId}', '${safeText(colab.nome)}')" class="text-gray-300 hover:text-red-500 p-2 text-lg" title="Apagar do Banco">🗑️</button>
         </div>`;
     }).join('');
+
 
     // --- CONTEÚDO CORRIGIDO COM ALTURA FIXA ---
     const conteudo = `
@@ -1930,18 +1991,34 @@ function confirmarSelecaoEquipe() {
     renderizarCatalogoFrotas(); 
 }
 
-        // MODIFICADO: Aplica 'removerAcentos' na busca
         function renderizarCatalogoFrotas() {
-            const listaDiv = document.getElementById('listaCatalogoFrotas');
-            if (!listaDiv) return;
+    const listaDiv = document.getElementById('listaCatalogoFrotas');
+    if (!listaDiv) return;
 
-            // MODIFICADO: Aplica removerAcentos na busca
-            const termoBusca = removerAcentos(document.getElementById('buscaFrota').value.toLowerCase());
+    // MODIFICADO: Aplica removerAcentos na busca
+    const termoBusca = removerAcentos(document.getElementById('buscaFrota').value.toLowerCase());
 
-            const frotasFiltradas = catalogoFrotas.filter(f => removerAcentos(f.nome.toLowerCase()).includes(termoBusca)); 
-            
-            if (frotasFiltradas.length === 0) { listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma frota encontrada no catálogo.</p>`; return; } frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome)); listaDiv.innerHTML = frotasFiltradas.map(f => `<div class="border rounded-lg p-3 flex justify-between items-center"><div><p class="font-bold text-gray-800">${f.nome}</p><p class="text-sm font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</p></div><button onclick="removerFrotaCatalogo('${f.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir do Catálogo">🗑️</button></div>`).join('');
-        }
+    const frotasFiltradas = catalogoFrotas.filter(f => removerAcentos(f.nome.toLowerCase()).includes(termoBusca)); 
+    
+    if (frotasFiltradas.length === 0) { 
+        listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhuma frota encontrada no catálogo.</p>`; 
+        return; 
+    } 
+    
+    frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome)); 
+    
+    // SEGURANÇA APLICADA: safeText nos campos de saída
+    listaDiv.innerHTML = frotasFiltradas.map(f => `
+        <div class="border rounded-lg p-3 flex justify-between items-center">
+            <div>
+                <p class="font-bold text-gray-800">${safeText(f.nome)}</p>
+                <p class="text-sm font-semibold ${getTipoCor(f.tipo)}">${safeText(getTipoTexto(f.tipo))}</p>
+            </div>
+            <button onclick="removerFrotaCatalogo('${f.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir do Catálogo">🗑️</button>
+        </div>
+    `).join('');
+}
+
         function abrirPopupTipoFrota(contexto = 'catalogo') {
             const conteudo = `<p class="mb-4">Selecione o tipo de frota para adicionar:</p>
         <div class="grid grid-cols-1 gap-3">
@@ -2022,20 +2099,16 @@ function renderizarListaFrotasDisponiveis(frotasIniciais = null) {
     const listaDiv = document.getElementById('listaFrotasDisponiveis');
     if (!listaDiv) return;
 
-    // 1. Obtém as frotas a serem processadas (ou as frotas disponíveis se for a 1ª chamada)
     const frotasDisponiveis = frotasIniciais || catalogoFrotas.filter(cf => !frotasTurno.some(ft => ft.nome === cf.nome));
 
-    // 2. Aplica o filtro de busca
     const termoBusca = document.getElementById('filtroSelecaoFrota')?.value;
     const frotasFiltradas = frotasDisponiveis.filter(f => {
         if (!termoBusca) return true;
-        // Usa removerAcentos para uma busca mais flexível
         const termoNormalizado = removerAcentos(termoBusca).toLowerCase();
         const nomeNormalizado = removerAcentos(f.nome).toLowerCase();
         return nomeNormalizado.includes(termoNormalizado);
     });
 
-    // 3. Aplica a ordenação crescente (alfabética/numeral)
     frotasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome));
 
     if (frotasFiltradas.length === 0) {
@@ -2043,19 +2116,20 @@ function renderizarListaFrotasDisponiveis(frotasIniciais = null) {
         return;
     }
     
-    // 4. Gera o HTML
+    // [CORREÇÃO DE SEGURANÇA] safeText no value, data-tipo e textos visíveis
     let listaHTML = frotasFiltradas.map(f => `
         <label class="flex items-center p-2 border rounded-md hover:bg-gray-100">
-            <input type="checkbox" name="frota-selecao" value="${f.nome}" 
-                   data-tipo="${f.tipo}" 
+            <input type="checkbox" name="frota-selecao" value="${safeText(f.nome)}" 
+                   data-tipo="${safeText(f.tipo)}" 
                    class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-            <span class="ml-3 font-semibold">${f.nome}</span>
-            <span class="ml-auto text-xs font-semibold ${getTipoCor(f.tipo)}">${getTipoTexto(f.tipo)}</span>
+            <span class="ml-3 font-semibold">${safeText(f.nome)}</span>
+            <span class="ml-auto text-xs font-semibold ${getTipoCor(f.tipo)}">${safeText(getTipoTexto(f.tipo))}</span>
         </label>
     `).join('');
     
     listaDiv.innerHTML = listaHTML;
 }
+
         // MODIFICADO: Lê o tipo de frota do atributo do checkbox
 // CORRIGIDO: Simplifica a lógica de busca do tipo de frota e garante que só adicione frotas existentes no catálogo.
 function adicionarFrotasSelecionadasAoTurno() { 
@@ -2168,7 +2242,7 @@ function renderizarServicos() {
     const lista = document.getElementById("servicosLista"); 
     if (!lista) return; 
     
-    // Apenas ordena, sem filtrar por texto
+    // Ordena por data/hora
     const servicosOrdenados = [...servicos]; 
     servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
     
@@ -2184,58 +2258,35 @@ function renderizarServicos() {
         servicosOrdenados.forEach(s => { 
             const template = document.getElementById('servico-template').content.cloneNode(true); 
             const article = template.querySelector('article'); 
+            
+            // SEGURANÇA: IDs devem ser seguros, mas s.id é numérico (timestamp), então é seguro.
             article.id = `servico_${s.id}`; 
+            
             lista.appendChild(article); 
             preencherDetalhesServico(s); 
         }); 
     } 
 }
 
-
-function renderizarServicos() { 
-    const lista = document.getElementById("servicosLista"); 
-    if (!lista) return; 
-    
-    // Ordena por data/hora
-    const servicosOrdenados = [...servicos]; // Cria cópia para não afetar o original desnecessariamente
-    servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
-    
-    lista.innerHTML = ''; 
-    
-    if (servicosOrdenados.length === 0) { 
-        lista.innerHTML = `
-        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
-            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
-            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
-        </div>`; 
-    } else { 
-        servicosOrdenados.forEach(s => { 
-            const template = document.getElementById('servico-template').content.cloneNode(true); 
-            const article = template.querySelector('article'); 
-            article.id = `servico_${s.id}`; 
-            lista.appendChild(article); 
-            preencherDetalhesServico(s); 
-        }); 
-    } 
-}
-        
-        function preencherDetalhesServico(s) {
+function preencherDetalhesServico(s) {
     const article = document.getElementById(`servico_${s.id}`);
     if (!article) return;
     
-    // --- MUDANÇA AQUI: border-l-
+    // 1. ESTILIZAÇÃO DINÂMICA DO CARTÃO
+    // Define a cor da borda lateral e do cabeçalho baseado no status
     article.className = "bg-white rounded-xl shadow-sm mb-4 border-t border-r border-b border-gray-200 transition-all hover:shadow-md border-l-4";
     
     const cabecalho = article.querySelector('.servico-cabecalho');
-    const osNaoGerada = !s.texto;
+    const osNaoGerada = !s.texto; // Se não tem texto gerado, é rascunho
     
+    // Remove cores antigas
     cabecalho.classList.remove('bg-gray-50', 'bg-yellow-50', 'bg-green-50');
+    article.classList.remove('border-blue-500', 'border-yellow-400', 'border-green-500');
     
     if (s.foiCompartilhado) {
         article.classList.add('border-green-500');
         cabecalho.classList.add('bg-green-50');
     } else if (osNaoGerada) {
-        // Lembre-se: Usamos yellow-400 para o visual laranja/âmbar
         article.classList.add('border-yellow-400');
         cabecalho.classList.add('bg-yellow-50');
     } else {
@@ -2243,35 +2294,35 @@ function renderizarServicos() {
         cabecalho.classList.add('bg-gray-50');
     }
     
-    // ... (O resto da função continua IGUAL, não precisa alterar nada abaixo) ...
-    
-    // Para facilitar, vou manter apenas o início atualizado acima.
-    // Você pode copiar o resto da função do seu código anterior ou,
-    // se preferir, posso colar a função inteira novamente.
-    
-    // --- CÓDIGO ABAIXO MANTIDO (Cópia da versão anterior) ---
+    // 2. ATUALIZAÇÃO DO CABEÇALHO
     const cabecalhoInfo = article.querySelector('.servico-cabecalho-info');
     const toggler = article.querySelector('.servico-cabecalho-toggler');
     const detalhes = article.querySelector('.servico-detalhes');
+    
+    // Gera o texto seguro do cabeçalho
     const cabecalhoHTML = gerarTextoCabecalhoServico(s);
+    if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { 
+        cabecalhoInfo.innerHTML = cabecalhoHTML; 
+    }
     
-    if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { cabecalhoInfo.innerHTML = cabecalhoHTML; }
-    
+    // Controle do Accordion (Expandir/Recolher)
     toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;';
     article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id);
     detalhes.style.display = s.isExpanded ? 'block' : 'none';
     
+    // Se estiver fechado, não precisa renderizar o formulário pesado
     if (!s.isExpanded) return;
     
+    // 3. RENDERIZAÇÃO DA LISTA DE PEÇAS (SEGURA)
     let listaPecasHTML = '';
     if (s.pecasUtilizadas && s.pecasUtilizadas.length > 0) {
         listaPecasHTML = s.pecasUtilizadas.map((p, i) => `
             <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-1">
                 <span class="truncate flex-1">
-                    <strong class="text-blue-700">${p.quantidade || '1'}x</strong> ${p.descricao}
-                    <span class="text-xs text-gray-500 ml-1 block sm:inline">SAP: ${p.codigoSap || 'N/D'}</span>
+                    <strong class="text-blue-700">${safeText(p.quantidade || '1')}x</strong> ${safeText(p.descricao)}
+                    <span class="text-xs text-gray-500 ml-1 block sm:inline">SAP: ${safeText(p.codigoSap || 'N/D')}</span>
                 </span>
-                <button onclick="removerPecaUtilizada(${s.id}, ${i})" class="text-red-400 hover:text-red-600 p-1 ml-2">
+                <button onclick="removerPecaUtilizada(${s.id}, ${i})" class="text-red-400 hover:text-red-600 p-1 ml-2" title="Remover peça">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                 </button>
             </div>
@@ -2280,15 +2331,25 @@ function renderizarServicos() {
         listaPecasHTML = '<p class="text-xs text-gray-400 italic p-2 text-center border border-dashed border-gray-200 rounded-lg">Nenhuma peça adicionada.</p>';
     }
     
+    // 4. PREPARAÇÃO DOS SELECTS
     const subsistemasAtuais = subsistemas[s.sistema] || [];
+    
+    // Helpers para gerar options
     const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join('');
     const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join('');
-    const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`).join('');
-    const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`).join('');
+    
+    const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => 
+        `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`
+    ).join('');
+    
+    const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => 
+        `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
+    ).join('');
     
     const inputClass = "mt-1 w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow";
     const labelClass = "block text-[10px] font-bold text-gray-500 uppercase mb-1";
     
+    // 5. RENDERIZAÇÃO DO FORMULÁRIO (HTML)
     detalhes.innerHTML = `
     <div class="space-y-5">
         <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -2302,15 +2363,59 @@ function renderizarServicos() {
                 <div class="col-span-1"><label class="${labelClass}">Subsistema*</label><select data-id="${s.id}" data-field="subsistema" class="${inputClass}">${subsistemaOptions}</select></div>
             </div>
         </div>
-        <div><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⚙️</span> Peças Utilizadas</h5><div id="lista-pecas-servico-${s.id}" class="space-y-2 mb-3">${listaPecasHTML}</div><button onclick="abrirPopupSelecaoPecas(${s.id})" class="w-full py-2.5 px-4 rounded-lg font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 text-xs flex items-center justify-center gap-2 transition-colors"><span>+</span> Adicionar Peça do Catálogo</button></div>
-        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200"><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⏱️</span> Operação</h5><div class="grid grid-cols-2 gap-3"><div><label class="${labelClass}">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="${inputClass}"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div><div><label class="${labelClass}">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="${inputClass}"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div><div class="col-span-2"><label class="${labelClass}">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="${inputClass}"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div><div><label class="${labelClass}">Início (Data)</label><input type="date" data-id="${s.id}" id="data-${s.id}" data-field="data" value="${s.data}" class="${inputClass}"></div><div><label class="${labelClass}">Início (Hora)</label><input type="time" data-id="${s.id}" id="inicio-${s.id}" data-field="inicio" value="${s.inicio}" class="${inputClass}"></div><div><label class="${labelClass}">Fim (Data)</label><input type="date" data-id="${s.id}" id="dataFinal-${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="${inputClass}"></div><div><label class="${labelClass}">Fim (Hora)</label><input type="time" data-id="${s.id}" id="fim-${s.id}" data-field="fim" value="${s.fim}" class="${inputClass}"></div></div></div>
-        <div><h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">Descrição Detalhada*</h5><textarea data-id="${s.id}" data-field="descricao" class="w-full p-3 border border-gray-300 rounded-lg h-28 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Descreva o problema e a solução...">${s.descricao}</textarea></div>
-        <div><div class="flex flex-col space-y-2"><button onclick="processarOS(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold text-white shadow-md transition-transform active:scale-95 ${osNaoGerada ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}">${osNaoGerada ? "✨ Gerar O.S." : "🔄 Regerar O.S."}</button>${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors">Excluir Rascunho</button>` : ''}</div><div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4 border-t border-dashed border-gray-300 pt-4"><div class="p-3 bg-gray-50 border border-gray-200 rounded-lg whitespace-pre-line text-sm text-gray-800 font-mono shadow-inner mb-3">${interpretarMarkdown(s.texto || "")}</div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button onclick="copiarTexto(${s.id}, this)" class="py-2 px-2 rounded-lg font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs shadow-sm">Copiar</button><button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-green-500 text-white hover:bg-green-600 text-xs shadow-sm">WhatsApp</button><button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-blue-500 text-white hover:bg-blue-600 text-xs shadow-sm">Duplicar</button><button onclick="removerServico(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs shadow-sm">Excluir</button></div></div></div>
+
+        <div>
+            <h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⚙️</span> Peças Utilizadas</h5>
+            <div id="lista-pecas-servico-${s.id}" class="space-y-2 mb-3">${listaPecasHTML}</div>
+            <button onclick="abrirPopupSelecaoPecas(${s.id})" class="w-full py-2.5 px-4 rounded-lg font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 text-xs flex items-center justify-center gap-2 transition-colors"><span>+</span> Adicionar Peça do Catálogo</button>
+        </div>
+
+        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2"><span>⏱️</span> Operação</h5>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="${labelClass}">Máquina parada?*</label><select data-id="${s.id}" data-field="parada" class="${inputClass}"><option value="sim" ${s.parada === "sim" ? 'selected' : ''}>Sim</option><option value="não" ${s.parada === "não" ? 'selected' : ''}>Não</option></select></div>
+                <div><label class="${labelClass}">Falha operacional?*</label><select data-id="${s.id}" data-field="falha" class="${inputClass}"><option value="não" ${s.falha === "não" ? 'selected' : ''}>Não</option><option value="sim" ${s.falha === "sim" ? 'selected' : ''}>Sim</option></select></div>
+                <div class="col-span-2"><label class="${labelClass}">Tipo de manutenção*</label><select data-id="${s.id}" data-field="tipo" class="${inputClass}"><option value="CORRETIVA" ${s.tipo === "CORRETIVA" ? 'selected' : ''}>Corretiva</option><option value="CONDICIONAL" ${s.tipo === "CONDICIONAL" ? 'selected' : ''}>Condicional</option><option value="MELHORIA" ${s.tipo === "MELHORIA" ? 'selected' : ''}>Melhoria</option></select></div>
+                
+                <div><label class="${labelClass}">Início (Data)</label><input type="date" data-id="${s.id}" id="data-${s.id}" data-field="data" value="${s.data}" class="${inputClass}"></div>
+                <div><label class="${labelClass}">Início (Hora)</label><input type="time" data-id="${s.id}" id="inicio-${s.id}" data-field="inicio" value="${s.inicio}" class="${inputClass}"></div>
+                <div><label class="${labelClass}">Fim (Data)</label><input type="date" data-id="${s.id}" id="dataFinal-${s.id}" data-field="dataFinal" value="${s.dataFinal}" class="${inputClass}"></div>
+                <div><label class="${labelClass}">Fim (Hora)</label><input type="time" data-id="${s.id}" id="fim-${s.id}" data-field="fim" value="${s.fim}" class="${inputClass}"></div>
+            </div>
+        </div>
+
+        <div>
+            <h5 class="text-sm font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">Descrição Detalhada*</h5>
+            <textarea data-id="${s.id}" data-field="descricao" class="w-full p-3 border border-gray-300 rounded-lg h-28 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Descreva o problema e a solução...">${safeText(s.descricao)}</textarea>
+        </div>
+
+        <div>
+            <div class="flex flex-col space-y-2">
+                <button onclick="processarOS(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold text-white shadow-md transition-transform active:scale-95 ${osNaoGerada ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}">
+                    ${osNaoGerada ? "✨ Gerar O.S." : "🔄 Regerar O.S."}
+                </button>
+                ${osNaoGerada ? `<button onclick="removerServico(${s.id})" class="w-full py-3 px-4 rounded-xl font-bold bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors">Excluir Rascunho</button>` : ''}
+            </div>
+
+            <div id="preview_container_${s.id}" class="${osNaoGerada ? 'hidden' : ''} mt-4 border-t border-dashed border-gray-300 pt-4">
+                <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg whitespace-pre-line text-sm text-gray-800 font-mono shadow-inner mb-3">
+                    ${interpretarMarkdown(safeText(s.texto || ""))}
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button onclick="copiarTexto(${s.id}, this)" class="py-2 px-2 rounded-lg font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs shadow-sm">Copiar</button>
+                    <button onclick="compartilharWhatsApp(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-green-500 text-white hover:bg-green-600 text-xs shadow-sm">WhatsApp</button>
+                    <button onclick="adicionarServicoDepois(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-blue-500 text-white hover:bg-blue-600 text-xs shadow-sm">Duplicar</button>
+                    <button onclick="removerServico(${s.id})" class="py-2 px-2 rounded-lg font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs shadow-sm">Excluir</button>
+                </div>
+            </div>
+        </div>
     </div>`;
     
+    // 6. VALIDAÇÃO DE TEMPO (UX)
     const inputFim = detalhes.querySelector(`#fim-${s.id}`);
     const inputDataFinal = detalhes.querySelector(`#dataFinal-${s.id}`);
     const servicoValidado = servicos.find(item => item.id === s.id);
+    
     if (inputFim && inputDataFinal) {
         if (!validarTempoServico(servicoValidado)) {
             inputFim.classList.add('campo-invalido');
@@ -2320,9 +2425,14 @@ function renderizarServicos() {
             inputDataFinal.classList.remove('campo-invalido');
         }
     }
-    detalhes.querySelectorAll('input, select, textarea').forEach(el => { el.addEventListener('change', handleServicoInputChange);
-        el.addEventListener('input', handleServicoInputChange); });
+    
+    // 7. ATIVAÇÃO DOS LISTENERS
+    detalhes.querySelectorAll('input, select, textarea').forEach(el => { 
+        el.addEventListener('change', handleServicoInputChange);
+        el.addEventListener('input', handleServicoInputChange); 
+    });
 }
+
         
         // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
         function handleServicoInputChange(event) { 
@@ -2674,7 +2784,6 @@ function renderizarListaLinhas() {
             bgClass = 'bg-yellow-50';
         }
 
-        // Botões de Ação (Ajustado para não quebrar)
         const acoesHtml = `
             <div class="flex items-center gap-0.5 ml-auto pl-2 border-l border-gray-100 shrink-0">
                 <button onclick="trocarOrdem(${index})" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-50 transition-colors">
@@ -2686,14 +2795,19 @@ function renderizarListaLinhas() {
             </div>
         `;
 
-        // Input de Hora (Fixo, mas seguro)
         const inputTimeClass = "block w-[48px] h-8 text-[11px] font-bold text-center bg-gray-50 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none p-0";
 
         let html = '';
 
         if (isServico) {
-            // CARD SERVIÇO (Layout Responsivo)
-            const infoTecnica = `${linha.atividade.split(' - ')[0]} • ${linha.sistema} • ${(linha.subsistema||'?').split(' - ')[0]}`;
+            // [CORREÇÃO DE SEGURANÇA] Sanitizando dados antes de exibir
+            const atividadeSegura = safeText(linha.atividade.split(' - ')[0]);
+            const sistemaSeguro = safeText(linha.sistema);
+            const subSeguro = safeText((linha.subsistema||'?').split(' - ')[0]);
+            const frotaSegura = safeText(linha.frota || 'N/A');
+            const osSegura = safeText(linha.os || '---');
+
+            const infoTecnica = `${atividadeSegura} • ${sistemaSeguro} • ${subSeguro}`;
             
             html = `
             <div class="${bgClass} rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
@@ -2703,7 +2817,7 @@ function renderizarListaLinhas() {
                         <div class="flex items-start gap-2 overflow-hidden">
                             <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200 mt-0.5">${index + 1}</span>
                             <div class="min-w-0">
-                                <span class="block font-black text-sm text-gray-800 leading-tight truncate">${linha.frota || 'N/A'}</span>
+                                <span class="block font-black text-sm text-gray-800 leading-tight truncate">${frotaSegura}</span>
                                 <span class="block text-[10px] text-gray-400 font-mono mt-0.5 truncate">${infoTecnica}</span>
                             </div>
                         </div>
@@ -2713,20 +2827,20 @@ function renderizarListaLinhas() {
                     <div class="flex flex-wrap items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100 gap-y-2">
                         <div class="flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-gray-200 shadow-sm">
                             <span class="text-[9px] font-bold text-gray-400 uppercase">OS</span>
-                            <span class="text-xs font-bold text-blue-700">${linha.os || '---'}</span>
+                            <span class="text-xs font-bold text-blue-700">${osSegura}</span>
                         </div>
                         
                         <div class="flex items-center gap-1 ml-auto">
-                            <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
+                            <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
                             <span class="text-gray-300 text-[10px]">➜</span>
-                            <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
+                            <input type="time" value="${safeText(linha.fim)}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
                         </div>
                     </div>
                 </div>
             </div>`;
 
         } else {
-            // CARD MANUAL (Layout Responsivo com Wrap)
+            // CARD MANUAL
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
                 `<option value="${a}" ${linha.atividade===a?'selected':''}>${a}</option>`
             ).join('');
@@ -2752,9 +2866,9 @@ function renderizarListaLinhas() {
 
                     <div class="flex items-center justify-end gap-1 pr-1">
                         <span class="text-[9px] font-bold text-gray-400 mr-1">DURAÇÃO:</span>
-                        <input type="time" value="${linha.inicio}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
+                        <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
                         <span class="text-gray-300 text-[10px]">➜</span>
-                        <input type="time" value="${linha.fim}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
+                        <input type="time" value="${safeText(linha.fim)}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
                     </div>
                 </div>
             </div>`;
@@ -4791,31 +4905,43 @@ async function limparRelatorio() {
 
 
         function renderizarCatalogo() {
-            const listaDiv = document.getElementById('listaCatalogo');
-            if (!listaDiv) return;
+    const listaDiv = document.getElementById('listaCatalogo');
+    if (!listaDiv) return;
 
-            // 1. Pega o termo de busca, converte para minúsculas E remove os acentos.
-            const termoBusca = removerAcentos(document.getElementById('buscaCatalogo').value.toLowerCase());
+    // Busca e normalização
+    const termoBusca = removerAcentos(document.getElementById('buscaCatalogo').value.toLowerCase());
 
-            const itensFiltrados = catalogoLocal.filter(item => {
-                // Converte para String para evitar erros caso os dados venham como números
-                const codigoSap = String(item.codigoSap || '').toLowerCase();
-                const partNumber = String(item.partNumber || '').toLowerCase();
+    const itensFiltrados = catalogoLocal.filter(item => {
+        const codigoSap = String(item.codigoSap || '').toLowerCase();
+        const partNumber = String(item.partNumber || '').toLowerCase();
+        const descricaoNormalizada = removerAcentos(String(item.descricao || '').toLowerCase());
 
-                // 2. Converte a descrição do item para minúsculas E remove os acentos antes de comparar.
-                const descricaoNormalizada = removerAcentos(String(item.descricao || '').toLowerCase());
+        return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricaoNormalizada.includes(termoBusca));
+    });
 
-                return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricaoNormalizada.includes(termoBusca));
-            });
+    if (itensFiltrados.length === 0) {
+        listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhum item encontrado.</p>`;
+        return;
+    }
 
-            if (itensFiltrados.length === 0) {
-                listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhum item encontrado.</p>`;
-                return;
-            }
+    itensFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
 
-            itensFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
-            listaDiv.innerHTML = itensFiltrados.map(item => `<div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-gray-50"><div class="flex-1 min-w-0"><p class="font-bold text-gray-800 truncate">${item.descricao}</p><p class="text-sm text-gray-600">SAP: <span class="font-semibold text-blue-700">${item.codigoSap}</span></p><p class="text-sm text-gray-600">Part Number: <span class="font-semibold">${item.partNumber}</span></p></div><div class="flex space-x-2 pl-2"><button onclick="editarItemCatalogo('${item.docId}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full" title="Editar">✏️</button><button onclick="excluirItemCatalogo('${item.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir">🗑️</button></div></div>`).join('');
-        }
+    // APLICAÇÃO DE SEGURANÇA: safeText em todos os campos visuais
+    listaDiv.innerHTML = itensFiltrados.map(item => `
+        <div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-gray-50">
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-gray-800 truncate">${safeText(item.descricao)}</p>
+                <p class="text-sm text-gray-600">SAP: <span class="font-semibold text-blue-700">${safeText(item.codigoSap)}</span></p>
+                <p class="text-sm text-gray-600">Part Number: <span class="font-semibold">${safeText(item.partNumber)}</span></p>
+            </div>
+            <div class="flex space-x-2 pl-2">
+                <button onclick="editarItemCatalogo('${item.docId}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full" title="Editar">✏️</button>
+                <button onclick="excluirItemCatalogo('${item.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
         function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
         async function salvarItemCatalogo() { const docId = document.getElementById('popup-docId').value; const codigoSap = document.getElementById('popup-sap').value.trim(); const partNumber = document.getElementById('popup-partnumber').value.trim(); const descricao = document.getElementById('popup-descricao').value.trim(); if (!codigoSap && !partNumber && !descricao) { showToast("Preencha pelo menos um campo para salvar o item.", "error"); return; } const itemData = { codigoSap, partNumber, descricao }; try { if (docId) { await firestore.collection('catalogo').doc(docId).update(itemData); showToast("Item atualizado com sucesso!", "success"); } else { await firestore.collection('catalogo').add(itemData); showToast("Item adicionado com sucesso!", "success"); } fecharPopup(); } catch (error) { console.error("Erro ao salvar item no Firebase:", error); showToast("Erro ao salvar o item.", "error"); } }
         function editarItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); if (item) { abrirPopupFormularioItemCatalogo(item); } else { showToast("Item não encontrado para edição.", "error"); } }
