@@ -349,9 +349,10 @@
                 </div>
         <div>
              <label class="block text-xs font-bold text-gray-500 mb-1">Data do Apontamento</label>
-              <input type="date" id="apontamentoData" 
+<input type="date" id="apontamentoData" 
            class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
-           onchange="atualizarPreviewSeNecessario()">
+           onchange="trocarDataApontamento(this.value)">
+
         </div>
 
             </div>
@@ -573,8 +574,8 @@ function concluirOnboarding() {
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let catalogoFrotas = [];
         let catalogoLocal = [];
-
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 23;
+        let dataMemoriaApontamento = ''; 
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 24;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -1161,20 +1162,18 @@ function initDB() {
     return new Promise((resolve, reject) => {
         if (db) return resolve(db);
         
-        // Usa a constante DB_VERSION definida no topo
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         
-        // 1. PROTEÇÃO CRÍTICA: Se houver outra aba aberta numa versão antiga
         request.onblocked = (event) => {
             console.warn("⚠️ Banco de dados bloqueado.");
-            alert("O sistema está a ser atualizado! Por favor, feche todas as outras abas/janelas do MeuTurno para continuar.");
+            alert("Atualização do Banco de Dados: Por favor, feche todas as outras abas do MeuTurno.");
         };
 
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
             console.log(`📦 Atualizando DB: v${e.oldVersion} -> v${e.newVersion}`);
             
-            // Lógica de Criação das Stores (Idempotente)
+            // Lógica existente...
             if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
             
             if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { 
@@ -1186,29 +1185,22 @@ function initDB() {
             if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
-            
-            // Nova store de Equipe
-            if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) {
-                currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
+            if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
+
+            // --- NOVO: Tabela específica para salvar o apontamento de cada dia ---
+            if (!currentDb.objectStoreNames.contains('apontamentos_diarios')) {
+                // Chave composta para evitar misturar turnos/frentes no mesmo dia
+                currentDb.createObjectStore('apontamentos_diarios', { keyPath: 'id_composto' });
             }
         };
 
         request.onsuccess = e => { 
             db = e.target.result; 
-            
-            // Recarrega se detectar nova versão em outra aba
-            db.onversionchange = () => {
-                db.close();
-                window.location.reload();
-            };
-            
+            db.onversionchange = () => { db.close(); window.location.reload(); };
             resolve(db); 
         };
 
-        request.onerror = e => { 
-            console.error("Erro DB:", e); 
-            reject(e.target.error); 
-        };
+        request.onerror = e => { console.error("Erro DB:", e); reject(e.target.error); };
     });
 }
 
@@ -1255,7 +1247,7 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
 
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         
-        function salvarTudo(forcar = false) { 
+    function salvarTudo(forcar = false) { 
     clearTimeout(debounceTimer); 
     const executar = async () => { 
         try { 
@@ -1271,16 +1263,20 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
                 equipe: equipe, 
                 frotas: frotasTurno, 
                 servicos: servicos, 
-                // --- AQUI ESTÁ A NOVIDADE: SALVAR A LINHA DO TEMPO ---
+                // Mantemos aqui para compatibilidade
                 linhasApontamento: linhasApontamento, 
-                // -----------------------------------------------------
                 relatorio: relatorioBruto, 
                 relatorioGeradoComServicos: snapshotServicos 
             }; 
             
             await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); 
+            
+            // --- NOVO: Salva também na tabela histórica ---
+            await salvarLinhaDoTempoDoDia(); 
+            // ---------------------------------------------
+
         } catch (err) { 
-            console.error("Erro ao salvar:", err); // Mudei para console para não spammar toast
+            console.error("Erro ao salvar:", err); 
         } 
     }; 
     
@@ -2911,39 +2907,212 @@ const COORD_FORM = {
         }
     }
 };
+// ============================================================
+// GESTÃO DE LINHA DO TEMPO POR DATA (Time Travel)
+// ============================================================
+
+// Gera ID único: DATA + FRENTE + TURNO (Ex: 2024-12-07_MODULO1_TURNOA)
+function gerarIDComposto(data) {
+    // 1. Pega os valores com segurança
+    let frente = document.getElementById('frente')?.value || '';
+    let turno = document.getElementById('turnoLetra')?.value || '';
+    
+    // 2. Limpeza rigorosa (Trim + Uppercase)
+    frente = frente.trim().toUpperCase();
+    turno = turno.trim().toUpperCase();
+    
+    // 3. Fallback de segurança (se estiver vazio, usa padrão para não quebrar)
+    if (!frente) frente = "GERAL";
+    if (!turno) turno = "A";
+    
+    // 4. Gera o ID (Ex: 2024-12-07_MODULO1_TURNOA)
+    const id = `${data}_${frente}_${turno}`;
+    
+    // Debug: Mostra no console qual ID está sendo gerado
+    console.log(`🔑 ID Gerado: [${id}]`);
+    
+    return id;
+}
+
+
+// Salva o estado atual na data selecionada
+// Salva o estado atual na data selecionada (Local + Nuvem)
+// Salva a linha do tempo (Permite forçar uma data específica)
+async function salvarLinhaDoTempoDoDia(dataForcada = null) {
+    // SE houver dataForcada (usada na troca), usa ela. 
+    // SENÃO, lê do input (usado no autosave enquanto digita).
+    const dataAlvo = dataForcada || document.getElementById('apontamentoData')?.value;
+
+    // Se não tiver data nenhuma ou não tiver linhas, aborta
+    if (!dataAlvo || !linhasApontamento) return;
+
+    // Usa a dataAlvo correta para gerar o ID
+    const idComposto = gerarIDComposto(dataAlvo);
+    
+    const registro = {
+        id_composto: idComposto,
+        data: dataAlvo,
+        linhas: JSON.parse(JSON.stringify(linhasApontamento)), 
+        atualizadoEm: new Date().toISOString(),
+        frente: document.getElementById('frente')?.value.trim() || '',
+        turno: document.getElementById('turnoLetra')?.value || ''
+    };
+
+    try {
+        // Salva Local
+        await dbExec('apontamentos_diarios', 'readwrite', s => s.put(registro));
+        
+        // Salva Nuvem (Fire and Forget)
+        if (typeof firestore !== 'undefined') {
+            firestore.collection('apontamentos_diarios_cloud').doc(idComposto)
+                .set(registro, { merge: true })
+                .catch(err => console.warn("Fila offline:", err));
+        }
+    } catch (e) {
+        console.error("Erro ao salvar histórico:", e);
+    }
+}
+
+
+// Carrega os dados de uma data específica
+// Carrega os dados de uma data específica (Local -> Nuvem -> Padrão)
+async function carregarLinhaDoTempoPorData(novaData) {
+    if (!novaData) return;
+
+    const container = document.getElementById('listaLinhasApontamento');
+    if (container) container.innerHTML = '<div class="text-center py-8 text-gray-400">🔄 Buscando dia...</div>';
+
+    const idComposto = gerarIDComposto(novaData);
+    console.log(`📂 Tentando carregar: ${idComposto}`);
+
+    try {
+        // 1. Tenta buscar LOCAL (IndexedDB)
+        let registro = await dbExec('apontamentos_diarios', 'readonly', s => s.get(idComposto));
+
+        // 2. Se não achou local, tenta NUVEM
+        if (!registro && navigator.onLine) {
+            console.log("☁️ Buscando na nuvem...");
+            try {
+                const doc = await firestore.collection('apontamentos_diarios_cloud').doc(idComposto).get();
+                if (doc.exists) {
+                    registro = doc.data();
+                    // Salva local para a próxima
+                    await dbExec('apontamentos_diarios', 'readwrite', s => s.put(registro));
+                }
+            } catch (err) {
+                console.warn("⚠️ Erro ao buscar na nuvem:", err);
+            }
+        }
+
+        // 3. Processa o resultado
+        if (registro && registro.linhas && Array.isArray(registro.linhas)) {
+            console.log(`✅ Sucesso! Encontradas ${registro.linhas.length} linhas.`);
+            linhasApontamento = registro.linhas;
+            showToast(`Histórico de ${formatarDataParaExibicao(novaData)} carregado.`, 'success');
+        } else {
+            console.log("❌ Nada encontrado. Iniciando dia vazio.");
+            // Dia novo = Limpa a tela e adiciona DDS padrão
+            linhasApontamento = [];
+            linhasApontamento.push({
+                id: Date.now(),
+                tipo: 'manual',
+                atividade: 'H02 - DDS',
+                inicio: '07:00',
+                fim: '07:20',
+                os: '', frota: '', sistema: '', subsistema: ''
+            });
+        }
+
+        renderizarListaLinhas();
+        
+        // Importante: Atualiza o objeto global do turno para não salvar por cima sem querer
+        // Mas NÃO chamamos 'salvarTudo()' aqui para não criar um registro vazio desnecessário na nuvem agora
+        // Apenas deixamos na memória RAM.
+        
+    } catch (e) {
+        console.error("Erro crítico ao carregar:", e);
+        showToast("Erro ao buscar dados.", "error");
+    }
+}
+
+
+// Função chamada pelo Input HTML quando o usuário muda a data
+function trocarDataApontamento(novaData) {
+    if(!novaData) return;
+    
+    // 1. O PULO DO GATO: Salva os dados atuais usando a DATA ANTIGA (que estava na memória)
+    // Se não tiver memória (primeira vez), usa a nova mesmo.
+    const dataParaSalvar = dataMemoriaApontamento || novaData;
+
+    salvarLinhaDoTempoDoDia(dataParaSalvar).then(() => {
+        // 2. Atualiza a memória para a NOVA data
+        dataMemoriaApontamento = novaData;
+
+        // 3. Carrega os dados da nova data
+        carregarLinhaDoTempoPorData(novaData);
+        
+        if(typeof atualizarPreviewSeNecessario === 'function') atualizarPreviewSeNecessario();
+    });
+}
+
+
 // Inicializa a tela de apontamento
-function renderizarSecaoApontamento() {
+function renderizarSecaoApontamento(container) {
+    // 1. Preenche o Select de Colaboradores (Baseado na Equipe Atual)
     const sel = document.getElementById('apontamentoColaborador');
+    
+    if (sel) {
+        // Salva o valor selecionado anteriormente (se houver) para não perder a seleção ao renderizar
+        const valorAnterior = sel.value;
+
+        sel.innerHTML = equipe.length 
+            ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
+            : '<option value="">Sem equipe definida</option>';
+        
+        // Tenta restaurar a seleção
+        if (valorAnterior && [...sel.options].some(o => o.value === valorAnterior)) {
+            sel.value = valorAnterior;
+        }
+    }
+    
+    // 2. Sincronização de Data e Inicialização do "Time Travel"
     const dataTurno = document.getElementById('dataTurno');
     const dataApont = document.getElementById('apontamentoData');
 
-    if (sel) {
-        sel.innerHTML = equipe.length 
-            ? equipe.map(e => `<option value="${e.nome} - ${e.matricula}">${e.nome} - ${e.matricula}</option>`).join('') 
-            : '<option>Sem equipe definida</option>';
-    }
-    
-    // 1. SINCRONIZAÇÃO DE DATAS: O apontamento usa a data do turno principal
     if (dataTurno && dataApont) {
-        dataApont.value = dataTurno.value;
+        // Pega a data principal do turno ou hoje
+        const dataPrincipal = dataTurno.value || dataHojeInputLocal();
+        
+        // Verifica se o campo do apontamento está vazio ou diferente da data do turno
+        if (!dataApont.value || dataApont.value !== dataPrincipal) {
+            console.log("🔄 Sincronizando data do apontamento com o turno...");
+            
+            // Define visualmente a data
+            dataApont.value = dataPrincipal;
+            
+            // --- CORREÇÃO DO BUG DO CLONE ---
+            // Inicializa a memória com a data atual para que o próximo save saiba onde salvar
+            dataMemoriaApontamento = dataPrincipal; 
+            
+            // Carrega os dados desta data (busca no IDB ou Nuvem)
+            carregarLinhaDoTempoPorData(dataPrincipal);
+        } else {
+            // Se a data já está certa (ex: apenas trocou de aba e voltou)
+            // Garante que a memória está setada corretamente
+            dataMemoriaApontamento = dataApont.value;
+            
+            // Apenas redesenha o que já está na variável 'linhasApontamento'
+            renderizarListaLinhas();
+        }
+    } else {
+        // Fallback se os inputs não existirem
+        renderizarListaLinhas();
     }
 
-    // 2. Inicializar Linhas (DDS Padrão)
-    if (linhasApontamento.length === 0) {
-        linhasApontamento.push({
-            id: Date.now(),
-            tipo: 'manual',
-            atividade: 'H02 - DDS',
-            inicio: '07:00',
-            fim: '07:20',
-            os: '', frota: '', sistema: '', subsistema: ''
-        });
-    }
-    
-    // 3. Renderizar
-    renderizarListaLinhas();
+    // 3. Inicia monitoramento para o botão de "Atualizar Preview" (amarelo/azul)
     iniciarMonitoramentoFormulario();
 }
+
 
 function renderizarListaLinhas() {
     const container = document.getElementById('listaLinhasApontamento');
