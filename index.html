@@ -1000,6 +1000,7 @@ function mostrarNotificacaoUpdate() {
 }
 
 // --- Função Principal: Abre o Modal e Gerencia a Atualização "Nuclear" ---
+// --- Função Principal: Abre o Modal e Gerencia a Atualização "Nuclear" ---
 function abrirModalUpdate() {
     const modal = document.getElementById('modalUpdate');
     const backdrop = document.getElementById('modalUpdateBackdrop');
@@ -1014,15 +1015,15 @@ function abrirModalUpdate() {
 
     if (!modal) return;
 
-    // 1. Preenche a lista de Novidades (Vindo do seu objeto UPDATE_CONFIG)
-    if (lista && UPDATE_CONFIG && UPDATE_CONFIG.novidades) {
+    // 1. Preenche a lista de Novidades
+    if (lista && typeof UPDATE_CONFIG !== 'undefined' && UPDATE_CONFIG.novidades) {
         lista.innerHTML = UPDATE_CONFIG.novidades.map(item => 
             `<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">➜</span> ${item}</li>`
         ).join('');
     }
 
     // 2. Configura Modo Crítico vs Normal
-    if (UPDATE_CONFIG.critico) {
+    if (typeof UPDATE_CONFIG !== 'undefined' && UPDATE_CONFIG.critico) {
         if (btnCancelar) btnCancelar.style.display = 'none'; // Esconde "Agora não"
         backdrop.onclick = null; // Bloqueia clique fora
         if(tituloModal) tituloModal.innerText = "Atualização Obrigatória";
@@ -1034,47 +1035,44 @@ function abrirModalUpdate() {
         if(textoModal) textoModal.innerText = "Melhorias e correções prontas para você.";
     }
 
-    // 3. AÇÃO DO BOTÃO "ATUALIZAR AGORA" (Lógica de Limpeza Profunda)
+    // 3. AÇÃO DO BOTÃO "ATUALIZAR AGORA" (Com Show do Foguete de 4s)
     btnConfirmar.onclick = async () => {
         // A. Ativa a Cortina Visual imediatamente
         mostrarTelaDeCarregamento();
         
-        // B. Pequeno delay para o navegador renderizar a cortina antes de processar
-        await new Promise(r => setTimeout(r, 100));
-
         try {
-            console.log("🔄 Iniciando protocolo de atualização limpa...");
+            console.log("🔄 Iniciando protocolo de atualização...");
 
-            // PASSO 1: Manda o SW novo assumir (se existir na espera)
-            if (newWorker) {
+            // PASSO 1: Manda o SW novo assumir (se existir)
+            if (typeof newWorker !== 'undefined' && newWorker) {
                 newWorker.postMessage({ action: 'skipWaiting' });
             }
 
-            // PASSO 2: Mata o Service Worker antigo (Desregistra)
+            // PASSO 2: Mata o Service Worker antigo
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (const registration of registrations) {
                     await registration.unregister();
-                    console.log("SW Desregistrado.");
                 }
             }
 
-            // PASSO 3: Limpeza Nuclear do Cache (Apaga arquivos físicos)
+            // PASSO 3: Limpeza Nuclear do Cache
             if ('caches' in window) {
                 const keys = await caches.keys();
-                // Apaga TODOS os caches para garantir que não sobrem arquivos velhos (v34, v35...)
                 await Promise.all(keys.map(key => caches.delete(key)));
-                console.log("🧹 Cache completamente apagado.");
+                console.log("🧹 Cache apagado.");
             }
 
         } catch (e) {
-            console.error("Erro durante a limpeza de atualização:", e);
-            // Continua mesmo com erro para forçar o reload
-        } finally {
-            // PASSO 4: Recarrega a página forçando a ida ao servidor (true)
-            // A cortina continua visível até a página piscar
-            window.location.reload(true);
+            console.error("Erro durante a limpeza:", e);
         }
+
+        // --- PASSO EXTRA: O SHOW DO FOGUETE 🚀 (4 Segundos) ---
+        // O código pausa aqui propositalmente para o usuário ver a animação
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        // PASSO 4: Recarrega a página do zero
+        window.location.reload(true);
     };
 
     // 4. Exibe o Modal com Animação
@@ -1090,6 +1088,7 @@ function abrirModalUpdate() {
         windowEl.classList.add('scale-100');
     }, 10);
 }
+
 
 function fecharModalUpdate() {
     // Só permite fechar se NÃO for crítico
@@ -5583,24 +5582,33 @@ function sincronizarCatalogoFrotas() {
 
 // --- Função Visual: Cortina de Atualização ---
 // --- Função Visual: Cortina de Atualização (Bloqueia a tela enquanto limpa o cache) ---
+// --- Função Visual: Cortina de Atualização (Bloqueia a tela enquanto limpa o cache) ---
 function mostrarTelaDeCarregamento() {
     // Cria o elemento overlay dinamicamente
     const overlay = document.createElement('div');
+    // Z-Index 10005 garante que fique em cima de tudo (até do modal de update)
     overlay.className = "fixed inset-0 bg-blue-900 z-[10005] flex flex-col items-center justify-center transition-opacity duration-300";
+    
     overlay.innerHTML = `
         <div class="relative">
-            <div class="w-20 h-20 border-4 border-blue-200 border-t-transparent rounded-full animate-spin"></div>
+            <div class="w-24 h-24 border-4 border-blue-200 border-t-transparent rounded-full animate-spin"></div>
             <div class="absolute inset-0 flex items-center justify-center">
-                <span class="text-2xl">🚀</span>
+                <span class="text-3xl animate-bounce">🚀</span>
             </div>
         </div>
-        <h2 class="mt-6 text-xl font-bold text-white animate-pulse">Atualizando Sistema...</h2>
-        <p class="mt-2 text-blue-200 text-sm">Limpando cache e baixando melhorias.</p>
-        <p class="mt-8 text-xs text-blue-400 font-mono">Por favor, aguarde o recarregamento.</p>
+        <h2 class="mt-8 text-2xl font-bold text-white animate-pulse tracking-wide">ATUALIZANDO SISTEMA</h2>
+        <p class="mt-3 text-blue-200 text-sm font-medium">Limpando cache e aplicando melhorias...</p>
+        
+        <div class="w-64 h-1.5 bg-blue-800 rounded-full mt-6 overflow-hidden">
+            <div class="h-full bg-blue-400 animate-pulse w-2/3"></div>
+        </div>
+        
+        <p class="mt-8 text-[10px] text-blue-400 font-mono uppercase">Não feche o aplicativo</p>
     `;
     
     document.body.appendChild(overlay);
 }
+
 
     </script>
   <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
