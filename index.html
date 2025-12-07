@@ -580,7 +580,7 @@ function concluirOnboarding() {
         let catalogoFrotas = [];
         let catalogoLocal = [];
         let dataMemoriaApontamento = ''; 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 25;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 26;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -1195,32 +1195,33 @@ function initDB() {
         
         request.onblocked = (event) => {
             console.warn("⚠️ Banco de dados bloqueado.");
-            alert("Atualização do Banco de Dados: Por favor, feche todas as outras abas do MeuTurno.");
+            alert("Atualização crítica: Feche outras abas do sistema.");
         };
 
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
             console.log(`📦 Atualizando DB: v${e.oldVersion} -> v${e.newVersion}`);
             
-            // Lógica existente...
+            // Lógica existente das outras tabelas...
             if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
-            
             if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { 
                 const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true }); 
                 hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false }); 
             }
-            
             if (!currentDb.objectStoreNames.contains('catalogo')) currentDb.createObjectStore('catalogo', { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
 
-            // --- NOVO: Tabela específica para salvar o apontamento de cada dia ---
-            if (!currentDb.objectStoreNames.contains('apontamentos_diarios')) {
-                // Chave composta para evitar misturar turnos/frentes no mesmo dia
-                currentDb.createObjectStore('apontamentos_diarios', { keyPath: 'id_composto' });
+            // --- CORREÇÃO CRÍTICA AQUI ---
+            // Se a tabela já existir (v24 bugada), APAGAMOS ELA.
+            if (currentDb.objectStoreNames.contains('apontamentos_diarios')) {
+                currentDb.deleteObjectStore('apontamentos_diarios');
             }
+            
+            // Criamos a tabela nova limpa com a chave CERTA
+            currentDb.createObjectStore('apontamentos_diarios', { keyPath: 'id_composto' });
         };
 
         request.onsuccess = e => { 
@@ -1232,7 +1233,6 @@ function initDB() {
         request.onerror = e => { console.error("Erro DB:", e); reject(e.target.error); };
     });
 }
-
 
 async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
 
@@ -1276,10 +1276,11 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
 
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         
-    function salvarTudo(forcar = false) { 
+   function salvarTudo(forcar = false) { 
     clearTimeout(debounceTimer); 
     const executar = async () => { 
         try { 
+            // Pega os dados da tela (Mantido)
             const relatorioBruto = document.getElementById("relatorio_bruto")?.value || ''; 
             const snapshotServicos = document.getElementById("relatorio_snapshot")?.value || '[]'; 
             
@@ -1292,28 +1293,30 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
                 equipe: equipe, 
                 frotas: frotasTurno, 
                 servicos: servicos, 
-                // Mantemos aqui para compatibilidade
+                
+                // Mantemos 'linhasApontamento' aqui APENAS para persistência local de sessão (backup),
+                // mas isso NÃO gera custo de escrita na coleção 'apontamentos_diarios_cloud' do Firebase.
                 linhasApontamento: linhasApontamento, 
+                
                 relatorio: relatorioBruto, 
                 relatorioGeradoComServicos: snapshotServicos 
             }; 
             
+            // Salva no LocalStorage/IndexedDB do Turno (Sem custo de nuvem extra)
             await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); 
             
-            // --- NOVO: Salva também na tabela histórica ---
-            await salvarLinhaDoTempoDoDia(); 
-            // ---------------------------------------------
+            // ❌ REMOVIDO: await salvarLinhaDoTempoDoDia(); 
+            // Agora salvamos a linha do tempo apenas quando ela realmente muda.
 
         } catch (err) { 
             console.error("Erro ao salvar:", err); 
         } 
     }; 
     
+    // Mantém o debounce de 5s ou execução imediata
     if (forcar) executar(); 
     else debounceTimer = setTimeout(executar, 5000); 
 }
-
-        
         function salvarDadosParciaisTurno() { validarCamposTurnoBasicos(); salvarTudo(); }
 
         // =================================================================================
@@ -3009,38 +3012,46 @@ async function carregarLinhaDoTempoPorData(novaData) {
     if (!novaData) return;
 
     const container = document.getElementById('listaLinhasApontamento');
-    if (container) container.innerHTML = '<div class="text-center py-8 text-gray-400">🔄 Buscando dia...</div>';
+    if (container) container.innerHTML = '<div class="text-center py-8 opacity-50"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p class="text-xs mt-2">Sincronizando...</p></div>';
 
     const idComposto = gerarIDComposto(novaData);
     console.log(`📂 Tentando carregar: ${idComposto}`);
 
     try {
-        // 1. Tenta buscar LOCAL (IndexedDB)
+        // 1. Tenta Local
         let registro = await dbExec('apontamentos_diarios', 'readonly', s => s.get(idComposto));
 
-        // 2. Se não achou local, tenta NUVEM
+        // 2. Tenta Nuvem (Se não achou local)
         if (!registro && navigator.onLine) {
-            console.log("☁️ Buscando na nuvem...");
             try {
+                console.log("☁️ Buscando na nuvem...");
                 const doc = await firestore.collection('apontamentos_diarios_cloud').doc(idComposto).get();
+                
                 if (doc.exists) {
                     registro = doc.data();
-                    // Salva local para a próxima
+                    
+                    // --- CORREÇÃO DE SEGURANÇA ---
+                    // Se o dado veio da nuvem sem a chave, nós colocamos ela agora.
+                    // Isso evita o erro "key path did not yield a value"
+                    if (!registro.id_composto) {
+                        registro.id_composto = idComposto; 
+                    }
+
+                    // Agora é seguro salvar
                     await dbExec('apontamentos_diarios', 'readwrite', s => s.put(registro));
+                    console.log("✅ Baixado e salvo localmente.");
                 }
             } catch (err) {
-                console.warn("⚠️ Erro ao buscar na nuvem:", err);
+                console.warn("⚠️ Falha na nuvem (ignorado):", err);
             }
         }
 
-        // 3. Processa o resultado
+        // 3. Renderiza
         if (registro && registro.linhas && Array.isArray(registro.linhas)) {
-            console.log(`✅ Sucesso! Encontradas ${registro.linhas.length} linhas.`);
             linhasApontamento = registro.linhas;
-            showToast(`Histórico de ${formatarDataParaExibicao(novaData)} carregado.`, 'success');
+            showToast(`Dados de ${formatarDataParaExibicao(novaData)} carregados.`, 'success');
         } else {
-            console.log("❌ Nada encontrado. Iniciando dia vazio.");
-            // Dia novo = Limpa a tela e adiciona DDS padrão
+            // Dia Novo
             linhasApontamento = [];
             linhasApontamento.push({
                 id: Date.now(),
@@ -3054,17 +3065,17 @@ async function carregarLinhaDoTempoPorData(novaData) {
 
         renderizarListaLinhas();
         
-        // Importante: Atualiza o objeto global do turno para não salvar por cima sem querer
-        // Mas NÃO chamamos 'salvarTudo()' aqui para não criar um registro vazio desnecessário na nuvem agora
-        // Apenas deixamos na memória RAM.
-        
+        // Atualiza a memória global
+        salvarTudo(); 
+
     } catch (e) {
         console.error("Erro crítico ao carregar:", e);
-        showToast("Erro ao buscar dados.", "error");
+        // Fallback para não travar a tela branca
+        linhasApontamento = [];
+        renderizarListaLinhas();
+        showToast("Erro ao ler banco de dados. Tente recarregar.", "error");
     }
 }
-
-
 // Função chamada pelo Input HTML quando o usuário muda a data
 function trocarDataApontamento(novaData) {
     if(!novaData) return;
@@ -3437,7 +3448,7 @@ function salvarPreventiva() {
     marcarComoDesatualizado();
     salvarTudo();
     showToast("Adicionado com sucesso!", "success");
-
+    salvarLinhaDoTempoDoDia(); // ✅ Garante que a preventiva vá para a nuvem
     return true; // ✅ SUCESSO: Permite fechar o popup
 }
 
@@ -3449,7 +3460,12 @@ function salvarPreventiva() {
 function atualizarLinha(index, campo, valor) {
     linhasApontamento[index][campo] = valor;
     marcarComoDesatualizado(); 
-    salvarTudo();
+    
+    // Atualiza o cache local do turno
+    salvarTudo(); 
+    
+    // ✅ NOVO: Salva especificamente a linha do tempo (Nuvem + IDB Específico)
+    salvarLinhaDoTempoDoDia(); 
 }
 
 function adicionarLinhaManual() {
@@ -3469,7 +3485,8 @@ function adicionarLinhaManual() {
     // ADICIONE ESTA LINHA:
     rolarParaUltimoItemApontamento(); 
     marcarComoDesatualizado(); 
-    salvarTudo();
+    salvarTudo(); // Salva estado geral
+    salvarLinhaDoTempoDoDia(); // ✅ Salva a timeline específica
 }
 
 function removerLinhaApontamento(index) {
@@ -3477,6 +3494,7 @@ function removerLinhaApontamento(index) {
     renderizarListaLinhas();
     marcarComoDesatualizado(); 
     salvarTudo();
+    salvarLinhaDoTempoDoDia(); // ✅ Salva a timeline específica
 }
 
 // Popup para escolher qual serviço importar
@@ -3657,6 +3675,7 @@ function importarServicoFinalizado(originalId, frota, atividade, sistema, subsis
     rolarParaUltimoItemApontamento();
     marcarComoDesatualizado();
     salvarTudo();
+    salvarLinhaDoTempoDoDia(); // ✅ Garante que a importação vá para a nuvem
 }
 
 //explica o.s pendente 
@@ -3837,6 +3856,7 @@ function trocarOrdem(index) {
     showToast("Ordem atualizada!", "success");
     marcarComoDesatualizado();
     salvarTudo();
+    salvarLinhaDoTempoDoDia(); // ✅ Salva a timeline específica
 }
 
 
