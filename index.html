@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
    
-   <link href="./libs/tailwind.css" rel="stylesheet">
+<link href="./libs/tailwind.css" rel="stylesheet">
 <script src="./libs/jspdf.js"></script>
 <script src="./libs/firebase-app.js"></script>
 <script src="./libs/firebase-firestore.js"></script>
@@ -122,8 +122,13 @@
                     </p>
                  -->
         </div> 
-        <div class="w-10"></div>
-</header>
+        
+        <div id="network-status" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400 text-green-100 text-[10px] font-bold shadow-sm transition-all duration-500">
+        <span id="network-dot" class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+        <span id="network-text">ONLINE</span>
+        </div>
+
+    </header>
 
 <div id="btnUpdateBadge" class="hidden bg-blue-700 text-center py-2 shadow-inner border-t border-blue-800 transition-all duration-500 relative z-20">
     <button onclick="abrirModalUpdate()" class="bg-white text-blue-800 hover:bg-blue-50 text-xs font-bold px-4 py-1.5 rounded-full animate-pulse shadow-sm flex items-center justify-center mx-auto gap-2 transition-transform active:scale-95">
@@ -560,7 +565,7 @@ function concluirOnboarding() {
     
         'use strict';
         const SENHA_LIMPEZA_CATALOGO = 'mudar1234';
-        document.addEventListener("DOMContentLoaded", main);
+        
 
         // =================================================================================
         // 1. ESTADO GLOBAL E CONSTANTES
@@ -577,24 +582,67 @@ function concluirOnboarding() {
         const subsistemas = { "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"], "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"], "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"], "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"], "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"], "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"], "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"], "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"], "9": ["9.1 - Freio", "9.2 - Acumulador"], "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"], "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"], "12": ["12.1 - Caixa de Adubo"], "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"], "14": ["14.1 - Sensores", "14.2 - Chicote"], "15": ["15.1 - Lamina", "15.2 - Ball"] };
         
         const firebaseConfig = { apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok", authDomain: "meu-turno-app.firebaseapp.com", projectId: "meu-turno-app", storageBucket: "meu-turno-app.firebasestorage.app", messagingSenderId: "967200929614", appId: "1:967200929614:web:3acbf1049a10cdbf87501f" };
-        // 1. Inicializa o App
-// 1. Inicializa o App
-const firebaseApp = firebase.initializeApp(firebaseConfig);
 
-// 2. Cria a instância do Firestore
+
+// --- 1. Função Visual de Alerta (Adicione antes da inicialização do Firebase) ---
+function exibirAlertaCritico(titulo, mensagem) {
+    // Cria o elemento dinamicamente para não depender do HTML fixo
+    const div = document.createElement('div');
+    div.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl z-[9999] flex items-center gap-4 min-w-[320px] border-2 border-red-800 transition-all duration-500 animate-bounce";
+    
+    div.innerHTML = `
+        <div class="text-3xl">⚠️</div>
+        <div>
+            <h3 class="font-bold text-lg uppercase">${titulo}</h3>
+            <p class="text-sm text-red-100">${mensagem}</p>
+        </div>
+    `;
+
+    document.body.appendChild(div);
+
+    // Remove automaticamente após 8 segundos
+    setTimeout(() => {
+        div.classList.add('opacity-0', 'translate-y-10');
+        setTimeout(() => div.remove(), 500);
+    }, 8000);
+}
+
+// --- 2. Sua Inicialização do Firebase Atualizada ---
+
+// Inicializa App e Firestore
+const firebaseApp = firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
 
-// 3. AQUI ESTÁ A CORREÇÃO: Forçar Long Polling
-firestore.settings({
-    experimentalForceLongPolling: true, // <--- ISSO RESOLVE 90% DOS CASOS NO ANDROID
-    merge: true
-});
-
-// 4. Ativa persistência (se possível)
+// Configura Long Polling (Rede Rural)
+firestore.settings({ experimentalForceLongPolling: true,
+merge:true});
+    
+// Tenta ativar a persistência com Feedback Visual
 firestore.enablePersistence({ synchronizeTabs: true })
-    .catch((err) => { 
-        console.warn('Persistência desativada (pode ser o ambiente restrito):', err.code); 
+    .then(() => {
+        console.log("💾 Persistência Offline Ativada!");
+    })
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            // ERRO CRÍTICO 1: Múltiplas Abas
+            console.warn('⚠️ Múltiplas abas detectadas.');
+            exibirAlertaCritico(
+                "Atenção: Abas Duplicadas", 
+                "O App já está aberto em outra janela. Feche esta para não perder dados."
+            );
+        } else if (err.code == 'unimplemented') {
+            // ERRO CRÍTICO 2: Navegador Incompatível/Anônimo
+            console.warn('⚠️ Navegador não suporta persistência.');
+            exibirAlertaCritico(
+                "Modo Offline Indisponível", 
+                "Seu navegador (ou modo anônimo) não salva dados offline. Cuidado com quedas de internet!"
+            );
+        }
     });
+
+
+
+// 4. Seus Listeners e lógica do App vêm aqui...
 
 /**
  * MÓDULO GUARDIAN - Manutenção Preventiva e Saúde do Sistema
@@ -792,6 +840,7 @@ async function main() {
         // Inicia o Guardian para injetar o 'safeText' antes de qualquer renderização HTML
         await Guardian.init();
         
+        iniciarMonitoramentoRedeUI();
         // 2. SERVICE WORKER
         // Inicia o suporte offline e verifica atualizações
         registrarServiceWorker();
@@ -858,6 +907,7 @@ async function main() {
 // Inicia a aplicação quando o DOM estiver pronto
 document.addEventListener("DOMContentLoaded", main);
 
+
 // =================================================================================
 // 2. GESTÃO DE ATUALIZAÇÕES (SW)
 // =================================================================================
@@ -868,6 +918,14 @@ const UPDATE_CONFIG = {
     novidades: [
         "✨ Agora a busca de peças ignora acentos!",
         "🚀 Melhoria na velocidade de abertura",
+        "- Ajuste na ordem de inicialização do Firestore (Settings antes de Persistence).",
+" Ativação do 'merge: true' para limpar warnings do console.",
+        " Implementação de Alerta Crítico (Toast Vermelho) para abas duplicadas.",
+        " Configuração de Long Polling forçada para redes rurais instáveis.",
+
+        
+        
+        
         // ... outras novidades
     ]
 };
@@ -1029,6 +1087,68 @@ function fecharModalUpdate() {
     }, 300);
 }
 
+function iniciarMonitoramentoRede() {
+    const el = document.getElementById('status-offline');
+    
+    const updateStatus = () => {
+        if (!el) return;
+        if (navigator.onLine) {
+            el.classList.add('hidden');
+            // Dica Offline-First: Se voltou a internet, o Firebase sincroniza sozinho,
+            // mas podemos forçar uma atualização visual se necessário.
+            console.log("🟢 Conexão restabelecida.");
+        } else {
+            el.classList.remove('hidden');
+            console.log("🔴 Conexão perdida. Modo Offline ativo.");
+        }
+    };
+
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+    // Verifica o estado inicial assim que carrega
+    updateStatus();
+}
+function iniciarMonitoramentoRedeUI() {
+    const elContainer = document.getElementById('network-status');
+    const elDot = document.getElementById('network-dot');
+    const elText = document.getElementById('network-text');
+
+    if (!elContainer) return;
+
+    const atualizarInterface = () => {
+        if (navigator.onLine) {
+            // --- MODO ONLINE ---
+            // Fundo verde translúcido, texto claro
+            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400 text-green-100 text-[10px] font-bold shadow-sm transition-all duration-500";
+            
+            // Bolinha verde brilhante
+            elDot.className = "w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]";
+            
+            elText.innerText = "ONLINE";
+        } else {
+            // --- MODO OFFLINE ---
+            // Fundo vermelho alerta, pulsando levemente
+            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[10px] font-bold shadow-md transition-all duration-500 animate-pulse";
+            
+            // Bolinha branca (contraste)
+            elDot.className = "w-2 h-2 rounded-full bg-white";
+            
+            elText.innerText = "OFFLINE";
+            
+            // Opcional: Vibrar o celular brevemente ao cair a conexão
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        }
+    };
+
+    // Escuta os eventos do navegador
+    window.addEventListener('online', atualizarInterface);
+    window.addEventListener('offline', atualizarInterface);
+
+    // Executa na inicialização
+    atualizarInterface();
+}
+
 
         // ================================================================================
         // 3. CAMADA DE ABSTRAÇÃO DO BANCO DE DADOS (INDEXEDDB)
@@ -1036,8 +1156,6 @@ function fecharModalUpdate() {
         const STORE_FAZENDAS = 'lista_fazendas';
         const STORE_FRENTES = 'lista_frentes';
         const STORE_EQUIPE = 'lista_equipe';
-
-
 
 function initDB() {
     return new Promise((resolve, reject) => {
@@ -1506,34 +1624,43 @@ let listaFrentes = [];
 
 // 1. Inicia a escuta do Firebase (Chamar no main)
 function iniciarSincronizacaoAuxiliares() {
-    // Sincronizar FAZENDAS
-    firestore.collection('lista_fazendas').orderBy('nome').onSnapshot(snapshot => {
-        const tx = db.transaction(STORE_FAZENDAS, 'readwrite');
-        const store = tx.objectStore(STORE_FAZENDAS);
-        
-        snapshot.docChanges().forEach(change => {
-            const item = { ...change.doc.data(), docId: change.doc.id };
-            if (change.type === 'added' || change.type === 'modified') store.put(item);
-            if (change.type === 'removed') store.delete(item.docId);
-        });
-
-        tx.oncomplete = () => carregarFazendasDoCache();
-    });
-
-    // Sincronizar FRENTES
-    firestore.collection('lista_frentes').orderBy('nome').onSnapshot(snapshot => {
-        const tx = db.transaction(STORE_FRENTES, 'readwrite');
-        const store = tx.objectStore(STORE_FRENTES);
-        
-        snapshot.docChanges().forEach(change => {
-            const item = { ...change.doc.data(), docId: change.doc.id };
-            if (change.type === 'added' || change.type === 'modified') store.put(item);
-            if (change.type === 'removed') store.delete(item.docId);
-        });
-
-        tx.oncomplete = () => carregarFrentesDoCache();
-    });
+    // Fazendas
+    firestore.collection('lista_fazendas').orderBy('nome')
+        .onSnapshot({ includeMetadataChanges: true }, snapshot => {
+            if (!db) return; // TRAVA DE SEGURANÇA
+            if (snapshot.metadata.hasPendingWrites) return;
+            
+            const tx = db.transaction(STORE_FAZENDAS, 'readwrite');
+            const store = tx.objectStore(STORE_FAZENDAS);
+            
+            snapshot.docChanges().forEach(change => {
+                const item = { ...change.doc.data(), docId: change.doc.id };
+                if (change.type === 'added' || change.type === 'modified') store.put(item);
+                if (change.type === 'removed') store.delete(item.docId);
+            });
+            
+            tx.oncomplete = () => carregarFazendasDoCache();
+        }, (error) => tratarErroOffline(error, 'Fazendas'));
+    
+    // Frentes
+    firestore.collection('lista_frentes').orderBy('nome')
+        .onSnapshot({ includeMetadataChanges: true }, snapshot => {
+            if (!db) return; // TRAVA DE SEGURANÇA
+            if (snapshot.metadata.hasPendingWrites) return;
+            
+            const tx = db.transaction(STORE_FRENTES, 'readwrite');
+            const store = tx.objectStore(STORE_FRENTES);
+            
+            snapshot.docChanges().forEach(change => {
+                const item = { ...change.doc.data(), docId: change.doc.id };
+                if (change.type === 'added' || change.type === 'modified') store.put(item);
+                if (change.type === 'removed') store.delete(item.docId);
+            });
+            
+            tx.oncomplete = () => carregarFrentesDoCache();
+        }, (error) => tratarErroOffline(error, 'Frentes'));
 }
+
 
 // 2. Carrega do IndexedDB para a Tela
 async function carregarFazendasDoCache() {
@@ -1748,35 +1875,35 @@ let listaEquipeCache = [];
 // Chamar no main()
 function iniciarSincronizacaoEquipe() {
     firestore.collection('lista_equipe').orderBy('nome').onSnapshot(snapshot => {
+        if (!db) return; // TRAVA DE SEGURANÇA
+        
         const tx = db.transaction(STORE_EQUIPE, 'readwrite');
         const store = tx.objectStore(STORE_EQUIPE);
         
-        listaEquipeCache = []; // Limpa RAM
-
+        listaEquipeCache = [];
+        
         snapshot.docChanges().forEach(change => {
             const item = { ...change.doc.data(), docId: change.doc.id };
             if (change.type === 'added' || change.type === 'modified') store.put(item);
             if (change.type === 'removed') store.delete(item.docId);
         });
-
-        // Atualiza cache em memória
+        
         tx.oncomplete = async () => {
             listaEquipeCache = await dbExec(STORE_EQUIPE, 'readonly', s => s.getAll());
-            // Atualiza também o select do apontamento se estiver aberto
-            renderizarSecaoApontamento(); 
+            if (document.getElementById('boxEquipe')) renderizarEquipe();
         };
-    });
+    }, (error) => tratarErroOffline(error, 'Equipe'));
 }
 
 function abrirPopupSelecaoEquipe() {
     listaEquipeCache.sort((a, b) => a.nome.localeCompare(b.nome));
 
-            const listaHTML = listaEquipeCache.map(colab => {
+                const listaHTML = listaEquipeCache.map(colab => {
         const jaNoTurno = equipe.some(e => e.matricula === colab.matricula);
         const checked = jaNoTurno ? 'checked' : '';
         const style = jaNoTurno ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
         
-        // [CORREÇÃO DE SEGURANÇA] safeText no nome e na matrícula
+        // [PROTEÇÃO APLICADA]
         return `
         <div class="flex items-center justify-between p-3 mb-2 border rounded-md ${style} hover:bg-gray-50 transition-colors">
             <label class="flex items-center flex-grow cursor-pointer gap-3">
@@ -1790,6 +1917,7 @@ function abrirPopupSelecaoEquipe() {
             <button onclick="removerColaboradorDoBanco('${colab.docId}', '${safeText(colab.nome)}')" class="text-gray-300 hover:text-red-500 p-2 text-lg" title="Apagar do Banco">🗑️</button>
         </div>`;
     }).join('');
+
 
 
     // --- CONTEÚDO CORRIGIDO COM ALTURA FIXA ---
@@ -2132,7 +2260,7 @@ function renderizarListaFrotasDisponiveis(frotasIniciais = null) {
         return;
     }
     
-    // [CORREÇÃO DE SEGURANÇA] safeText no value, data-tipo e textos visíveis
+    // [PROTEÇÃO APLICADA]
     let listaHTML = frotasFiltradas.map(f => `
         <label class="flex items-center p-2 border rounded-md hover:bg-gray-100">
             <input type="checkbox" name="frota-selecao" value="${safeText(f.nome)}" 
@@ -2145,6 +2273,7 @@ function renderizarListaFrotasDisponiveis(frotasIniciais = null) {
     
     listaDiv.innerHTML = listaHTML;
 }
+
 
         // MODIFICADO: Lê o tipo de frota do atributo do checkbox
 // CORRIGIDO: Simplifica a lógica de busca do tipo de frota e garante que só adicione frotas existentes no catálogo.
@@ -2816,7 +2945,7 @@ function renderizarListaLinhas() {
         let html = '';
 
         if (isServico) {
-            // [CORREÇÃO DE SEGURANÇA] Sanitizando dados antes de exibir
+            // [PROTEÇÃO APLICADA]
             const atividadeSegura = safeText(linha.atividade.split(' - ')[0]);
             const sistemaSeguro = safeText(linha.sistema);
             const subSeguro = safeText((linha.subsistema||'?').split(' - ')[0]);
@@ -2828,7 +2957,6 @@ function renderizarListaLinhas() {
             html = `
             <div class="${bgClass} rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
                 <div class="p-3 flex flex-col gap-2">
-                    
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-start gap-2 overflow-hidden">
                             <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200 mt-0.5">${index + 1}</span>
@@ -2839,13 +2967,11 @@ function renderizarListaLinhas() {
                         </div>
                         ${acoesHtml}
                     </div>
-
                     <div class="flex flex-wrap items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100 gap-y-2">
                         <div class="flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-gray-200 shadow-sm">
                             <span class="text-[9px] font-bold text-gray-400 uppercase">OS</span>
                             <span class="text-xs font-bold text-blue-700">${osSegura}</span>
                         </div>
-                        
                         <div class="flex items-center gap-1 ml-auto">
                             <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
                             <span class="text-gray-300 text-[10px]">➜</span>
@@ -2856,7 +2982,7 @@ function renderizarListaLinhas() {
             </div>`;
 
         } else {
-            // CARD MANUAL
+            // [PROTEÇÃO APLICADA NO MANUAL]
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
                 `<option value="${a}" ${linha.atividade===a?'selected':''}>${a}</option>`
             ).join('');
@@ -2866,7 +2992,6 @@ function renderizarListaLinhas() {
                 <div class="p-2">
                     <div class="flex items-center gap-2 mb-2">
                         <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
-                        
                         <div class="flex-grow min-w-0 relative">
                             <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
                                 class="w-full h-9 pl-2 pr-6 text-xs font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
@@ -2876,10 +3001,8 @@ function renderizarListaLinhas() {
                                 <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                             </div>
                         </div>
-
                         ${acoesHtml}
                     </div>
-
                     <div class="flex items-center justify-end gap-1 pr-1">
                         <span class="text-[9px] font-bold text-gray-400 mr-1">DURAÇÃO:</span>
                         <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
@@ -2893,7 +3016,6 @@ function renderizarListaLinhas() {
         container.innerHTML += html;
     });
 }
-
 
 // ============================================================
 // MÓDULO: ADICIONAR PREVENTIVA (NOVO)
@@ -3771,75 +3893,83 @@ function iniciarMonitoramentoFormulario() {
     await mostrarHistorico();
 }
 
+async function salvarOSnoHistorico(serviceId) {
+    const servico = servicos.find(s => s.id === serviceId);
+    if (!servico || !servico.texto) return;
 
+    const frenteInput = document.getElementById("frente");
+    const turnoInput = document.getElementById("turnoLetra");
+    const frenteValor = frenteInput && frenteInput.value ? frenteInput.value.trim() : "FRENTE INDEFINIDA";
+    const turnoValor = turnoInput && turnoInput.value ? turnoInput.value : "A";
 
-        
-        async function salvarOSnoHistorico(serviceId) {
-            const servico = servicos.find(s => s.id === serviceId);
-            if (!servico || !servico.texto) return;
+    try {
+        // Recupera dados antigos se existirem (para não perder status ou número da OS)
+        let dadosAntigos = {};
+        try {
+            const itemExistente = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(servico.id));
+            if (itemExistente) dadosAntigos = itemExistente;
+        } catch (e) { /* Novo registro */ }
 
-            // Garante campos de filtro para indexação correta
-            const frenteInput = document.getElementById("frente");
-            const turnoInput = document.getElementById("turnoLetra");
+        const itemHistorico = {
+            uniqueId: servico.id,
+            id: servico.id,
+            frente: frenteValor,
+            turno: turnoValor,
+            frota: servico.frota,
+            tipo: servico.tipo,
+            texto: servico.texto,
+            descricao: servico.descricao || "",
+            atividade: servico.atividade,
+            sistema: servico.sistema,
+            subsistema: servico.subsistema || "",
+            inicio: servico.inicio,
+            fim: servico.fim,
+            dataOS: servico.data,
+            dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'),
             
-            // Se a frente não estiver carregada, tenta pegar do serviço ou define padrão
-            const frenteValor = frenteInput && frenteInput.value ? frenteInput.value.trim() : "FRENTE INDEFINIDA";
-            const turnoValor = turnoInput && turnoInput.value ? turnoInput.value : "A";
+            // Mantém dados existentes ou define padrão
+            status: dadosAntigos.status || "pendente",
+            osNumero: dadosAntigos.osNumero || "",
+            datahoraRegistro: dadosAntigos.datahoraRegistro || new Date().toLocaleString('pt-BR'),
+            atualizadoEm: new Date().toISOString()
+        };
 
-            try {
-                // Tenta buscar item existente para manter status/osNumero
-                let dadosAntigos = {};
-                try {
-                    const itemExistente = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(servico.id));
-                    if (itemExistente) dadosAntigos = itemExistente;
-                } catch (e) { /* Novo registro */ }
+        // 1. SALVA LOCALMENTE (Prioridade Absoluta - IndexedDB)
+        // Isso garante que o dado está seguro no aparelho instantaneamente
+        await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico));
+        console.log(`✅ O.S. ${servico.id} salva no histórico local.`);
 
-                const itemHistorico = {
-                    uniqueId: servico.id, // ID Numérico como chave primária
-                    id: servico.id,
-                    
-                    // Filtros Cruciais
-                    frente: frenteValor,
-                    turno: turnoValor,
-
-                    // Dados do Serviço
-                    frota: servico.frota,
-                    tipo: servico.tipo,
-                    texto: servico.texto,
-                    descricao: servico.descricao || "",
-                    atividade: servico.atividade,
-                    sistema: servico.sistema,
-                    subsistema: servico.subsistema || "",
-                    inicio: servico.inicio,
-                    fim: servico.fim,
-                    dataOS: servico.data,
-                    
-                    // Metadados
-                    dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'),
-                    status: dadosAntigos.status || "pendente",
-                    osNumero: dadosAntigos.osNumero || "",
-                    datahoraRegistro: dadosAntigos.datahoraRegistro || new Date().toLocaleString('pt-BR'),
-                    atualizadoEm: new Date().toISOString()
-                };
-
-                // 1. Salva LOCALMENTE (Prioridade Máxima)
-                await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico));
-                console.log(`✅ O.S. ${servico.id} salva no histórico local.`);
-
-                // 2. Tenta enviar para a NUVEM (Background)
-                firestore.collection('historico_os').doc(String(servico.id)).set(itemHistorico, { merge: true })
-                    .catch(err => console.warn("⚠️ Sem rede. Salvo apenas localmente.", err));
-
-                // 3. Se a tela de histórico estiver aberta, força atualização visual
-                if (document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
-                    mostrarHistorico();
-                }
-
-            } catch (err) {
-                console.error("Erro crítico ao salvar histórico:", err);
-                showToast("Erro ao salvar O.S. no histórico.", "error");
-            }
+        // 2. TENTA ENVIAR PARA NUVEM (Background)
+        // A lógica aqui mudou: Não usamos 'await' para não travar a tela se a net estiver ruim.
+        
+        if (navigator.onLine) {
+            // Se tem internet, tenta enviar e loga o sucesso
+            firestore.collection('historico_os').doc(String(servico.id))
+                .set(itemHistorico, { merge: true })
+                .then(() => console.log("☁️ Sincronizado com nuvem"))
+                .catch(err => {
+                    // Se falhar no envio, o Firebase guarda na fila interna automaticamente
+                    console.warn("⚠️ Falha momentânea no envio (Firebase tentará novamente):", err);
+                });
+        } else {
+            // Se está offline, joga para a fila do Firebase silenciosamente
+            // O catch vazio evita o erro "Network Error" no console
+            firestore.collection('historico_os').doc(String(servico.id))
+                .set(itemHistorico, { merge: true })
+                .catch(() => {}); 
+            console.log("💤 Offline: Item salvo na fila de sincronização.");
         }
+
+        // 3. Atualiza a tela se o histórico estiver aberto
+        if (document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
+            mostrarHistorico();
+        }
+
+    } catch (err) {
+        console.error("Erro crítico ao salvar histórico:", err);
+        showToast("Erro ao salvar O.S. no aparelho.", "error");
+    }
+}
 
 // Funções auxiliares para preservar o estado do Popup
 function chamarAddFazendaContexto() {
@@ -4492,8 +4622,10 @@ function toggleBotoesHistorico(id) {
 let unsubscribeHistorico = null;
 
 function iniciarSincronizacaoHistorico() {
-    const frente = document.getElementById('frente').value;
-    const turno = document.getElementById('turnoLetra').value;
+    const frente = document.getElementById('frente')?.value;
+    const turno = document.getElementById('turnoLetra')?.value;
+    
+    // Se não tem filtros definidos, não busca nada (Economia de leitura)
     if (!frente || !turno) return;
 
     if (unsubscribeHistorico) { unsubscribeHistorico(); unsubscribeHistorico = null; }
@@ -4507,14 +4639,17 @@ function iniciarSincronizacaoHistorico() {
         .where('turno', '==', turno)
         .where('dataOS', '>=', dataString)
         .onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+            if (!db) return; // TRAVA DE SEGURANÇA
             if (snapshot.empty) return;
+            
             const tx = db.transaction(STORE_HISTORICO, 'readwrite');
             const store = tx.objectStore(STORE_HISTORICO);
             let changed = false;
 
             snapshot.docChanges().forEach(change => {
                 const d = change.doc.data();
-                d.uniqueId = parseInt(change.doc.id);
+                d.uniqueId = parseInt(change.doc.id); 
+                
                 if (change.type === 'added' || change.type === 'modified') { store.put(d); changed = true; }
                 if (change.type === 'removed') { store.delete(d.uniqueId); changed = true; }
             });
@@ -4522,7 +4657,7 @@ function iniciarSincronizacaoHistorico() {
             tx.oncomplete = () => {
                 if (changed && !document.getElementById('historico').classList.contains('hidden')) mostrarHistorico();
             };
-        }, console.warn);
+        }, (error) => tratarErroOffline(error, 'Histórico'));
 }
 
 async function migrarDadosLocaisParaNuvem() {
@@ -4920,14 +5055,15 @@ async function limparRelatorio() {
 }
 
 
-        function renderizarCatalogo() {
+function renderizarCatalogo() {
     const listaDiv = document.getElementById('listaCatalogo');
     if (!listaDiv) return;
 
-    // Busca e normalização
+    // 1. Busca e normalização (Rápida, na memória RAM)
     const termoBusca = removerAcentos(document.getElementById('buscaCatalogo').value.toLowerCase());
 
-    const itensFiltrados = catalogoLocal.filter(item => {
+    // 2. Filtragem
+    let itensFiltrados = catalogoLocal.filter(item => {
         const codigoSap = String(item.codigoSap || '').toLowerCase();
         const partNumber = String(item.partNumber || '').toLowerCase();
         const descricaoNormalizada = removerAcentos(String(item.descricao || '').toLowerCase());
@@ -4940,25 +5076,45 @@ async function limparRelatorio() {
         return;
     }
 
+    // 3. Ordenação
     itensFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
 
-    // APLICAÇÃO DE SEGURANÇA: safeText em todos os campos visuais
-    listaDiv.innerHTML = itensFiltrados.map(item => `
+    // 4. [MELHORIA DE PERFORMANCE] Limita a exibição aos primeiros 50 itens
+    const LIMIT = 50;
+    const totalItens = itensFiltrados.length;
+    // Pega apenas a "primeira página" de dados
+    const itensParaExibir = itensFiltrados.slice(0, LIMIT);
+
+    // 5. Renderização Segura
+    let html = itensParaExibir.map(item => `
         <div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-gray-50">
             <div class="flex-1 min-w-0">
                 <p class="font-bold text-gray-800 truncate">${safeText(item.descricao)}</p>
-                <p class="text-sm text-gray-600">SAP: <span class="font-semibold text-blue-700">${safeText(item.codigoSap)}</span></p>
-                <p class="text-sm text-gray-600">Part Number: <span class="font-semibold">${safeText(item.partNumber)}</span></p>
+                <div class="flex gap-3 mt-1">
+                    <p class="text-xs text-gray-500">SAP: <span class="font-bold text-blue-700">${safeText(item.codigoSap)}</span></p>
+                    <p class="text-xs text-gray-500">PN: <span class="font-bold text-gray-700">${safeText(item.partNumber)}</span></p>
+                </div>
             </div>
             <div class="flex space-x-2 pl-2">
-                <button onclick="editarItemCatalogo('${item.docId}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full" title="Editar">✏️</button>
-                <button onclick="excluirItemCatalogo('${item.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Excluir">🗑️</button>
+                <button onclick="editarItemCatalogo('${item.docId}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full transition-colors" title="Editar">✏️</button>
+                <button onclick="excluirItemCatalogo('${item.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Excluir">🗑️</button>
             </div>
         </div>
     `).join('');
+
+    // Aviso se houver mais itens escondidos (Incentiva a digitar mais na busca)
+    if (totalItens > LIMIT) {
+        html += `
+        <div class="text-center py-3 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg mt-2 border border-blue-100">
+            Exibindo ${LIMIT} de ${totalItens} resultados.<br>
+            <span class="font-normal text-blue-400">Continue digitando para refinar...</span>
+        </div>`;
+    }
+
+    listaDiv.innerHTML = html;
 }
 
-        function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
+function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
         async function salvarItemCatalogo() { const docId = document.getElementById('popup-docId').value; const codigoSap = document.getElementById('popup-sap').value.trim(); const partNumber = document.getElementById('popup-partnumber').value.trim(); const descricao = document.getElementById('popup-descricao').value.trim(); if (!codigoSap && !partNumber && !descricao) { showToast("Preencha pelo menos um campo para salvar o item.", "error"); return; } const itemData = { codigoSap, partNumber, descricao }; try { if (docId) { await firestore.collection('catalogo').doc(docId).update(itemData); showToast("Item atualizado com sucesso!", "success"); } else { await firestore.collection('catalogo').add(itemData); showToast("Item adicionado com sucesso!", "success"); } fecharPopup(); } catch (error) { console.error("Erro ao salvar item no Firebase:", error); showToast("Erro ao salvar o item.", "error"); } }
         function editarItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); if (item) { abrirPopupFormularioItemCatalogo(item); } else { showToast("Item não encontrado para edição.", "error"); } }
         async function excluirItemCatalogo(docId) { const item = catalogoLocal.find(i => i.docId === docId); const itemIdentifier = item?.descricao || item?.codigoSap || item?.partNumber || docId; const confirmado = await new Promise(resolve => abrirPopupConfirmar('Excluir Item', `Tem a certeza que deseja excluir o item <strong>${itemIdentifier}</strong>?`, resolve)); if (confirmado) { try { await firestore.collection('catalogo').doc(docId).delete(); showToast("Item excluído com sucesso!", "success"); } catch (error) { console.error("Erro ao excluir item no Firebase:", error); showToast("Erro ao excluir o item.", "error"); } } }
@@ -4975,86 +5131,100 @@ function calcularDMGeral(maquinas, horasParadasTotais) {
     return ((horasOperandoTotais / horasPlanejadasTotais) * 100).toFixed(2); 
 }
 
-        // =================================================================================
-        // 8. SINCRONIZAÇÃO COM FIREBASE
-        // =================================================================================
-        let monitoramentoCatalogoIniciado = false; // Variável de controle global
+// =================================================================================
+// 8. SINCRONIZAÇÃO COM FIREBASE (COM TRATAMENTO DE ERRO OFFLINE)
+// =================================================================================
+
+// =================================================================================
+// FUNÇÃO AUXILIAR: Tratamento de Erros Offline
+// =================================================================================
+const tratarErroOffline = (err, contexto) => {
+// Se o erro for apenas "sem internet", ignoramos para não sujar o console
+if (err.code === 'unavailable' || err.message?.includes('offline') || !navigator.onLine) {
+console.log(`📴 [${contexto}] Offline: Aguardando conexão...`);
+return;
+}
+console.error(`❌ Erro em ${contexto}:`, err);
+};
+
+// =================================================================================
+let monitoramentoCatalogoIniciado = false;
 
 function sincronizarCatalogoPecas() {
-    // SE já estiver monitorando, NÃO faz nada (Economiza leituras!)
     if (monitoramentoCatalogoIniciado) return;
+    monitoramentoCatalogoIniciado = true;
 
-    console.log("Iniciando download do catálogo de peças...");
-    monitoramentoCatalogoIniciado = true; // Marca como iniciado
+    if(navigator.onLine) console.log("Iniciando sync Catálogo...");
 
-    firestore.collection('catalogo').onSnapshot(async (snapshot) => {
-        // ... (seu código existente de salvar no IndexedDB) ...
+    firestore.collection('catalogo').onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+        // TRAVA DE SEGURANÇA: Se o DB não abriu ainda, aborta para não crashar
+        if (!db) return; 
+        
+        if (snapshot.metadata.hasPendingWrites) return;
+
         const tx = db.transaction('catalogo', 'readwrite');
         const store = tx.objectStore('catalogo');
         let houveMudanca = false;
         
-        // Dica de economia: Se for apenas metadados (fromCache), não conta leitura
-        if (snapshot.metadata.fromCache) console.log("Lendo do cache local");
-
-        for (const change of snapshot.docChanges()) {
+        snapshot.docChanges().forEach(change => {
             houveMudanca = true;
             const item = { ...change.doc.data(), docId: change.doc.id };
-            if (change.type === 'added' || change.type === 'modified') { store.put(item); }
-            if (change.type === 'removed') { store.delete(item.docId); }
-        }
+            if (change.type === 'added' || change.type === 'modified') store.put(item);
+            if (change.type === 'removed') store.delete(item.docId);
+        });
+
         tx.oncomplete = async () => {
             if (houveMudanca) {
                 catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
-                // Só renderiza se a tela de catálogo estiver visível
-                if (document.getElementById('catalogo')?.classList.contains('hidden') === false) {
+                if (!document.getElementById('catalogo').classList.contains('hidden')) {
                     renderizarCatalogo();
                 }
             }
         };
-    }, (error) => { 
-        console.error("Erro catalogo:", error); 
-        monitoramentoCatalogoIniciado = false; // Reseta em caso de erro para tentar de novo
+    }, (error) => {
+        monitoramentoCatalogoIniciado = false;
+        tratarErroOffline(error, 'Catálogo Peças');
     });
 }
 
 
-        let monitoramentoFrotasIniciado = false; // Nova variável de controle
+let monitoramentoFrotasIniciado = false;
 
 function sincronizarCatalogoFrotas() {
-    // Se já iniciou, para aqui (Economia!)
     if (monitoramentoFrotasIniciado) return;
-
-    console.log("Iniciando download do catálogo de frotas...");
     monitoramentoFrotasIniciado = true;
 
-    firestore.collection('catalogoFrotas').onSnapshot(async (snapshot) => {
+    firestore.collection('catalogoFrotas').onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+        // TRAVA DE SEGURANÇA
+        if (!db) return;
+
+        if (snapshot.metadata.hasPendingWrites) return;
+
         const tx = db.transaction(STORE_FROTAS, 'readwrite');
         const store = tx.objectStore(STORE_FROTAS);
         let houveMudanca = false;
         
-        if (snapshot.metadata.fromCache) console.log("Frotas: Lendo do cache local");
-
-        for (const change of snapshot.docChanges()) {
+        snapshot.docChanges().forEach(change => {
             houveMudanca = true;
             const item = { ...change.doc.data(), docId: change.doc.id };
-            if (change.type === 'added' || change.type === 'modified') { store.put(item); }
-            if (change.type === 'removed') { store.delete(item.docId); }
-        }
+            if (change.type === 'added' || change.type === 'modified') store.put(item);
+            if (change.type === 'removed') store.delete(item.docId);
+        });
+
         tx.oncomplete = async () => {
             if (houveMudanca) {
                 catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll());
-                // Atualiza a lista visual se a tela de frotas estiver aberta
-                if (document.getElementById('frotas')?.classList.contains('hidden') === false) {
+                // Atualiza UI apenas se estiver visível
+                if (!document.getElementById('frotas').classList.contains('hidden')) {
                     renderizarCatalogoFrotas();
                 }
             }
         };
-    }, (error) => { 
-        console.error("Erro Frotas:", error); 
-        monitoramentoFrotasIniciado = false; // Reseta em caso de erro
+    }, (error) => {
+        monitoramentoFrotasIniciado = false;
+        tratarErroOffline(error, 'Frotas');
     });
 }
-
 
     </script>
   <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
