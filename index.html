@@ -1305,7 +1305,7 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
     }; 
     
     if (forcar) executar(); 
-    else debounceTimer = setTimeout(executar, 1000); 
+    else debounceTimer = setTimeout(executar, 5000); 
 }
 
         
