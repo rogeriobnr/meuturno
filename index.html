@@ -859,37 +859,48 @@ async function main() {
 document.addEventListener("DOMContentLoaded", main);
 
 // =================================================================================
-// 2. INICIALIZAÇÃO E LÓGICA DO PWA (Service Worker)
+// 2. GESTÃO DE ATUALIZAÇÕES (SW)
 // =================================================================================
+
+// Configuração da Atualização
+const UPDATE_CONFIG = {
+    critico: true, // TRUE = Abre Modal / FALSE = Mostra Badge
+    novidades: [
+        "✨ Agora a busca de peças ignora acentos!",
+        "🚀 Melhoria na velocidade de abertura",
+        // ... outras novidades
+    ]
+};
+
+let newWorker = null; // Variável global para segurar o SW novo
 
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
-        // Registra o SW
-        navigator.serviceWorker.register('./service-worker.js')
-        .then(reg => {
-            console.log('SW Registrado:', reg.scope);
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+            
+            // Força o navegador a verificar se o arquivo mudou no servidor
+            reg.update();
 
-            // A. Se já tem um SW esperando (baixou em background antes)
+            // CASO 1: SW já baixado e esperando (acontece se recarregar a página)
             if (reg.waiting) {
+                console.log("🚨 SW em espera encontrado!");
                 tratarNovaVersaoEncontrada(reg.waiting);
                 return;
             }
 
-            // B. Se encontrou uma atualização agora
+            // CASO 2: Nova atualização encontrada agora
             reg.onupdatefound = () => {
                 const worker = reg.installing;
                 worker.onstatechange = () => {
-                    // Só age quando o download terminar (state: installed)
-                    // e se já existir um controlador (não é a primeira visita)
                     if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log("✅ Nova versão baixada e pronta!");
                         tratarNovaVersaoEncontrada(worker);
                     }
                 };
             };
-        })
-        .catch(err => console.error('Erro ao registrar SW:', err));
+        }).catch(err => console.error("Erro SW:", err));
 
-        // C. Recarrega a página quando o SW novo assumir o controle
+        // Recarrega a página quando o novo SW assumir
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (!refreshing) {
@@ -900,18 +911,23 @@ function registrarServiceWorker() {
     }
 }
 
-// 2. CÉREBRO DA DECISÃO (Crítico vs Normal)
 function tratarNovaVersaoEncontrada(worker) {
     newWorker = worker;
+    console.log("🎁 Exibindo aviso de atualização para o usuário.");
 
+    // Se estiver configurado como CRÍTICO, abre o modal na hora
     if (UPDATE_CONFIG.critico) {
-        // CRÍTICO: Abre o modal imediatamente e força a atenção
-        console.log("🚨 Atualização Crítica Detectada!");
-        abrirModalUpdate(); 
+        // Verifica se o modal existe antes de tentar abrir
+        if (typeof abrirModalUpdate === 'function') {
+            abrirModalUpdate();
+        } else {
+            // Fallback se o modal ainda não carregou (raro)
+            if(confirm("Nova versão crítica disponível. Atualizar agora?")) {
+                worker.postMessage({ action: 'skipWaiting' });
+            }
+        }
     } else {
-        // NORMAL: Mostra apenas o badge (presente) e deixa o usuário decidir
-        console.log("🎁 Atualização Normal Disponível.");
-        mostrarNotificacaoUpdate(); 
+        mostrarNotificacaoUpdate();
     }
 }
 
