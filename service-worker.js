@@ -2,7 +2,7 @@
 
 // 1. VERSÃO ATUALIZADA
 // Subi para v40 para garantir que todos recebam essa nova lógica de rede
-const CACHE_NAME = 'meuturno-cache-v44';
+const CACHE_NAME = 'meuturno-cache-v45';
 
 // Tempo limite para esperar pela rede antes de desistir (em milissegundos)
 const NETWORK_TIMEOUT_MS = 3000;

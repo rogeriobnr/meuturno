@@ -21,6 +21,38 @@
 <script src="./libs/firebase-app.js"></script>
 <script src="./libs/firebase-firestore.js"></script>
     <style>
+        /* --- CSS OBRIGATÓRIO PARA O VIRTUAL SCROLLER (CORREÇÃO FINAL) --- */
+#listaCatalogo {
+    position: relative;
+    height: 100%; /* Ocupa 100% do pai */
+    width: 100%;
+    overflow-y: auto;
+    contain: strict;
+    background: #f8fafc;
+    display: block;
+}
+
+.virtual-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 85px; /* Altura fixa */
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+.virtual-inner-content {
+    background: white;
+    height: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.75rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
@@ -94,12 +126,13 @@
             border-color: #ef4444 !important;
             box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
         }
-
+      
         /* Barra de rolagem personalizada (fina) */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
     </style>
 
 
@@ -5451,93 +5484,182 @@ async function limparRelatorio() {
         async function executarLimpezaCatalogo() { const confirmado = await new Promise(resolve => abrirPopupConfirmar('ÚLTIMO AVISO', 'Tem a certeza absoluta de que deseja apagar TODOS os itens do catálogo para TODOS os utilizadores? Esta ação é irreversível.', resolve, 'Sim, apagar tudo')); if (!confirmado) return; showToast("A iniciar limpeza do catálogo... Isto pode demorar.", "info"); try { const querySnapshot = await firestore.collection('catalogo').get(); if (querySnapshot.empty) { showToast("O catálogo já está vazio.", "info"); return; } const batchSize = 499; for (let i = 0; i < querySnapshot.docs.length; i += batchSize) { const lote = querySnapshot.docs.slice(i, i + batchSize); const batch = firestore.batch(); lote.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); } showToast("Catálogo limpo com sucesso!", "success"); } catch (error) { console.error("Erro ao limpar o catálogo:", error); showToast("Ocorreu um erro durante a limpeza.", "error"); } }
         async function importarCatalogoExcel(event) { const file = event.target.files[0]; if (!file) return; const confirmado = await new Promise(resolve => abrirPopupConfirmar('Importar Catálogo', 'Tem a certeza de que deseja importar este ficheiro Excel? Itens com o mesmo Código SAP serão ignorados.', resolve)); if (!confirmado) { event.target.value = ''; return; } abrirPopupLoading("A ler o ficheiro Excel. Por favor, aguarde..."); const reader = new FileReader(); reader.onload = async (e) => { try { await new Promise(resolve => setTimeout(resolve, 50)); const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, { type: 'array' }); const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName]; const itensDoExcel = XLSX.utils.sheet_to_json(worksheet, { header: ["codigoSap", "partNumber", "descricao"], defval: "" }); if (itensDoExcel.length === 0) { throw new Error("Nenhum item válido encontrado no ficheiro Excel."); } const codigosSapExistentes = new Set(catalogoLocal.map(item => String(item.codigoSap).trim()).filter(sap => sap)); const itensNovos = itensDoExcel.filter(item => { const sap = String(item.codigoSap || '').trim(); return sap && !codigosSapExistentes.has(sap); }); if (itensNovos.length === 0) { showToast("Importação concluída. Nenhum item novo para adicionar.", "success"); fecharPopup(); return; } document.querySelector('#popupGenerico #popupMensagem').innerHTML = `<p>A enviar ${itensNovos.length} itens novos para a base de dados...</p>`; await enviarLoteParaFirestore(itensNovos); showToast(`Importação concluída! ${itensNovos.length} itens novos foram adicionados.`, "success"); } catch (error) { showToast(`Erro: ${error.message}`, "error"); } finally { fecharPopup(); event.target.value = ''; } }; reader.readAsArrayBuffer(file); }
         async function enviarLoteParaFirestore(itens) { const batchSize = 499; for (let i = 0; i < itens.length; i += batchSize) { const lote = itens.slice(i, i + batchSize); const batch = firestore.batch(); lote.forEach(item => { const docRef = firestore.collection('catalogo').doc(); const itemData = { codigoSap: item.codigoSap || '', partNumber: item.partNumber || '', descricao: item.descricao || '' }; batch.set(docRef, itemData); }); await batch.commit(); } }
-        async function renderizarSecaoCatalogo(container) { 
-    try { catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll()); } catch (e) { catalogoLocal = []; } 
-    
-    container.innerHTML = `
-    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-4">
-            <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            </div>
-            <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
-        </div>
+// =================================================================================
+// 📦 MÓDULO CATÁLOGO (VIRTUAL SCROLLER V4 - FINAL BLINDADO)
+// =================================================================================
 
-        <div class="relative">
-            <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" 
-                placeholder="Buscar SAP, Part Number ou Descrição..." 
-                class="w-full pl-10 p-3 border border-gray-300 rounded-lg mb-2 focus:ring-2 focus:ring-purple-500 outline-none bg-gray-50 text-sm">
-            <div class="absolute left-3 top-3.5 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </div>
-        </div>
-        <div id="listaCatalogo" class="space-y-2 mt-4"></div>
-    </div>`; 
-    renderizarCatalogo(); 
+// --- Variáveis Globais de Controle do Scroller ---
+const ROW_HEIGHT = 85;
+let virtualDadosFiltrados = [];
+let virtualScrollIniciado = false;
+
+async function renderizarSecaoCatalogo(container) {
+// 1. Verificação de Dados
+if (!catalogoLocal || catalogoLocal.length === 0) {
+try {
+console.log("Tentando carregar catálogo do disco...");
+catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll()) || [];
+} catch (e) {
+console.warn("Erro ao ler catálogo:", e);
+catalogoLocal = [];
+}
 }
 
+// 2. Renderização da Estrutura (COM ESTILO INLINE OBRIGATÓRIO)
+// A classe 'h-[80vh]' foi trocada por style="height: 80vh" para garantir que funcione.
+container.innerHTML = `
+<div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col" style="height: 80vh; min-height: 500px;">
+    
+    <div class="flex items-center gap-3 pb-3 border-b border-gray-100 mb-2 shrink-0">
+        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+        </div>
+        <div>
+            <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
+            <p class="text-xs text-gray-500">
+                Total: <span id="totalItensBadge">${catalogoLocal.length}</span> itens
+            </p>
+        </div>
+    </div>
+    
+    <div class="relative shrink-0 mb-3">
+        <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" placeholder="Buscar SAP, PN ou Descrição..." class="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-gray-50 text-sm transition-shadow">
+        <div class="absolute left-3 top-3.5 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+    </div>
+    
+    <div id="listaCatalogo" class="flex-1 border border-gray-200 rounded-lg relative bg-gray-50 w-full" style="overflow-y: auto;">
+        <div class="flex flex-col items-center justify-center h-full text-gray-400">
+            <p>Carregando lista...</p>
+        </div>
+    </div>
+</div>`;
+
+// 3. Força a renderização com delay de segurança
+virtualScrollIniciado = false;
+setTimeout(() => renderizarCatalogo(), 100);
+}
 
 function renderizarCatalogo() {
-    const listaDiv = document.getElementById('listaCatalogo');
-    if (!listaDiv) return;
+const listaDiv = document.getElementById('listaCatalogo');
+const inputBusca = document.getElementById('buscaCatalogo');
 
-    // 1. Busca e normalização (Rápida, na memória RAM)
-    const termoBusca = removerAcentos(document.getElementById('buscaCatalogo').value.toLowerCase());
+if (!listaDiv) return;
 
-    // 2. Filtragem
-    let itensFiltrados = catalogoLocal.filter(item => {
-        const codigoSap = String(item.codigoSap || '').toLowerCase();
-        const partNumber = String(item.partNumber || '').toLowerCase();
-        const descricaoNormalizada = removerAcentos(String(item.descricao || '').toLowerCase());
+// Atualiza contador visual
+const badge = document.getElementById('totalItensBadge');
+if(badge) badge.innerText = catalogoLocal.length;
 
-        return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricaoNormalizada.includes(termoBusca));
-    });
+// 1. Filtragem Rápida
+const termoBusca = inputBusca ? removerAcentos(inputBusca.value.toLowerCase()) : '';
 
-    if (itensFiltrados.length === 0) {
-        listaDiv.innerHTML = `<p class="text-center text-gray-500 py-4">Nenhum item encontrado.</p>`;
-        return;
-    }
+virtualDadosFiltrados = catalogoLocal.filter(item => {
+const codigoSap = String(item.codigoSap || '').toLowerCase();
+const partNumber = String(item.partNumber || '').toLowerCase();
+const descricao = removerAcentos(String(item.descricao || '').toLowerCase());
+return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricao.includes(termoBusca));
+});
 
-    // 3. Ordenação
-    itensFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+virtualDadosFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
 
-    // 4. [MELHORIA DE PERFORMANCE] Limita a exibição aos primeiros 50 itens
-    const LIMIT = 50;
-    const totalItens = itensFiltrados.length;
-    // Pega apenas a "primeira página" de dados
-    const itensParaExibir = itensFiltrados.slice(0, LIMIT);
+// 2. Feedback Visual se Vazio
+if (virtualDadosFiltrados.length === 0) {
+let msg = "Nenhum item encontrado com este filtro.";
+let action = "";
 
-    // 5. Renderização Segura
-    let html = itensParaExibir.map(item => `
-        <div class="border rounded-lg p-3 flex justify-between items-center transition-all duration-200 hover:bg-gray-50">
-            <div class="flex-1 min-w-0">
-                <p class="font-bold text-gray-800 truncate">${safeText(item.descricao)}</p>
-                <div class="flex gap-3 mt-1">
-                    <p class="text-xs text-gray-500">SAP: <span class="font-bold text-blue-700">${safeText(item.codigoSap)}</span></p>
-                    <p class="text-xs text-gray-500">PN: <span class="font-bold text-gray-700">${safeText(item.partNumber)}</span></p>
+if (catalogoLocal.length === 0) {
+msg = "O catálogo parece estar vazio na memória.";
+action = `<button onclick="window.location.reload()" class="mt-2 text-blue-600 underline text-sm">Recarregar App</button>`;
+}
+
+listaDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400">
+    <span class="text-3xl mb-2">📦</span>
+    <p class="text-sm font-medium">${msg}</p>
+    ${action}
+</div>`;
+return;
+}
+
+// 3. Configura o "Spacer" (Altura total falsa)
+const totalHeight = virtualDadosFiltrados.length * ROW_HEIGHT;
+
+if (!document.getElementById('virtualSpacer')) {
+listaDiv.innerHTML = `<div id="virtualSpacer" style="height: ${totalHeight}px; position: relative; width: 100%;"></div>`;
+
+// Listener de Scroll
+if (!virtualScrollIniciado) {
+listaDiv.removeEventListener('scroll', onVirtualScroll); // Garante limpeza
+listaDiv.addEventListener('scroll', onVirtualScroll);
+virtualScrollIniciado = true;
+}
+} else {
+document.getElementById('virtualSpacer').style.height = `${totalHeight}px`;
+}
+
+// 4. Desenha
+onVirtualScroll();
+}
+// --- O MOTOR GRÁFICO (RESPONSIVO E ANTI-QUEBRA) ---
+function onVirtualScroll() {
+    const container = document.getElementById('listaCatalogo');
+    const spacer = document.getElementById('virtualSpacer');
+    if (!container || !spacer) return;
+
+    const scrollTop = container.scrollTop;
+    // Fallback de segurança para altura
+    const containerHeight = container.clientHeight || 600;
+
+    const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2); 
+    const endIndex = Math.min(
+        virtualDadosFiltrados.length, 
+        Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 4
+    );
+
+    let html = '';
+    
+    for (let i = startIndex; i < endIndex; i++) {
+        const item = virtualDadosFiltrados[i];
+        if (!item) continue; 
+
+        const topPos = i * ROW_HEIGHT;
+        
+        html += `
+        <div class="virtual-item" style="transform: translateY(${topPos}px);">
+            <div class="virtual-inner-content hover:bg-blue-50 transition-colors cursor-pointer pr-1">
+                
+                <div class="flex-1 min-w-0 mr-2">
+                    
+                    <p class="font-bold text-gray-800 text-sm truncate leading-tight" title="${safeText(item.descricao)}">
+                        ${safeText(item.descricao)}
+                    </p>
+                    
+                    <div class="flex flex-wrap gap-2 mt-1.5 w-full">
+                        
+                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                            SAP: <span class="text-blue-700 font-bold">${safeText(item.codigoSap || '-')}</span>
+                        </p>
+                        
+                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                            PN: <span class="text-gray-700 font-bold">${safeText(item.partNumber || '-')}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1 shrink-0">
+                    <button onclick="editarItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 rounded-full transition-colors">✏️</button>
+                    <button onclick="excluirItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-full transition-colors">🗑️</button>
                 </div>
             </div>
-            <div class="flex space-x-2 pl-2">
-                <button onclick="editarItemCatalogo('${item.docId}')" class="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full transition-colors" title="Editar">✏️</button>
-                <button onclick="excluirItemCatalogo('${item.docId}')" class="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Excluir">🗑️</button>
-            </div>
-        </div>
-    `).join('');
-
-    // Aviso se houver mais itens escondidos (Incentiva a digitar mais na busca)
-    if (totalItens > LIMIT) {
-        html += `
-        <div class="text-center py-3 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg mt-2 border border-blue-100">
-            Exibindo ${LIMIT} de ${totalItens} resultados.<br>
-            <span class="font-normal text-blue-400">Continue digitando para refinar...</span>
         </div>`;
     }
 
-    listaDiv.innerHTML = html;
+    spacer.innerHTML = html;
 }
-
 function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
 async function salvarItemCatalogo() {
     const docId = document.getElementById('popup-docId').value;
@@ -5671,46 +5793,85 @@ return;
 console.error(`❌ Erro em ${contexto}:`, err);
 };
 
+
 // =================================================================================
+// SINCRONIZAÇÃO OTIMIZADA (ECONOMIA DE CPU E BATERIA)
+// =================================================================================
+
 let monitoramentoCatalogoIniciado = false;
 
 function sincronizarCatalogoPecas() {
-    if (monitoramentoCatalogoIniciado) return;
-    monitoramentoCatalogoIniciado = true;
+if (monitoramentoCatalogoIniciado) return;
+monitoramentoCatalogoIniciado = true;
 
-    if(navigator.onLine) console.log("Iniciando sync Catálogo...");
+console.log("📡 Iniciando Sincronização Inteligente do Catálogo...");
 
-    firestore.collection('catalogo').onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
-        // TRAVA DE SEGURANÇA: Se o DB não abriu ainda, aborta para não crashar
-        if (!db) return; 
-        
-        if (snapshot.metadata.hasPendingWrites) return;
+firestore.collection('catalogo')
+.onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+// Se o DB não estiver pronto, não tenta gravar
+if (!db) return;
 
-        const tx = db.transaction('catalogo', 'readwrite');
-        const store = tx.objectStore('catalogo');
-        let houveMudanca = false;
-        
-        snapshot.docChanges().forEach(change => {
-            houveMudanca = true;
-            const item = { ...change.doc.data(), docId: change.doc.id };
-            if (change.type === 'added' || change.type === 'modified') store.put(item);
-            if (change.type === 'removed') store.delete(item.docId);
-        });
+// Ignora escritas locais pendentes (evita duplicidade de processamento)
+if (snapshot.metadata.hasPendingWrites) return;
 
-        tx.oncomplete = async () => {
-            if (houveMudanca) {
-                catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
-                if (!document.getElementById('catalogo').classList.contains('hidden')) {
-                    renderizarCatalogo();
-                }
-            }
-        };
-    }, (error) => {
-        monitoramentoCatalogoIniciado = false;
-        tratarErroOffline(error, 'Catálogo Peças');
-    });
+// Abre transação para gravação no disco (IndexedDB)
+const tx = db.transaction('catalogo', 'readwrite');
+const store = tx.objectStore('catalogo');
+
+let houveMudanca = false;
+
+snapshot.docChanges().forEach(change => {
+houveMudanca = true;
+const dadosDoc = change.doc.data();
+const docId = change.doc.id;
+
+// Objeto padronizado
+const item = {
+...dadosDoc,
+docId: docId,
+// Garante que campos vitais existam para evitar erros de renderização
+descricao: dadosDoc.descricao || 'Sem descrição',
+codigoSap: dadosDoc.codigoSap || '',
+partNumber: dadosDoc.partNumber || ''
+};
+
+// 1. Atualiza o DISCO (Persistência)
+if (change.type === 'added' || change.type === 'modified') {
+store.put(item);
+
+// 2. Atualiza a RAM (Cirúrgico - Sem reler tudo)
+const index = catalogoLocal.findIndex(i => i.docId === docId);
+if (index > -1) {
+catalogoLocal[index] = item; // Atualiza existente
+} else {
+catalogoLocal.push(item); // Adiciona novo
+}
 }
 
+if (change.type === 'removed') {
+store.delete(docId);
+
+// Remove da RAM cirurgicamente
+catalogoLocal = catalogoLocal.filter(i => i.docId !== docId);
+}
+});
+
+// Só renderiza se realmente houve mudança E se a tela estiver visível
+if (houveMudanca) {
+const secaoCatalogo = document.getElementById('catalogo');
+// Verifica se o elemento existe e não tem a classe 'hidden'
+if (secaoCatalogo && !secaoCatalogo.classList.contains('hidden')) {
+// Debounce simples: evita renderizar 50x se entrarem 50 itens rápido
+clearTimeout(window.renderCatalogoTimer);
+window.renderCatalogoTimer = setTimeout(() => {
+console.log("♻️ Atualizando visualização do catálogo...");
+renderizarCatalogo();
+}, 200);
+}
+}
+
+}, (error) => tratarErroOffline(error, 'Catálogo Peças'));
+}
 
 let monitoramentoFrotasIniciado = false;
 
@@ -5817,6 +5978,7 @@ function mostrarTelaDeCarregamento() {
             sessionStorage.removeItem('tentativa_reparo');
         }
     });
+    
     
     </script>
     
