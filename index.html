@@ -662,16 +662,21 @@ const Guardian = {
     },
 
     // 1. Inicialização Otimizada
-    init: async function() {
-        console.log("🛡️ Guardian: Iniciando protocolos de proteção...");
-        this.setupGlobalErrorHandling();
-        this.sanitizeLocalStorage();
-        this.injectSafeRender(); // Importante rodar antes de qualquer render
-        
-        // OTIMIZAÇÃO: Não use 'await' aqui. Deixe verificar em segundo plano 
-        // para não atrasar a abertura do app para o usuário.
-        this.checkStorageQuota(); 
-    },
+    // No objeto Guardian, altere o init:
+
+init: async function() {
+    console.log("🛡️ Guardian: Iniciando protocolos...");
+    this.setupGlobalErrorHandling();
+    this.sanitizeLocalStorage();
+    this.injectSafeRender();
+    
+    // OTIMIZAÇÃO: Coloca a verificação de disco em fila de baixa prioridade
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => this.checkStorageQuota());
+    } else {
+        setTimeout(() => this.checkStorageQuota(), 10000);
+    }
+},
 
     // 2. Prevenção de Corrupção (O "Bug do Null")
     sanitizeLocalStorage: function() {
@@ -833,85 +838,6 @@ async function limparHistoricoAntigoLocal() {
         console.error("Erro na faxina automática:", e);
     }
 }
-
-// =================================================================================
-// 2. INICIALIZAÇÃO E LÓGICA DO PWA
-// =================================================================================
-
-async function main() {
-    const loader = document.getElementById('app-loader');
-    
-    try {
-        // 1. SEGURANÇA (Prioridade Máxima)
-        // Inicia o Guardian para injetar o 'safeText' antes de qualquer renderização HTML
-        await Guardian.init();
-        
-        iniciarMonitoramentoRedeUI();
-        // 2. SERVICE WORKER
-        // Inicia o suporte offline e verifica atualizações
-        registrarServiceWorker();
-        
-        // 3. BANCO DE DADOS (IndexedDB)
-        // Tenta iniciar o DB com timeout de 5s para não travar na tela branca caso o dispositivo esteja lento
-        const dbPromise = initDB();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout DB")), 5000));
-        
-        await Promise.race([dbPromise, timeoutPromise])
-            .catch(err => console.warn("⚠️ DB demorou, iniciando interface mesmo assim...", err));
-        
-        // 4. SINCRONIZAÇÃO (Firebase Listeners)
-        // Inicia os ouvintes em background (não bloqueia a UI)
-        sincronizarCatalogoFrotas();
-        iniciarSincronizacaoAuxiliares(); // Fazendas e Frentes
-        iniciarSincronizacaoEquipe();
-        
-        // 5. CARREGAMENTO DE DADOS
-        // Busca os dados do turno atual no cache local
-        await carregarDadosIniciais();
-        
-        // 6. PROCESSOS DE FUNDO
-        // Faxina de histórico antigo (roda depois de 5s para não pesar na inicialização)
-        setTimeout(() => limparHistoricoAntigoLocal(), 5000);
-        // Tenta migrar dados legados se houver conexão
-        migrarDadosLocaisParaNuvem();
-        
-        // 7. RENDERIZAÇÃO DA INTERFACE
-        renderizarLayoutInicial();
-        inicializarMenuHamburguer();
-        verificarOnboarding(); // Tutorial inicial se for novo usuário
-        
-        // 8. HISTÓRICO E NAVEGAÇÃO
-        iniciarSincronizacaoHistorico();
-        
-        // Recuperação segura da última seção visitada (Persistência de tela)
-        let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
-        // Validação de segurança: se o ID salvo não existe no HTML, volta para 'turno'
-        if (!document.getElementById(secaoInicial)) {
-            secaoInicial = 'turno';
-            localStorage.setItem('secaoAtiva', 'turno');
-        }
-        abrir(secaoInicial);
-        
-    } catch (err) {
-        console.error("Erro Crítico no Main:", err);
-        // Fallback de emergência para não deixar o usuário travado no Loader
-        try { 
-            renderizarLayoutInicial();
-            abrir('turno'); 
-        } catch (e) {
-            console.error("Falha fatal na renderização de emergência", e);
-        }
-    } finally {
-        // 9. REMOÇÃO DO LOADER (Sempre executa)
-        if (loader) {
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 500);
-        }
-    }
-}
-
-// Inicia a aplicação quando o DOM estiver pronto
-document.addEventListener("DOMContentLoaded", main);
 
 
 // =================================================================================
@@ -1236,28 +1162,178 @@ function initDB() {
 
 async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
 
+// =================================================================================
+// OTIMIZAÇÃO DE INICIALIZAÇÃO (FIX TRAVAMENTO)
+// =================================================================================
+
+/**
+ * NOVA FUNÇÃO: Carrega o catálogo pesado em segundo plano
+ * Só executa DEPOIS que o app já abriu e o usuário já pode clicar.
+ */
+function carregarCatalogoBackground() {
+    // Aguarda 2.5 segundos para garantir que todas as animações de entrada terminaram
+    setTimeout(async () => {
+        try {
+            console.log("🚀 Lazy Load: Iniciando carregamento do Catálogo em background...");
+            
+            // Verifica se o DB está aberto
+            if (!db) await initDB();
+            
+            const inicio = performance.now();
+            const itens = await dbExec('catalogo', 'readonly', s => s.getAll());
+            
+            if (itens && itens.length > 0) {
+                catalogoLocal = itens;
+                const fim = performance.now();
+                console.log(`✅ Catálogo carregado: ${itens.length} itens em ${((fim - inicio)/1000).toFixed(2)}s`);
+            } else {
+                console.log("ℹ️ Catálogo local vazio. O sync baixará do Firebase depois.");
+                catalogoLocal = [];
+            }
+        } catch (e) {
+            console.warn("⚠️ Lazy Load falhou (não crítico, o sync corrigirá):", e);
+            catalogoLocal = [];
+        }
+    }, 2500);
+}
+
+/**
+ * VERSÃO OTIMIZADA: Carrega apenas o essencial para abrir o turno.
+ * Removemos o catálogo daqui para não travar o loader.
+ */
+async function carregarDadosIniciais() {
+    try {
+        // 1. Carrega Frotas (Leve e essencial para validação)
+        catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll()) || [];
+        
+        // 2. Inicializa Catalogo vazio (Será preenchido pelo background)
+        catalogoLocal = [];
+        
+        // 3. Carrega o Turno Atual (Essencial)
+        const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID));
+        const dataHoje = dataHojeInputLocal();
+        
+        if (dados) {
+            // Lógica de virada de dia
+            if (dados.data && dados.data !== dataHoje) {
+                // Pequeno delay para garantir que o loader não pisque
+                await new Promise(r => setTimeout(r, 100));
+                
+                const confirmado = await new Promise(resolve =>
+                    abrirPopupConfirmar(
+                        'Iniciar Novo Turno?',
+                        `Dados de ${formatarDataParaExibicao(dados.data)} encontrados.<br>Deseja iniciar um novo turno para hoje?`,
+                        resolve
+                    )
+                );
+                
+                if (confirmado) {
+                    equipe = dados.equipe || [];
+                    frotasTurno = dados.frotas || [];
+                    servicos = [];
+                    // Resetamos IDs de apontamento para evitar conflito
+                    linhasApontamento = [];
+                    await salvarTudo(true);
+                    showToast("Novo turno iniciado!", 'success');
+                } else {
+                    carregarEstado(dados);
+                }
+            } else {
+                carregarEstado(dados);
+            }
+        } else {
+            inicializarEstadoVazio();
+        }
+    } catch (err) {
+        console.error('Erro ao carregar dados iniciais:', err);
+        inicializarEstadoVazio();
+    }
+}
+
+// =================================================================================
+// 2. MAIN OTIMIZADA (PRPL PATTERN)
+// =================================================================================
+
+async function main() {
+    const loader = document.getElementById('app-loader');
+    
+    try {
+        // 1. SEGURANÇA & MONITORAMENTO
+        await Guardian.init(); // Injeta safeText e proteções
+        iniciarMonitoramentoRedeUI();
+        
+        // 2. SERVICE WORKER (Cache de Arquivos)
+        registrarServiceWorker();
+        
+        // 3. BANCO DE DADOS (IndexedDB)
+        // Timeout de segurança: Se o DB não abrir em 4s, prossegue para não travar
+        const dbPromise = initDB();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout DB")), 4000));
+        
+        await Promise.race([dbPromise, timeoutPromise])
+            .catch(err => console.warn("⚠️ DB demorou, iniciando interface com dados vazios...", err));
+        
+        // 4. SINCRONIZAÇÃO EM BACKGROUND (Listeners)
+        // Não usamos await aqui propositalmente para não bloquear
+        sincronizarCatalogoFrotas();
+        iniciarSincronizacaoAuxiliares(); // Fazendas e Frentes
+        iniciarSincronizacaoEquipe();
+        
+        // 5. CARREGAMENTO DE DADOS (AGORA LEVE ⚡)
+        await carregarDadosIniciais();
+        
+        // 6. PROCESSOS DE MANUTENÇÃO (Baixa prioridade)
+        setTimeout(() => limparHistoricoAntigoLocal(), 8000); // Adia faxina para 8s
+        migrarDadosLocaisParaNuvem();
+        
+        // 7. RENDERIZAÇÃO DA INTERFACE
+        renderizarLayoutInicial();
+        inicializarMenuHamburguer();
+        verificarOnboarding();
+        
+        // 8. NAVEGAÇÃO E PERSISTÊNCIA
+        iniciarSincronizacaoHistorico();
+        
+        // Recuperação segura da aba ativa
+        let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+        if (!document.getElementById(secaoInicial)) {
+            secaoInicial = 'turno';
+            localStorage.setItem('secaoAtiva', 'turno');
+        }
+        abrir(secaoInicial);
+        
+    } catch (err) {
+        console.error("Erro Crítico no Main:", err);
+        // Fallback de emergência
+        try {
+            renderizarLayoutInicial();
+            abrir('turno');
+        } catch (e) { console.error("Falha fatal:", e); }
+    } finally {
+        // 9. REMOÇÃO DO LOADER (Prioridade Visual)
+        if (loader) {
+            // Fade out rápido
+            loader.style.transition = "opacity 0.4s ease-out";
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 400);
+        }
+        
+        // 10. CARREGAMENTO PESADO EM BACKGROUND (O SEGREDO DA PERFORMANCE)
+        // Só chama isso depois que o loader sumiu
+        carregarCatalogoBackground();
+    }
+}
+
+// Inicia a aplicação quando o DOM estiver pronto
+document.addEventListener("DOMContentLoaded", main);
+
+
         // =================================================================================
         // 4. GESTÃO DE DADOS GLOBAIS
         // =================================================================================
-        async function carregarDadosIniciais() {
-            try {
-                catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll());
-                catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll());
-                const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID));
-                const dataHoje = dataHojeInputLocal();
-                if (dados) {
-                    if (dados.data && dados.data !== dataHoje) {
-                        const confirmado = await new Promise(resolve => abrirPopupConfirmar('Iniciar Novo Turno?', `Dados de ${formatarDataParaExibicao(dados.data)} encontrados. Deseja iniciar um novo turno para hoje? <br><br><strong>A equipe e as frotas do turno anterior serão mantidas.</strong>`, resolve));
-                        if (confirmado) {
-                            equipe = dados.equipe || []; frotasTurno = dados.frotas || []; servicos = [];
-                            await salvarTudo(true);
-                            showToast("Novo turno iniciado!", 'success');
-                        } else { carregarEstado(dados); }
-                    } else { carregarEstado(dados); }
-                } else { inicializarEstadoVazio(); }
-            } catch (err) { showToast('Erro ao carregar dados iniciais.', 'error'); inicializarEstadoVazio(); }
-        }
-        function carregarEstado(dados) { 
+
+        
+function carregarEstado(dados) { 
     equipe = dados.equipe || []; 
     frotasTurno = dados.frotas || []; 
     servicos = dados.servicos || []; 
