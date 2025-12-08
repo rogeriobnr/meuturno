@@ -3386,13 +3386,13 @@ function renderizarListaLinhas() {
 // MÓDULO: ADICIONAR PREVENTIVA (NOVO)
 // ============================================================
 
-function abrirPopupAddPreventiva() {
-    // 1. Prepara as opções de Frota
-    let opcoesFrota = '<option value="">Selecione a Frota...</option>';
-    if (frotasTurno.length > 0) {
-        opcoesFrota += frotasTurno.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
-    }
+// ============================================================
+// MÓDULO: ADICIONAR PREVENTIVA (ATUALIZADO - FROTA LIVRE)
+// ============================================================
 
+function abrirPopupAddPreventiva() {
+    // 1. (REMOVIDO) Não precisamos mais gerar opções de frota
+    
     // 2. Prepara as opções de Sistema
     let opcoesSistemas = '<option value="">Selecione o Sistema...</option>';
     for (const [grupo, lista] of Object.entries(sistemas)) {
@@ -3411,7 +3411,7 @@ function abrirPopupAddPreventiva() {
         }
     });
 
-    // 4. HTML do Formulário com tamanhos e espaçamentos melhorados (text-sm)
+    // 4. HTML do Formulário com FROTA como TEXTAREA
     const conteudo = `
         <div class="space-y-4 text-sm text-left">
             
@@ -3424,10 +3424,10 @@ function abrirPopupAddPreventiva() {
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-600 mb-1">Frota *</label>
-                    <select id="prevFrota" 
-                        class="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        ${opcoesFrota}
-                    </select>
+                    <textarea id="prevFrota" 
+                        class="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-none overflow-hidden" 
+                        rows="1"
+                        placeholder="Digite o código..."></textarea>
                 </div>
             </div>
 
