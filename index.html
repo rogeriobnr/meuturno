@@ -3202,10 +3202,18 @@ function renderizarListaLinhas() {
             const sistemaSeguro = safeText(linha.sistema);
             const subSeguro = safeText((linha.subsistema||'?').split(' - ')[0]);
             const frotaSegura = safeText(linha.frota || 'N/A');
-            const osSegura = safeText(linha.os || '---');
+            
+            // LÓGICA VISUAL DE PENDÊNCIA
+            const isPendente = linha.os === 'PENDENTE' || !linha.os;
+            const osSegura = safeText(linha.os || 'PENDENTE');
 
             const infoTecnica = `${atividadeSegura} • ${sistemaSeguro} • ${subSeguro}`;
             
+            // Se for pendente muda a cor da borda do OS e do texto
+            const estiloOS = isPendente 
+                ? "bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse" 
+                : "bg-white text-blue-700 border-gray-200";
+
             html = `
             <div class="${bgClass} rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
                 <div class="p-3 flex flex-col gap-2">
@@ -3220,9 +3228,9 @@ function renderizarListaLinhas() {
                         ${acoesHtml}
                     </div>
                     <div class="flex flex-wrap items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100 gap-y-2">
-                        <div class="flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-gray-200 shadow-sm">
-                            <span class="text-[9px] font-bold text-gray-400 uppercase">OS</span>
-                            <span class="text-xs font-bold text-blue-700">${osSegura}</span>
+                        <div class="flex items-center gap-1 px-2 py-0.5 rounded border shadow-sm ${estiloOS}">
+                            <span class="text-[9px] font-bold opacity-70 uppercase">OS</span>
+                            <span class="text-xs font-black">${osSegura}</span>
                         </div>
                         <div class="flex items-center gap-1 ml-auto">
                             <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
@@ -3558,9 +3566,12 @@ async function abrirPopupImportarServico() {
     listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
     // --- GERAÇÃO DO HTML (Visual Moderno) ---
+    // --- DENTRO DE abrirPopupImportarServico ---
     const listaHtml = listaCombinada.map(s => {
+        // Verifica se tem OS, senão define como PENDENTE
         const temOS = s.osNumero && String(s.osNumero).trim() !== "";
         const numeroOS = temOS ? s.osNumero : "PENDENTE";
+        
         const jaImportado = linhasApontamento.some(linha => String(linha.idOriginal) === String(s.id));
 
         const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
@@ -3568,25 +3579,26 @@ async function abrirPopupImportarServico() {
         const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
         const infoTecnica = `${codAtiv} • ${sist} • ${sub}`;
         
-        const action = temOS 
-            ? `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')` 
-            : `explicarFaltaOS()`;
+        // MUDANÇA 1: A ação AGORA É SEMPRE PERMITIDA (removemos o explicarFaltaOS)
+        // Passamos 'numeroOS' que pode ser o número ou a string "PENDENTE"
+        const action = `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')`;
         
-        // Estilos Dinâmicos
+        // Estilos Dinâmicos (Visual Pendente vs OK)
         let cardStyle = "bg-white border-l-[5px] border-green-500 hover:bg-green-50";
         let badgeOS = "bg-green-100 text-green-800 border-green-200";
-        let iconStatus = `<span class="text-green-600 text-xl font-bold">📥</span>`; // Ícone de Download
+        let iconStatus = `<span class="text-green-600 text-xl font-bold">📥</span>`;
 
         if (!temOS) {
+            // Estilo Amarelo para Pendente
             cardStyle = "bg-white border-l-[5px] border-yellow-400 hover:bg-yellow-50";
-            badgeOS = "bg-yellow-100 text-yellow-800 border-yellow-200";
-            iconStatus = `<span class="text-yellow-500 text-xl">⚠️</span>`; // Alerta
+            badgeOS = "bg-yellow-100 text-yellow-800 border-yellow-200 font-bold";
+            iconStatus = `<span class="text-yellow-600 text-xs font-bold px-2 py-1 bg-yellow-100 rounded border border-yellow-300">PENDENTE</span>`;
         } 
         
         if (jaImportado) {
             cardStyle = "bg-blue-50 border-l-[5px] border-blue-300 opacity-70"; 
             badgeOS = "bg-blue-100 text-blue-800 border-blue-200";
-            iconStatus = `<span class="text-blue-600 text-xs font-bold uppercase tracking-wide border border-blue-200 px-2 py-1 rounded bg-white">Importado</span>`;
+            iconStatus = `<span class="text-blue-600 text-xs font-bold uppercase tracking-wide border border-blue-200 px-2 py-1 rounded bg-white">Já Importado</span>`;
         }
 
         return `
@@ -3676,48 +3688,6 @@ function importarServicoFinalizado(originalId, frota, atividade, sistema, subsis
     marcarComoDesatualizado();
     salvarTudo();
     salvarLinhaDoTempoDoDia(); // ✅ Garante que a importação vá para a nuvem
-}
-
-//explica o.s pendente 
-function explicarFaltaOS() {
-    // Fecha o popup de seleção atual para abrir o de alerta
-    fecharPopup();
-
-    setTimeout(() => {
-        const conteudo = `
-            <div class="text-center p-2">
-                <div class="bg-yellow-100 text-yellow-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                    ⚠️
-                </div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">Falta o Número da O.S.</h3>
-                <p class="text-sm text-gray-600 mb-4">
-                    Para garantir a qualidade do apontamento, você precisa primeiro 
-                    <strong>finalizar a O.S.</strong> no histórico.
-                </p>
-                <div class="bg-gray-100 p-3 rounded text-left text-xs text-gray-700 mb-4">
-                    <strong>Passo a passo:</strong><br>
-                    1. Vá na aba <b>Histórico</b>.<br>
-                    2. Encontre este serviço.<br>
-                    3. Digite o número e clique em <b>Finalizar</b>.
-                </div>
-            </div>
-        `;
-
-        const botoes = [
-            { 
-                texto: 'Ir para o Histórico Agora', 
-                classe: 'bg-blue-600 text-white hover:bg-blue-700 w-full mb-2 shadow-lg', 
-                acao: irParaAbaHistorico // Chama a navegação
-            },
-            { 
-                texto: 'Voltar', 
-                classe: 'bg-gray-200 text-gray-700 hover:bg-gray-300 w-full', 
-                acao: abrirPopupImportarServico // Reabre a lista
-            }
-        ];
-
-        abrirPopup('Atenção Necessária', conteudo, botoes);
-    }, 200); // Pequeno delay para transição suave
 }
 
 //direcionar ao histórico 
@@ -3863,7 +3833,67 @@ function trocarOrdem(index) {
 // =================================================================================
 // GERAÇÃO DA IMAGEM (CANVAS)
 // =================================================================================
-async function gerarPreviewApontamento() {
+// --- NOVA LÓGICA DE VALIDAÇÃO ---
+function gerarPreviewApontamento() {
+    // 1. Verifica se existe alguma linha de serviço com OS vazia ou "PENDENTE"
+    const temPendencia = linhasApontamento.some(linha => 
+        linha.tipo === 'servico' && (!linha.os || linha.os === 'PENDENTE')
+    );
+
+    if (temPendencia) {
+        // 2. Se tiver pendência, mostra o ALERTA DE DECISÃO
+        const conteudo = `
+            <div class="text-center p-2">
+                <div class="bg-yellow-100 text-yellow-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    ⚠️
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Apontamento Incompleto</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Existem serviços importados <strong>sem número de O.S.</strong> (Pendentes).
+                    <br>O relatório será gerado com aviso de pendência.
+                </p>
+                <div class="bg-blue-50 p-3 rounded text-left text-xs text-blue-800 mb-4 border border-blue-100">
+                    <strong>Recomendado:</strong> Vá ao Histórico, preencha os números das O.S. e volte aqui. A linha do tempo será atualizada automaticamente.
+                </div>
+            </div>
+        `;
+
+        const botoes = [
+            { 
+                texto: 'Ir para Histórico', 
+                classe: 'bg-blue-600 text-white hover:bg-blue-700 w-full mb-1 shadow-md', 
+                acao: () => { 
+                    fecharPopup(); 
+                    abrir('historico'); // Redireciona para a aba de correção
+                    showToast("Localize o serviço e insira o número da O.S.", "info", 4000);
+                }
+            },
+            { 
+                texto: 'Cancelar', 
+                classe: 'bg-gray-200 text-gray-700 hover:bg-gray-300 w-full mb-1', 
+                acao: fecharPopup 
+            },
+            { 
+                texto: 'Gerar sem O.S.', 
+                classe: 'bg-white border border-red-200 text-red-600 hover:bg-red-50 w-full text-xs', 
+                acao: () => {
+                    fecharPopup();
+                    executarRenderizacaoCanvas(); // Força a geração mesmo incompleto
+                }
+            }
+        ];
+
+        abrirPopup('Atenção Necessária', conteudo, botoes);
+    
+    } else {
+        // 3. Se estiver tudo OK (Sem pendências), gera direto
+        executarRenderizacaoCanvas();
+    }
+}
+
+// --- A FUNÇÃO DE DESENHO REAL (Antiga gerarPreviewApontamento renomeada) ---
+// --- A FUNÇÃO DE DESENHO REAL (Gera a Imagem) ---
+async function executarRenderizacaoCanvas() {
     const canvas = document.getElementById('canvasApontamento');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -3922,23 +3952,21 @@ async function gerarPreviewApontamento() {
 
         const numOS = linha.os || '';
         const frota = linha.frota || '';
-        
-        // Pega apenas o código (Ex: "P030")
         const codAtiv = linha.atividade ? linha.atividade.split(' - ')[0] : ''; 
-        
         const sist = linha.sistema || '';
         const sub = linha.subsistema ? linha.subsistema.split(' - ')[0] : '';
 
         // --- DESENHO DAS COLUNAS ---
         
-        // 1. O.S.
-        ctx.fillText(numOS, x.os, y); 
+        // 1. O.S. (LÓGICA AJUSTADA)
+        // Se for "PENDENTE" ou vazio, NÃO imprime nada (deixa em branco).
+        // Se tiver um número real, imprime.
+        if (numOS && numOS !== 'PENDENTE') {
+            ctx.fillText(numOS, x.os, y); 
+        }
 
         // 2. Frota
         ctx.fillText(frota, x.frota, y);
-
-        // 3. Nº Operação (Vazio)
-        // ctx.fillText(codAtiv, x.operacao, y); 
         
         // 4. Atividade (Código Curto)
         ctx.fillText(codAtiv, x.atividade, y);
@@ -3950,13 +3978,10 @@ async function gerarPreviewApontamento() {
         // 6. Horários
         ctx.fillText(linha.inicio, x.inicio, y);
         ctx.fillText(linha.fim, x.fim, y);
-        
-        // 7. Localização (Vazio)
-        // ctx.fillText(localPadrao, x.local, y);
     });
 
     showToast("Preview gerado com sucesso!", "success");
-    marcarComoAtualizado(); // O botão volta a ficar azul
+    marcarComoAtualizado(); 
 }
 
 function baixarApontamento(tipo) {
@@ -4744,6 +4769,8 @@ async function finalizarOS(id) {
             item.osNumero = osNumero;
             item.atualizadoEm = new Date().toISOString();
             await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
+            // [NOVO] CHAMA A PROPAGAÇÃO RETROATIVA
+            propagarAtualizacaoOSParaTimeline(item, osNumero);
         }
         showToast('O.S. Finalizada!', 'success');
         await mostrarHistorico();
@@ -4794,6 +4821,11 @@ async function confirmarEdicaoOS(id, btn) {
 
         // 2. Salva no IndexedDB (Local)
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
+
+        // [NOVO] CHAMA A PROPAGAÇÃO RETROATIVA
+        // Se numero for vazio (apagou), manda "PENDENTE" de volta pra timeline
+        const numeroParaTimeline = numero || "PENDENTE";
+        propagarAtualizacaoOSParaTimeline(item, numeroParaTimeline);
 
         // Feedback para o usuário
         const msg = numero ? "Nº O.S atualizado!" : "Nº removido. Status voltou para Pendente.";
@@ -4875,7 +4907,62 @@ function toggleBotoesHistorico(id) {
         if(hidden) box.style.display = 'grid'; else box.style.display = 'none';
     }
 }
+// --- FUNÇÃO DE INTELIGÊNCIA RETROATIVA ---
+// Atualiza o card na linha do tempo do passado quando o PCM envia a O.S. hoje
+// --- FUNÇÃO DE INTELIGÊNCIA RETROATIVA (Com Trava de Segurança) ---
+async function propagarAtualizacaoOSParaTimeline(itemHistorico, novoNumeroOS) {
+    if (!itemHistorico || !itemHistorico.dataOS) return;
 
+    console.log("🔄 Iniciando propagação retroativa de O.S...");
+
+    const frenteKey = (itemHistorico.frente || "GERAL").trim().toUpperCase();
+    const turnoKey = (itemHistorico.turno || "A").trim().toUpperCase();
+    const idCompostoAlvo = `${itemHistorico.dataOS}_${frenteKey}_${turnoKey}`;
+
+    try {
+        const registroDia = await dbExec('apontamentos_diarios', 'readwrite', s => s.get(idCompostoAlvo));
+
+        if (registroDia && registroDia.linhas) {
+            const linhaAlvo = registroDia.linhas.find(l => String(l.idOriginal) === String(itemHistorico.id));
+
+            if (linhaAlvo) {
+                // 1. Atualiza o banco de dados (Invisível)
+                linhaAlvo.os = novoNumeroOS;
+                
+                await dbExec('apontamentos_diarios', 'readwrite', s => s.put(registroDia));
+
+                firestore.collection('apontamentos_diarios_cloud').doc(idCompostoAlvo)
+                    .set(registroDia, { merge: true })
+                    .catch(e => console.warn("Fila offline timeline retroativa"));
+
+                // 2. ATUALIZAÇÃO VISUAL E TRAVA (O que o usuário vê)
+                const dataNaTela = document.getElementById('apontamentoData')?.value;
+                
+                // Se o usuário estiver olhando para este dia AGORA:
+                if (dataNaTela === itemHistorico.dataOS && linhasApontamento) {
+                    const linhaNaRAM = linhasApontamento.find(l => String(l.idOriginal) === String(itemHistorico.id));
+                    
+                    if (linhaNaRAM) {
+                        // Atualiza o número na memória RAM
+                        linhaNaRAM.os = novoNumeroOS;
+                        
+                        // Redesenha a lista HTML (para aparecer o número novo no card)
+                        renderizarListaLinhas();
+                        
+                        // --- AQUI ESTÁ A TRAVA QUE VOCÊ PEDIU ---
+                        // Força o botão a ficar amarelo e bloqueia o envio
+                        marcarComoDesatualizado(); 
+                        
+                        // Avisa o usuário que ele PRECISA atualizar o papel
+                        showToast("O.S. atualizada! Gere o preview novamente para validar.", "warning", 4000);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Erro na propagação retroativa:", e);
+    }
+}
 // ============================================================
 // SINCRONIZAÇÃO E MIGRAÇÃO (SINGLETONS)
 // ============================================================
