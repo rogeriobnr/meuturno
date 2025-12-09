@@ -1422,7 +1422,8 @@ function carregarEstado(dados) {
     if (forcar) executar(); 
     else debounceTimer = setTimeout(executar, 5000); 
 }
-        function salvarDadosParciaisTurno() { 
+
+ function salvarDadosParciaisTurno() { 
     validarCamposTurnoBasicos(); 
     
     // --- CORREÇÃO GENIUSES FIXER: Persistência Imediata ---
@@ -1441,7 +1442,7 @@ function carregarEstado(dados) {
         // =================================================================================
         // 5. RENDERIZAÇÃO E UI
         // =================================================================================
-        async function renderizarLayoutInicial() { 
+     async function renderizarLayoutInicial() { 
     try { 
         // 1. Carrega as listas (Fazendas/Frentes)
         await carregarFazendasDoCache();
@@ -3115,20 +3116,28 @@ function gerarIDComposto(data) {
     return id;
 }
 
-// Salva o estado atual na data selecionada
-// Salva o estado atual na data selecionada (Local + Nuvem)
-// Salva a linha do tempo (Permite forçar uma data específica)
+// CORREÇÃO GENIUSES FIXER: Salvamento Seguro com Validação de Contexto
 async function salvarLinhaDoTempoDoDia(dataForcada = null) {
-    // SE houver dataForcada (usada na troca), usa ela. 
-    // SENÃO, lê do input (usado no autosave enquanto digita).
     const dataAlvo = dataForcada || document.getElementById('apontamentoData')?.value;
 
-    // Se não tiver data nenhuma ou não tiver linhas, aborta
+    // 1. Validação Básica
     if (!dataAlvo || !linhasApontamento) return;
 
-    // Usa a dataAlvo correta para gerar o ID
+    // 2. Gera o ID base
     const idComposto = gerarIDComposto(dataAlvo);
     
+    // --- TRAVA DE SEGURANÇA CONTRA ID FANTASMA ---
+    const frenteUI = document.getElementById('frente')?.value;
+    
+    // Se o ID gerado for o padrão "GERAL", mas na tela o usuário selecionou outra coisa (ex: "MODULO 1"),
+    // SIGNIFICA QUE HOUVE ERRO DE LEITURA. ABORTAR SALVAMENTO PARA NÃO CORROMPER.
+    if (idComposto.includes("GERAL") && frenteUI && !frenteUI.includes("GERAL")) {
+        console.error("⛔ SALVAMENTO BLOQUEADO: Tentativa de salvar em 'GERAL' enquanto interface mostra: " + frenteUI);
+        // Opcional: Tentar regenerar o ID corretamente agora
+        return;
+    }
+    // ----------------------------------------------
+
     const registro = {
         id_composto: idComposto,
         data: dataAlvo,
@@ -3139,9 +3148,11 @@ async function salvarLinhaDoTempoDoDia(dataForcada = null) {
     };
 
     try {
-        // Salva Local
+        // Salva Local (Put sobrescreve/atualiza se a chave existir, evitando duplicidade técnica)
         await dbExec('apontamentos_diarios', 'readwrite', s => s.put(registro));
         
+        console.log(`✅ Timeline salva em: [${idComposto}]`);
+
         // Salva Nuvem (Fire and Forget)
         if (typeof firestore !== 'undefined') {
             firestore.collection('apontamentos_diarios_cloud').doc(idComposto)
@@ -3153,8 +3164,6 @@ async function salvarLinhaDoTempoDoDia(dataForcada = null) {
     }
 }
 
-
-// Carrega os dados de uma data específica
 // Carrega os dados de uma data específica (Local -> Nuvem -> Padrão)
 async function carregarLinhaDoTempoPorData(novaData) {
     if (!novaData) return;
@@ -5442,6 +5451,11 @@ async function limparRelatorio() {
                     <button onclick="iniciarLimpezaCatalogo()" class="flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2.5 px-4 rounded-lg font-bold text-sm transition-colors">
                         🗑️ Limpar Catálogo
                     </button>
+
+                    <button onclick="limparDadosFantasmas()" class="flex items-center justify-center gap-2 bg-white border border-yellow-300 text-yellow-700 hover:bg-yellow-50 py-2.5 px-4 rounded-lg font-bold text-sm transition-colors mt-2">
+    👻 Corrigir Conflitos (Limpar GERAL)
+</button>
+
                 </div>
             </div>
 
@@ -6018,6 +6032,50 @@ function mostrarTelaDeCarregamento() {
         }
     });
     
+    async function limparDadosFantasmas() {
+    console.log("👻 Iniciando Caça-Fantasmas de Dados...");
+    
+    try {
+        // 1. Abre todos os registros de apontamento
+        const todos = await dbExec('apontamentos_diarios', 'readonly', s => s.getAll());
+        
+        // 2. Filtra aqueles que têm "GERAL" no ID mas não deveriam estar lá
+        // (Assumindo que sua operação real nunca se chama "GERAL")
+        const fantasmas = todos.filter(item => item.id_composto && item.id_composto.includes('_GERAL_'));
+        
+        if (fantasmas.length === 0) {
+            showToast("Nenhum dado fantasma encontrado.", "success");
+            return;
+        }
+
+        const confirmado = await new Promise(resolve => 
+            abrirPopupConfirmar(
+                'Limpeza de Banco', 
+                `Encontrei <b>${fantasmas.length}</b> registros orfãos marcados como "GERAL".<br>Deseja apagá-los para evitar conflitos?`, 
+                resolve
+            )
+        );
+
+        if (confirmado) {
+            const tx = db.transaction('apontamentos_diarios', 'readwrite');
+            const store = tx.objectStore('apontamentos_diarios');
+            
+            fantasmas.forEach(item => {
+                store.delete(item.id_composto);
+                console.log(`🗑️ Apagado: ${item.id_composto}`);
+            });
+            
+            showToast("Limpeza concluída! Dados corrigidos.", "success");
+            
+            // Força recarregamento para garantir estado limpo
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    } catch (e) {
+        console.error("Erro na limpeza:", e);
+        showToast("Erro ao limpar dados.", "error");
+    }
+}
+
     
     </script>
     
