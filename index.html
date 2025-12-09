@@ -139,12 +139,12 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-<div id="app-loader" class="fixed inset-0 bg-blue-800 z-[99999] flex flex-col items-center justify-center transition-opacity duration-500">
+<div id="app-loader" style="z-index: 2147483647;" class="fixed inset-0 bg-blue-800 flex flex-col items-center justify-center transition-opacity duration-500">
     <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
     <h1 class="text-2xl font-bold text-white tracking-wider animate-pulse">MeuTurno</h1>
     <p class="text-blue-200 text-xs mt-2 font-mono">Carregando recursos...</p>
 </div>
+
 
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-20">
        
@@ -612,6 +612,7 @@ function concluirOnboarding() {
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let catalogoFrotas = [];
         let catalogoLocal = [];
+        let catalogoLoaderPromise = null; 
         let dataMemoriaApontamento = ''; 
         const DB_NAME = 'meuturnoDB', DB_VERSION = 28;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
@@ -1041,10 +1042,10 @@ async function limparHistoricoAntigoLocal() {
 
 // Configuração da Atualização
 const UPDATE_CONFIG = {
-    critico: true, // TRUE = Abre Modal / FALSE = Mostra Badge
+    critico: false, // TRUE = Abre Modal / FALSE = Mostra Badge
     novidades: [
-        "✨ Agora a busca de peças ignora acentos!",
-        "🚀 Melhoria na velocidade de abertura",
+        "✨  Correção de erros realizadas!",
+        "🚀 Melhorias prontas para serem instaladas! ",
 
         
         
@@ -1055,60 +1056,52 @@ const UPDATE_CONFIG = {
 
 let newWorker = null; // Variável global para segurar o SW novo
 
+// Variável de controle para evitar Loop de Reload
+let refreshing = false;
+
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js').then(reg => {
             
-            // Força o navegador a verificar se o arquivo mudou no servidor
-            reg.update();
+            // 1. Monitora atualizações enquanto o app está aberto
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                newWorker.addEventListener('statechange', () => {
+                    // Só avisa se o SW estiver INSTALADO e esperando
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        tratarNovaVersaoEncontrada(newWorker);
+                    }
+                });
+            });
 
-            // CASO 1: SW já baixado e esperando (acontece se recarregar a página)
+            // 2. Verifica se JÁ existe um SW esperando (acontece se o usuário fechou e abriu o app)
             if (reg.waiting) {
-                console.log("🚨 SW em espera encontrado!");
                 tratarNovaVersaoEncontrada(reg.waiting);
-                return;
             }
 
-            // CASO 2: Nova atualização encontrada agora
-            reg.onupdatefound = () => {
-                const worker = reg.installing;
-                worker.onstatechange = () => {
-                    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log("✅ Nova versão baixada e pronta!");
-                        tratarNovaVersaoEncontrada(worker);
-                    }
-                };
-            };
         }).catch(err => console.error("Erro SW:", err));
 
-        // Recarrega a página quando o novo SW assumir
-        let refreshing = false;
+        // 3. O EVENTO DE RECARGA SEGURO
+        // Só recarrega se a variável 'refreshing' for false
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (!refreshing) {
-                window.location.reload();
                 refreshing = true;
+                window.location.reload();
             }
         });
     }
 }
 
 function tratarNovaVersaoEncontrada(worker) {
-    newWorker = worker;
+    // Salva o worker globalmente para usar no botão do modal
+    window.newWorker = worker;
     console.log("🎁 Exibindo aviso de atualização para o usuário.");
-
-    // Se estiver configurado como CRÍTICO, abre o modal na hora
-    if (UPDATE_CONFIG.critico) {
-        // Verifica se o modal existe antes de tentar abrir
-        if (typeof abrirModalUpdate === 'function') {
-            abrirModalUpdate();
-        } else {
-            // Fallback se o modal ainda não carregou (raro)
-            if(confirm("Nova versão crítica disponível. Atualizar agora?")) {
-                worker.postMessage({ action: 'skipWaiting' });
-            }
-        }
+    // Se for CRÍTICO, não force o reload. Force o MODAL.
+    // Isso impede o loop, pois exige um clique humano.
+    if (typeof UPDATE_CONFIG !== 'undefined' && UPDATE_CONFIG.critico) {
+        abrirModalUpdate(); // O modal bloqueia a tela, mas não recarrega sozinho
     } else {
-        mostrarNotificacaoUpdate();
+        mostrarNotificacaoUpdate(); // Mostra o "presentinho" no topo
     }
 }
 
@@ -1124,18 +1117,24 @@ function mostrarNotificacaoUpdate() {
 // --- Função Principal: Abre o Modal e Gerencia a Atualização "Nuclear" ---
 // --- Função Principal: Abre o Modal e Gerencia a Atualização "Nuclear" ---
 function abrirModalUpdate() {
+    // LOG DE ENTRADA: Fundo verde para destacar o início do processo
+    console.log('%c 🚀 [UI UPDATE] Iniciando abertura do Modal... ', 'background: #22c55e; color: white; font-weight: bold; padding: 2px 5px; border-radius: 3px;');
+
     const modal = document.getElementById('modalUpdate');
     const backdrop = document.getElementById('modalUpdateBackdrop');
     const windowEl = document.getElementById('modalUpdateWindow');
     const lista = document.getElementById('listaNovidades');
     const btnConfirmar = document.getElementById('btnUpdateConfirm');
     
-    // Botões e Textos
+    // Elementos de UI
     const btnCancelar = modal.querySelector('button[onclick="fecharModalUpdate()"]'); 
     const tituloModal = modal.querySelector('h3');
     const textoModal = modal.querySelector('.bg-gradient-to-r p');
 
-    if (!modal) return;
+    if (!modal) {
+        console.error('%c ❌ [UI UPDATE] Erro: Elemento #modalUpdate não encontrado no HTML! ', 'background: #ef4444; color: white; font-weight: bold;');
+        return;
+    }
 
     // 1. Preenche a lista de Novidades
     if (lista && typeof UPDATE_CONFIG !== 'undefined' && UPDATE_CONFIG.novidades) {
@@ -1144,58 +1143,50 @@ function abrirModalUpdate() {
         ).join('');
     }
 
-    // 2. Configura Modo Crítico vs Normal
+    // 2. Configura Modo Crítico vs Normal com LOGS
     if (typeof UPDATE_CONFIG !== 'undefined' && UPDATE_CONFIG.critico) {
-        if (btnCancelar) btnCancelar.style.display = 'none'; // Esconde "Agora não"
+        console.log('%c ⚠️ [UI UPDATE] Modo CRÍTICO detectado: Cancelamento bloqueado. ', 'color: #f59e0b; font-weight: bold;');
+        
+        if (btnCancelar) btnCancelar.style.display = 'none'; // Esconde opção de cancelar
         backdrop.onclick = null; // Bloqueia clique fora
         if(tituloModal) tituloModal.innerText = "Atualização Obrigatória";
         if(textoModal) textoModal.innerText = "Melhorias críticas necessárias para continuar.";
     } else {
+        console.log('%c ℹ️ [UI UPDATE] Modo Opcional: Usuário pode cancelar. ', 'color: #3b82f6;');
+        
         if (btnCancelar) btnCancelar.style.display = 'block';
         backdrop.onclick = () => fecharModalUpdate();
         if(tituloModal) tituloModal.innerText = "Nova Versão Disponível!";
         if(textoModal) textoModal.innerText = "Melhorias e correções prontas para você.";
     }
 
-    // 3. AÇÃO DO BOTÃO "ATUALIZAR AGORA" (Com Show do Foguete de 4s)
-    btnConfirmar.onclick = async () => {
-        // A. Ativa a Cortina Visual imediatamente
+    // 3. AÇÃO DO BOTÃO "ATUALIZAR AGORA"
+    btnConfirmar.onclick = () => {
+        console.log('%c 👆 [UI UPDATE] Usuário clicou em "Atualizar Agora". ', 'background: #3b82f6; color: white; font-weight: bold;');
+
+        // A. Ativa a Cortina Visual (Loading)
         mostrarTelaDeCarregamento();
         
-        try {
-            console.log("🔄 Iniciando protocolo de atualização...");
-
-            // PASSO 1: Manda o SW novo assumir (se existir)
-            if (typeof newWorker !== 'undefined' && newWorker) {
-                newWorker.postMessage({ action: 'skipWaiting' });
-            }
-
-            // PASSO 2: Mata o Service Worker antigo
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (const registration of registrations) {
-                    await registration.unregister();
-                }
-            }
-
-            // PASSO 3: Limpeza Nuclear do Cache
-            if ('caches' in window) {
-                const keys = await caches.keys();
-                await Promise.all(keys.map(key => caches.delete(key)));
-                console.log("🧹 Cache apagado.");
-            }
-
-        } catch (e) {
-            console.error("Erro durante a limpeza:", e);
+        
+             // --- AQUI VOCÊ CONTROLA O TEMPO (O "SHOW DO FOGUETE") ---
+     // 3000 = 3 segundos de espera antes de realmente atualizar
+     setTimeout(() => {
+        // B. Envia o sinal para o Service Worker
+        // Verifica se temos o worker salvo na variável global window.newWorker
+        if (window.newWorker) {
+            console.log('%c 📡 [UI UPDATE] Worker encontrado. Enviando mensagem "skipWaiting"... ', 'color: #8b5cf6; font-weight: bold;');
+            
+            // Isso dispara o 'message' no SW.
+            window.newWorker.postMessage({ action: 'skipWaiting' });
+        } else {
+            console.warn('%c ⚠️ [UI UPDATE] window.newWorker está indefinido. Forçando reload manual como fallback. ', 'background: #f97316; color: white;');
+            
+            // Fallback de segurança
+            window.location.reload();
         }
-
-        // --- PASSO EXTRA: O SHOW DO FOGUETE 🚀 (4 Segundos) ---
-        // O código pausa aqui propositalmente para o usuário ver a animação
-        await new Promise(resolve => setTimeout(resolve, 4000));
-
-        // PASSO 4: Recarrega a página do zero
-        window.location.reload(true);
-    };
+     }, 3000); // <--- ALTERE ESTE NÚMERO (em milissegundos)
+  };
+    
 
     // 4. Exibe o Modal com Animação
     modal.classList.remove('hidden');
@@ -1203,13 +1194,15 @@ function abrirModalUpdate() {
     // Esconde o badge flutuante para focar no modal
     document.getElementById('btnUpdateBadge')?.classList.add('hidden');
 
-    // Animação de entrada
+    // Animação de entrada suave
     setTimeout(() => {
         backdrop.classList.remove('opacity-0');
         windowEl.classList.remove('opacity-0', 'scale-90');
         windowEl.classList.add('scale-100');
+        console.log('%c ✅ [UI UPDATE] Modal visível na tela. ', 'color: #22c55e;');
     }, 10);
 }
+
 
 
 function fecharModalUpdate() {
@@ -1361,31 +1354,46 @@ async function dbExec(storeName, mode, operation) { try { await initDB(); return
  * NOVA FUNÇÃO: Carrega o catálogo pesado em segundo plano
  * Só executa DEPOIS que o app já abriu e o usuário já pode clicar.
  */
+/**
+ * Inicia o carregamento e guarda a referência da promessa.
+ * Não bloqueia a thread principal imediatamente.
+ */
 function carregarCatalogoBackground() {
-    // Aguarda 2.5 segundos para garantir que todas as animações de entrada terminaram
-    setTimeout(async () => {
-        try {
-            console.log("🚀 Lazy Load: Iniciando carregamento do Catálogo em background...");
-            
-            // Verifica se o DB está aberto
-            if (!db) await initDB();
-            
-            const inicio = performance.now();
-            const itens = await dbExec('catalogo', 'readonly', s => s.getAll());
-            
-            if (itens && itens.length > 0) {
-                catalogoLocal = itens;
-                const fim = performance.now();
-                console.log(`✅ Catálogo carregado: ${itens.length} itens em ${((fim - inicio)/1000).toFixed(2)}s`);
-            } else {
-                console.log("ℹ️ Catálogo local vazio. O sync baixará do Firebase depois.");
+    // Se já estiver carregando, retorna a promessa existente (Singleton)
+    if (catalogoLoaderPromise) return catalogoLoaderPromise;
+
+    catalogoLoaderPromise = new Promise((resolve, reject) => {
+        // requestIdleCallback tenta rodar quando o navegador estiver "tranquilo"
+        const agendar = window.requestIdleCallback || (cb => setTimeout(cb, 100));
+
+        agendar(async () => {
+            try {
+                console.log("🚀 Lazy Load: Iniciando busca do Catálogo no DB...");
+                
+                // Verifica DB
+                if (!db) await initDB();
+                
+                const inicio = performance.now();
+                const itens = await dbExec('catalogo', 'readonly', s => s.getAll());
+                
+                if (itens && itens.length > 0) {
+                    catalogoLocal = itens;
+                    const fim = performance.now();
+                    console.log(`✅ Catálogo pronto: ${itens.length} itens em ${((fim - inicio)/1000).toFixed(2)}s`);
+                } else {
+                    console.log("ℹ️ Catálogo local vazio. Aguardando sync.");
+                    catalogoLocal = [];
+                }
+                resolve(catalogoLocal);
+            } catch (e) {
+                console.warn("⚠️ Falha no Lazy Load:", e);
                 catalogoLocal = [];
+                resolve([]); // Resolve vazio para não travar a UI
             }
-        } catch (e) {
-            console.warn("⚠️ Lazy Load falhou (não crítico, o sync corrigirá):", e);
-            catalogoLocal = [];
-        }
-    }, 2500);
+        });
+    });
+
+    return catalogoLoaderPromise;
 }
 
 /**
@@ -1461,14 +1469,35 @@ async function main() {
         // 2. SERVICE WORKER (Cache de Arquivos)
         registrarServiceWorker();
         
-        // 3. BANCO DE DADOS (IndexedDB)
-        // Timeout de segurança: Se o DB não abrir em 4s, prossegue para não travar
-        const dbPromise = initDB();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout DB")), 4000));
-        
-        await Promise.race([dbPromise, timeoutPromise])
-            .catch(err => console.warn("⚠️ DB demorou, iniciando interface com dados vazios...", err));
-        
+// Nova lógica para o main()
+// 3. BANCO DE DADOS (IndexedDB) com Retry Visual
+let dbCarregado = false;
+
+// Tenta carregar, mas mostra aviso se demorar
+const promessaDB = initDB().then(() => {
+    dbCarregado = true;
+    return carregarDadosIniciais();
+});
+
+// Apenas para feedback visual, não cancela o load!
+const avisoLentidao = new Promise(resolve => setTimeout(resolve, 4000)).then(() => {
+    if (!dbCarregado) {
+        // Altera o texto do loader para acalmar o usuário
+        const msg = document.querySelector('#app-loader p');
+        if(msg) msg.innerText = "O banco de dados está sendo otimizado. Aguarde...";
+    }
+});
+
+// Espera o DB de verdade, independente do tempo
+try {
+    await Promise.all([promessaDB, avisoLentidao]);
+} catch (err) {
+    console.error("Falha fatal no DB:", err);
+    alert("Erro ao acessar armazenamento. O app pode não funcionar offline.");
+    // Só aqui iniciamos vazio como último recurso
+    inicializarEstadoVazio();
+}
+
         // 4. SINCRONIZAÇÃO EM BACKGROUND (Listeners)
         // Não usamos await aqui propositalmente para não bloquear
         sincronizarCatalogoFrotas();
@@ -1515,10 +1544,10 @@ async function main() {
             setTimeout(() => loader.remove(), 400);
         }
         
-        // 10. CARREGAMENTO PESADO EM BACKGROUND (O SEGREDO DA PERFORMANCE)
-        // Só chama isso depois que o loader sumiu
+// 10. CARREGAMENTO PESADO EM BACKGROUND
+// Dispara e esquece (não usa await). A variável catalogoLoaderPromise guardará o estado.
         carregarCatalogoBackground();
-    }
+        }
 }
 
 // Inicia a aplicação quando o DOM estiver pronto
@@ -5719,55 +5748,75 @@ let virtualDadosFiltrados = [];
 let virtualScrollIniciado = false;
 
 async function renderizarSecaoCatalogo(container) {
-// 1. Verificação de Dados
-if (!catalogoLocal || catalogoLocal.length === 0) {
-try {
-console.log("Tentando carregar catálogo do disco...");
-catalogoLocal = await dbExec('catalogo', 'readonly', s => s.getAll()) || [];
-} catch (e) {
-console.warn("Erro ao ler catálogo:", e);
-catalogoLocal = [];
-}
-}
+    // 1. Renderiza a ESTRUTURA BÁSICA primeiro (Skeleton Screen)
+    // Isso garante que o usuário veja a tela e o título imediatamente, mesmo carregando.
+    container.innerHTML = `
+    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[80vh]">
+        <div class="flex items-center gap-3 pb-3 border-b border-gray-100 mb-2 shrink-0">
+             <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
+                📦
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
+                <p class="text-xs text-gray-500">Gerenciamento de Itens</p>
+            </div>
+        </div>
+        
+        <div id="containerListaCatalogo" class="flex-1 relative bg-gray-50 w-full rounded-lg flex items-center justify-center">
+            <div class="text-center animate-pulse">
+                <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p class="text-gray-500 font-bold text-sm">Carregando milhares de itens...</p>
+                <p class="text-xs text-gray-400">Isso acontece apenas uma vez.</p>
+            </div>
+        </div>
+    </div>`;
 
-// 2. Renderização da Estrutura (COM ESTILO INLINE OBRIGATÓRIO)
-// A classe 'h-[80vh]' foi trocada por style="height: 80vh" para garantir que funcione.
-container.innerHTML = `
-<div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col" style="height: 80vh; min-height: 500px;">
-    
-    <div class="flex items-center gap-3 pb-3 border-b border-gray-100 mb-2 shrink-0">
-        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-        </div>
-        <div>
-            <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
-            <p class="text-xs text-gray-500">
-                Total: <span id="totalItensBadge">${catalogoLocal.length}</span> itens
-            </p>
-        </div>
-    </div>
-    
-    <div class="relative shrink-0 mb-3">
-        <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" placeholder="Buscar SAP, PN ou Descrição..." class="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-gray-50 text-sm transition-shadow">
-        <div class="absolute left-3 top-3.5 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-        </div>
-    </div>
-    
-    <div id="listaCatalogo" class="flex-1 border border-gray-200 rounded-lg relative bg-gray-50 w-full" style="overflow-y: auto;">
-        <div class="flex flex-col items-center justify-center h-full text-gray-400">
-            <p>Carregando lista...</p>
-        </div>
-    </div>
-</div>`;
+    try {
+        // 2. AWAIT INTELIGENTE
+        // Se catalogoLocal estiver vazio, esperamos a promessa do background terminar.
+        if (catalogoLocal.length === 0) {
+            // Se por algum motivo a promessa não foi iniciada (segurança), inicia agora
+            if (!catalogoLoaderPromise) carregarCatalogoBackground();
+            
+            // AQUI O APP ESPERA SEM TRAVAR A UI (pois já desenhamos o loading acima)
+            await catalogoLoaderPromise;
+        }
 
-// 3. Força a renderização com delay de segurança
-virtualScrollIniciado = false;
-setTimeout(() => renderizarCatalogo(), 100);
+        // 3. Se chegou aqui, os dados estão na memória. Agora desenhamos a lista real.
+        // Recria o HTML completo com a busca e o Scroller
+        // (Reutilizando sua lógica original de HTML)
+        container.innerHTML = `
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col" style="height: 80vh;">
+            <div class="flex items-center gap-3 pb-3 border-b border-gray-100 mb-2 shrink-0">
+                <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Catálogo de Peças</h2>
+                    <p class="text-xs text-gray-500">Total: <span id="totalItensBadge">${catalogoLocal.length}</span> itens</p>
+                </div>
+            </div>
+            
+            <div class="relative shrink-0 mb-3">
+                <input type="text" id="buscaCatalogo" oninput="renderizarCatalogo()" placeholder="Buscar SAP, PN ou Descrição..." class="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-gray-50 text-sm transition-shadow">
+                <div class="absolute left-3 top-3.5 text-gray-400">🔍</div>
+            </div>
+            
+            <div id="listaCatalogo" class="flex-1 border border-gray-200 rounded-lg relative bg-gray-50 w-full" style="overflow-y: auto;">
+                <div id="virtualSpacer"></div>
+            </div>
+        </div>`;
+
+        // Inicia o Virtual Scroller
+        virtualScrollIniciado = false; // Reset necessário
+        renderizarCatalogo();
+
+    } catch (error) {
+        console.error("Erro ao renderizar catálogo:", error);
+        container.innerHTML = `<div class="p-8 text-center text-red-500">Erro ao carregar dados. Tente recarregar a página.</div>`;
+    }
 }
 
 function renderizarCatalogo() {
@@ -6135,33 +6184,88 @@ function sincronizarCatalogoFrotas() {
         tratarErroOffline(error, 'Frotas');
     });
 }
-    // Script de Diagnóstico Rápido de Arquivos
-    const arquivosCriticos = [
-    './libs/tailwind.css',
-    './libs/jspdf.js',
-    './libs/firebase-app.js',
-    './libs/firebase-firestore.js',
-    './libs/xlsx.js',
-    './libs/chart.js'
-    ];
-    
-    arquivosCriticos.forEach(url => {
-    fetch(url, { method: 'HEAD' })
-    .then(res => {
-    if (!res.ok) console.error(`❌ ARQUIVO FALTANDO: ${url} (Erro ${res.status})`);
-    else console.log(`✅ Arquivo OK: ${url}`);
-    })
-    .catch(err => console.error(`❌ Erro ao buscar ${url}:`, err));
-    });
+    // =================================================================================
+// 9. DIAGNÓSTICO DE INTEGRIDADE (Smart Check v2)
+// =================================================================================
+// Verifica se as bibliotecas carregaram na MEMÓRIA, sem gastar rede.
+
+window.addEventListener('load', () => {
+    // Pequeno delay para garantir que scripts 'defer' terminaram de executar
+    setTimeout(() => {
+        console.log("🩺 Guardian: Verificando integridade das bibliotecas...");
+
+        const dependencias = [
+            { 
+                arquivo: 'firebase-app.js', 
+                nomeGlobal: 'firebase', 
+                teste: () => typeof firebase !== 'undefined' 
+            },
+            { 
+                arquivo: 'chart.js', 
+                nomeGlobal: 'Chart', 
+                teste: () => typeof Chart !== 'undefined' 
+            },
+            { 
+                arquivo: 'jspdf.js', 
+                nomeGlobal: 'jspdf', 
+                teste: () => typeof window.jspdf !== 'undefined' 
+            },
+            { 
+                arquivo: 'xlsx.js', 
+                nomeGlobal: 'XLSX', 
+                teste: () => typeof XLSX !== 'undefined' 
+            }
+        ];
+
+        let erros = 0;
+
+        dependencias.forEach(dep => {
+            if (dep.teste()) {
+                console.log(`✅ Biblioteca OK: ${dep.arquivo}`);
+            } else {
+                console.error(`❌ FALHA CRÍTICA: ${dep.arquivo} não carregou! Variável '${dep.nomeGlobal}' não encontrada.`);
+                erros++;
+            }
+        });
+
+        // Verificação Visual do CSS (Tailwind)
+        // Cria um elemento invisível e testa se uma classe do Tailwind aplicou estilo
+        const testDiv = document.createElement('div');
+        testDiv.className = 'hidden'; // Classe do tailwind
+        document.body.appendChild(testDiv);
+        const estilo = window.getComputedStyle(testDiv);
+        
+        if (estilo.display === 'none') {
+            console.log(`✅ CSS OK: tailwind.css`);
+        } else {
+            console.warn(`⚠️ ALERTA: tailwind.css parece não ter carregado.`);
+        }
+        testDiv.remove();
+
+        if (erros === 0) {
+            console.log("🛡️ Sistema íntegro. Todas as dependências ativas.");
+        } else {
+            showToast(`⚠️ ${erros} bibliotecas falharam. Verifique o console.`, "error");
+        }
+
+    }, 1000); // Espera 1 segundo após o load completo da página
+});
+
 
 // --- Função Visual: Cortina de Atualização ---
 // --- Função Visual: Cortina de Atualização (Bloqueia a tela enquanto limpa o cache) ---
-// --- Função Visual: Cortina de Atualização (Bloqueia a tela enquanto limpa o cache) ---
+
 function mostrarTelaDeCarregamento() {
-    // Cria o elemento overlay dinamicamente
+    // Cria o elemento overlay
     const overlay = document.createElement('div');
-    // Z-Index 10005 garante que fique em cima de tudo (até do modal de update)
-    overlay.className = "fixed inset-0 bg-blue-900 z-[10005] flex flex-col items-center justify-center transition-opacity duration-300";
+    
+    // --- A CORREÇÃO NUCLEAR ---
+    // Injetamos o z-index máximo via JS direto.
+    // Isso tem prioridade sobre qualquer classe CSS.
+    overlay.style.zIndex = "2147483647"; 
+    
+    // Removemos a classe z-[...] que não funcionava
+    overlay.className = "fixed inset-0 bg-blue-900 flex flex-col items-center justify-center transition-opacity duration-300";
     
     overlay.innerHTML = `
         <div class="relative">
@@ -6182,6 +6286,7 @@ function mostrarTelaDeCarregamento() {
     
     document.body.appendChild(overlay);
 }
+
 
     window.addEventListener('load', () => {
         // Verifica se o objeto 'firebase' existe na memória
