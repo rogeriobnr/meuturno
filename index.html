@@ -613,7 +613,7 @@ function concluirOnboarding() {
         let catalogoFrotas = [];
         let catalogoLocal = [];
         let dataMemoriaApontamento = ''; 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 26;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 28;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -1422,43 +1422,84 @@ function carregarEstado(dados) {
     if (forcar) executar(); 
     else debounceTimer = setTimeout(executar, 5000); 
 }
-        function salvarDadosParciaisTurno() { validarCamposTurnoBasicos(); salvarTudo(); }
+        function salvarDadosParciaisTurno() { 
+    validarCamposTurnoBasicos(); 
+    
+    // --- CORREÇÃO GENIUSES FIXER: Persistência Imediata ---
+    const fazendaVal = document.getElementById("fazenda").value;
+    const frenteVal = document.getElementById("frente").value;
+    const turnoVal = document.getElementById("turnoLetra").value;
+
+    if(fazendaVal) localStorage.setItem('ctx_fazenda', fazendaVal);
+    if(frenteVal) localStorage.setItem('ctx_frente', frenteVal);
+    if(turnoVal) localStorage.setItem('ctx_turno', turnoVal);
+    // ------------------------------------------------------
+
+    salvarTudo(); 
+}
 
         // =================================================================================
         // 5. RENDERIZAÇÃO E UI
         // =================================================================================
-                async function renderizarLayoutInicial() { 
-            try { 
-                // 1. Carrega as listas do cache local primeiro (Offline-first)
-                await carregarFazendasDoCache();
-                await carregarFrentesDoCache();
+        async function renderizarLayoutInicial() { 
+    try { 
+        // 1. Carrega as listas (Fazendas/Frentes)
+        await carregarFazendasDoCache();
+        await carregarFrentesDoCache();
 
-                // 2. Carrega os dados salvos do turno atual
-                const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
-                
-                document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
-                
-                // 3. Define os valores nos selects de FAZENDA
-                if (d.fazenda) {
-                    const el = document.getElementById("fazenda");
-                    el.value = d.fazenda;
-                    if (!el.value) el.setAttribute('data-temp-value', d.fazenda);
-                }
+        // --- CORREÇÃO GENIUSES FIXER: Recuperação Híbrida ---
+        // Recupera valores salvos no localStorage (rápido) e no IndexedDB (lento/persistente)
+        const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
+        
+        const savedFazenda = localStorage.getItem('ctx_fazenda');
+        const savedFrente = localStorage.getItem('ctx_frente');
+        const savedTurno = localStorage.getItem('ctx_turno');
 
-                // 4. Define os valores nos selects de FRENTE
-                if (d.frente) {
-                    const el = document.getElementById("frente");
-                    el.value = d.frente;
-                    if (!el.value) el.setAttribute('data-temp-value', d.frente);
-                }
+        // Prioridade: 1. Dados do Banco (se existirem) -> 2. LocalStorage -> 3. Vazio
+        const valFazenda = d.fazenda || savedFazenda || "";
+        const valFrente = d.frente || savedFrente || "";
+        const valTurno = d.turno || savedTurno || "";
 
-                // 5. Define o Turno (Agora respeita o vazio se não houver dado salvo)
-                document.getElementById("turnoLetra").value = d.turno || ""; 
-
-            } catch (e) { 
-                console.error("Erro render inicial", e); 
-            } 
+        // 2. Preenche Data
+        document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
+        
+        // 3. Define Fazenda com fallback inteligente
+        const elFazenda = document.getElementById("fazenda");
+        if (elFazenda) {
+            elFazenda.value = valFazenda;
+            // Se o valor não existir na lista (ex: lista não carregou), salva no atributo temporário
+            if (!elFazenda.value && valFazenda) {
+                // Cria opção temporária visualmente para não ficar em branco
+                const opt = document.createElement('option');
+                opt.value = valFazenda;
+                opt.text = valFazenda;
+                elFazenda.appendChild(opt);
+                elFazenda.value = valFazenda;
+            }
         }
+
+        // 4. Define Frente com fallback inteligente
+        const elFrente = document.getElementById("frente");
+        if (elFrente) {
+            elFrente.value = valFrente;
+            if (!elFrente.value && valFrente) {
+                const opt = document.createElement('option');
+                opt.value = valFrente;
+                opt.text = valFrente;
+                elFrente.appendChild(opt);
+                elFrente.value = valFrente;
+            }
+        }
+
+        // 5. Define Turno
+        if(document.getElementById("turnoLetra")) {
+            document.getElementById("turnoLetra").value = valTurno; 
+        }
+
+    } catch (e) { 
+        console.error("Erro render inicial", e); 
+    } 
+}
 
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
@@ -3050,27 +3091,29 @@ const COORD_FORM = {
 
 // Gera ID único: DATA + FRENTE + TURNO (Ex: 2024-12-07_MODULO1_TURNOA)
 function gerarIDComposto(data) {
-    // 1. Pega os valores com segurança
+    // 1. Tenta pegar do DOM (Tela)
     let frente = document.getElementById('frente')?.value || '';
     let turno = document.getElementById('turnoLetra')?.value || '';
+
+    // --- CORREÇÃO GENIUSES FIXER: Fallback para LocalStorage ---
+    // Se o DOM estiver vazio (reload), tenta pegar do cache instantâneo
+    if (!frente) frente = localStorage.getItem('ctx_frente') || '';
+    if (!turno) turno = localStorage.getItem('ctx_turno') || '';
+    // -----------------------------------------------------------
     
-    // 2. Limpeza rigorosa (Trim + Uppercase)
+    // 2. Limpeza rigorosa
     frente = frente.trim().toUpperCase();
     turno = turno.trim().toUpperCase();
     
-    // 3. Fallback de segurança (se estiver vazio, usa padrão para não quebrar)
+    // 3. Fallback final de segurança (Padrão do Sistema)
     if (!frente) frente = "GERAL";
     if (!turno) turno = "A";
     
-    // 4. Gera o ID (Ex: 2024-12-07_MODULO1_TURNOA)
     const id = `${data}_${frente}_${turno}`;
-    
-    // Debug: Mostra no console qual ID está sendo gerado
     console.log(`🔑 ID Gerado: [${id}]`);
     
     return id;
 }
-
 
 // Salva o estado atual na data selecionada
 // Salva o estado atual na data selecionada (Local + Nuvem)
