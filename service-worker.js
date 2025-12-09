@@ -2,26 +2,25 @@
 
 // 1. VERSÃO ATUALIZADA
 // Subi para v40 para garantir que todos recebam essa nova lógica de rede
-const CACHE_NAME = 'meuturno-cache-v49';
+const CACHE_NAME = 'meuturno-cache-v50';
 
 // Tempo limite para esperar pela rede antes de desistir (em milissegundos)
 const NETWORK_TIMEOUT_MS = 3000;
 
 const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './logo.png',
-  './icon-192.png', 
-  './icon-512.png',
-  './fundo_apontamento.jpg',
-  // Bibliotecas Locais
-  './libs/tailwind.css',
-  './libs/jspdf.js',
-  './libs/firebase-app.js',
-  './libs/firebase-firestore.js',
-  './libs/xlsx.js',
-  './libs/chart.js'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/logo.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/fundo_apontamento.jpg',
+  '/libs/tailwind.css',
+  '/libs/jspdf.js',
+  '/libs/firebase-app.js',
+  '/libs/firebase-firestore.js',
+  '/libs/xlsx.js',
+  '/libs/chart.js'
 ];
 
 // -----------------------------------------------------------
