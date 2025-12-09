@@ -768,6 +768,7 @@ const Sincronizador = {
 // INICIE ISSO NO SEU MAIN:
 // Sincronizador.init();
 
+
 /**
  * MÓDULO GUARDIAN - Sistema de Proteção e Integridade do App
  * Versão: 2.0 (Com Auto-Reparo de Contexto)
@@ -4574,6 +4575,7 @@ async function salvarOSnoHistorico(serviceId) {
     }
 }
 
+
 // Funções auxiliares para preservar o estado do Popup
 function chamarAddFazendaContexto() {
     // 1. Salva o estado atual do popup
@@ -4783,104 +4785,104 @@ async function mostrarHistorico() {
                 </div>
                 
                 <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
-                    ${itensDoDia.map(s => {
-                        // --- INÍCIO DA LÓGICA (ANTES DO RETURN) ---
-                        const isFinalizada = s.status === 'finalizada';
-                        const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
-                        const safeId = s.uniqueId || s.id;
+                  ${itensDoDia.map(s => {
+    const isFinalizada = s.status === 'finalizada';
+    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
+    const safeId = s.uniqueId || s.id;
 
-                        // LÓGICA DO ÍCONE DE SINCRONIZAÇÃO
-                        // Se for pendente OU indefinido (item antigo ou recém criado), assume pendente
-                        let iconSync = '';
-                        if (s._syncStatus === 'pendente' || typeof s._syncStatus === 'undefined') {
-                            iconSync = `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse" title="Aguardando envio">⏳ Enviando</span>`;
-                        } else {
-                            iconSync = `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded" title="Salvo na nuvem">☁️ Salvo</span>`;
-                        }
+    // --- 1. AQUI ENTRA A LÓGICA DO ÍCONE ---
+    // Se o status for pendente OU indefinido (mas novo), mostra pendente.
+    // Se for undefined em item antigo, assume OK.
+    const iconSync = s._syncStatus === 'pendente' 
+        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse" title="Aguardando envio">⏳ Pendente</span>` 
+        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded" title="Salvo na nuvem">☁️ Salvo</span>`;
+    // ---------------------------------------
 
-                        const infoTecnica = [
-                            (s.atividade || "N/A").split(' - ')[0],
-                            s.sistema || "?",
-                            (s.subsistema || "?").split(' - ')[0]
-                        ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
-                        // --- FIM DA LÓGICA ---
+    const infoTecnica = [
+        (s.atividade || "N/A").split(' - ')[0],
+        s.sistema || "?",
+        (s.subsistema || "?").split(' - ')[0]
+    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
 
-                        return `
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
-                            
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
-                                        ${safeText(s.frota)}
-                                    </span>
-                                    <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
-                                        ${infoTecnica}
-                                    </div>
-                                </div>
-                                <div class="text-right flex flex-col items-end gap-1">
-                                    <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                        🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
-                                    </span>
-                                    ${iconSync}
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
-                                    "${safeText(s.descricao)}"
-                                </p>
-                            </div>
-
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
-                                <div class="flex items-center gap-2 flex-grow">
-                                    <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
-                                    <div class="relative flex items-center">
-                                        <input type="number" 
-                                            id="os_input_${safeId}" 
-                                            class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
-                                            placeholder="PENDENTE" 
-                                            value="${safeText(s.osNumero || "")}" 
-                                            oninput="validarOSInput(${safeId})" 
-                                            ${isFinalizada ? "disabled" : ""}>
-                                        
-                                        ${!isFinalizada 
-                                            ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
-                                            : `` 
-                                        }
-                                    </div>
-                                    ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
-                                </div>
-
-                                <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
-                                    <span>⚙️ Ações</span>
-                                </button>
-                            </div>
-
-                            <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-3 gap-2 animate-fade-in">
-                                <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
-                                    <span class="text-lg mb-1">📋</span>
-                                    <span class="text-[9px] font-bold uppercase">Copiar</span>
-                                </button>
-                                <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
-                                    <span class="text-lg mb-1">📱</span>
-                                    <span class="text-[9px] font-bold uppercase">Enviar Wtzp</span>
-                                </button>
-                                <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
-                                    <span class="text-lg mb-1">🗑️</span>
-                                    <span class="text-[9px] font-bold uppercase">Excluir</span>
-                                </button>
-                                ${isFinalizada ? `
-                                <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
-                                    ✏️ Editar Número da O.S.
-                                </button>` : ''}
-                            </div>
-                            
-                            <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
-                        </div>
-                        `;
-                    }).join('')}
+    return `
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
+        
+        <div class="flex justify-between items-start mb-2">
+            <div>
+                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
+                    ${safeText(s.frota)}
+                </span>
+                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                    ${infoTecnica}
                 </div>
-            </div>`;
+            </div>
+            
+            <div class="text-right flex flex-col items-end gap-1">
+                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
+                </span>
+                ${iconSync}
+            </div>
+            </div>
+
+        <div class="mb-3">
+            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
+                "${safeText(s.descricao)}"
+            </p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
+            <div class="flex items-center gap-2 flex-grow">
+                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
+                <div class="relative flex items-center">
+                    <input type="number" 
+                        id="os_input_${safeId}" 
+                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
+                        placeholder="PENDENTE" 
+                        value="${safeText(s.osNumero || "")}" 
+                        oninput="validarOSInput(${safeId})" 
+                        ${isFinalizada ? "disabled" : ""}>
+                    
+                    ${!isFinalizada 
+                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
+                        : `` 
+                    }
+                </div>
+                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+            </div>
+
+            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
+                <span>⚙️ Ações</span>
+            </button>
+        </div>
+
+        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-3 gap-2 animate-fade-in">
+            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
+                <span class="text-lg mb-1">📋</span>
+                <span class="text-[9px] font-bold uppercase">Copiar</span>
+            </button>
+            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
+                <span class="text-lg mb-1">📱</span>
+                <span class="text-[9px] font-bold uppercase">Enviar Wtzp</span>
+            </button>
+            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
+                <span class="text-lg mb-1">🗑️</span>
+                <span class="text-[9px] font-bold uppercase">Excluir</span>
+            </button>
+            ${isFinalizada ? `
+            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
+                ✏️ Editar Número da O.S.
+            </button>` : ''}
+        </div>
+        
+        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
+    </div>
+    `;
+}).join('')}
+
+                </div>
+            </div>
+            `;
         }).join('');
 
     } catch (e) {
