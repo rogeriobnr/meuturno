@@ -679,84 +679,244 @@ firestore.enablePersistence({ synchronizeTabs: true })
         }
     });
 
-
-
-// 4. Seus Listeners e lógica do App vêm aqui...
-
 /**
- * MÓDULO GUARDIAN - Manutenção Preventiva e Saúde do Sistema
- * Versão: 1.0
+ * 🔄 AGENTE DE SINCRONIZAÇÃO (RURAL-PROOF)
+ * Gerencia a fila de envio para o Firebase, garantindo que nada se perca.
  */
-const Guardian = {
-    // Configurações
-    config: {
-        maxLogs: 50,
-        quotaWarningPercent: 0.8
+const Sincronizador = {
+    isRunning: false,
+
+    init: function() {
+        // Escuta quando a internet volta
+        window.addEventListener('online', () => {
+            console.log("🟢 Conexão detectada. Iniciando sincronização...");
+            this.processarFila();
+        });
+        
+        // Tentativa periódica (Heartbeat) a cada 60s
+        setInterval(() => {
+            if (navigator.onLine && !this.isRunning) this.processarFila();
+        }, 60000);
     },
 
-    // 1. Inicialização Otimizada
-    // No objeto Guardian, altere o init:
+    processarFila: async function() {
+        if (this.isRunning || !navigator.onLine) return;
+        this.isRunning = true;
+        
+        // Feedback visual discreto
+        const elStatus = document.getElementById('network-text');
+        if(elStatus) elStatus.innerText = "SINCRONIZANDO...";
 
-init: async function() {
-    console.log("🛡️ Guardian: Iniciando protocolos...");
-    this.setupGlobalErrorHandling();
-    this.sanitizeLocalStorage();
-    this.injectSafeRender();
-    
-    // OTIMIZAÇÃO: Coloca a verificação de disco em fila de baixa prioridade
-    if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => this.checkStorageQuota());
-    } else {
-        setTimeout(() => this.checkStorageQuota(), 10000);
+        try {
+            await this.sincronizarTabela(STORE_HISTORICO, 'historico_os');
+            // await this.sincronizarTabela('apontamentos_diarios', 'apontamentos_diarios_cloud'); // Exemplo futuro
+            
+            if(elStatus) elStatus.innerText = "ONLINE";
+        } catch (e) {
+            console.error("Erro no sincronizador:", e);
+        } finally {
+            this.isRunning = false;
+        }
+    },
+
+    // Função genérica para sincronizar qualquer tabela
+    sincronizarTabela: async function(storeName, firebaseCollection) {
+        // 1. Busca APENAS os pendentes
+        const todos = await dbExec(storeName, 'readonly', s => s.getAll());
+        const pendentes = todos.filter(i => i._syncStatus === 'pendente');
+
+        if (pendentes.length === 0) return;
+
+        console.log(`📡 Enviando ${pendentes.length} itens de ${storeName}...`);
+
+        const batch = firestore.batch();
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        let count = 0;
+
+        for (const item of pendentes) {
+            // Cria cópia para envio (limpa campos internos se necessário)
+            const payload = { ...item };
+            delete payload._syncStatus; // Opcional: não enviar flag interna pra nuvem
+            
+            // Adiciona status de "sincronizado" para a nuvem saber
+            payload.atualizadoEm = new Date().toISOString();
+
+            const ref = firestore.collection(firebaseCollection).doc(String(item.uniqueId || item.id || item.id_composto));
+            batch.set(ref, payload, { merge: true });
+
+            // Atualiza localmente para "sincronizado"
+            item._syncStatus = 'sincronizado';
+            item._dataSincronizacao = new Date().toISOString();
+            store.put(item);
+            
+            count++;
+            if (count >= 400) break; // Limite de segurança do batch
+        }
+
+        await batch.commit();
+        console.log(`✅ ${count} itens de ${storeName} sincronizados!`);
+        
+        // Atualiza a tela se o usuário estiver olhando para ela
+        if (storeName === STORE_HISTORICO && document.getElementById('historico_lista')) {
+             // Pequeno delay para garantir que o IndexedDB terminou
+             setTimeout(() => mostrarHistorico(), 200);
+        }
     }
-},
+};
 
-    // 2. Prevenção de Corrupção (O "Bug do Null")
+// INICIE ISSO NO SEU MAIN:
+// Sincronizador.init();
+
+/**
+ * MÓDULO GUARDIAN - Sistema de Proteção e Integridade do App
+ * Versão: 2.0 (Com Auto-Reparo de Contexto)
+ */
+const Guardian = {
+    // Configurações Internas
+    config: {
+        maxLogs: 50,
+        quotaWarningPercent: 0.8,
+        integrityCheckDelay: 1500 // Tempo para aguardar o DB conectar antes de verificar
+    },
+
+    // 1. Inicialização Mestra
+    init: async function() {
+        console.log("🛡️ Guardian: Iniciando protocolos de proteção...");
+        
+        this.setupGlobalErrorHandling();
+        this.sanitizeLocalStorage();
+        this.injectSafeRender();
+        
+        // --- NOVO: Verificação de Integridade Contextual ---
+        // Aguarda o DB iniciar para comparar as verdades (DB vs LocalStorage)
+        setTimeout(() => this.verificarIntegridadeContexto(), this.config.integrityCheckDelay);
+        
+        // Verificação de espaço em disco (Baixa prioridade)
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(() => this.checkStorageQuota());
+        } else {
+            setTimeout(() => this.checkStorageQuota(), 10000);
+        }
+    },
+
+    // 2. CORREÇÃO AUTOMÁTICA DE DESALINHAMENTO (A "Verdade Absoluta")
+    // Compara o que está salvo no Banco (Turno Real) com o Cache Rápido (localStorage).
+    // Se houver divergência, o Banco ganha e o cache é corrigido na hora.
+    verificarIntegridadeContexto: async function() {
+        try {
+            // Se o DB ainda não estiver aberto, tenta abrir silenciosamente
+            if (!db) await initDB();
+
+            // 1. Busca a verdade no Banco de Dados
+            const dadosDB = await dbExec('turno', 'readonly', s => s.get('currentTurno'));
+            
+            if (!dadosDB) {
+                // Se não tem nada no banco, não há conflito a resolver.
+                return; 
+            }
+
+            // 2. Busca o que a tela "acha" que é verdade (Cache Rápido)
+            const ctxFazenda = localStorage.getItem('ctx_fazenda');
+            const ctxFrente = localStorage.getItem('ctx_frente');
+            const ctxTurno = localStorage.getItem('ctx_turno');
+
+            let houveCorrecao = false;
+            let logCorrecoes = [];
+
+            // 3. Compara e Corrige (DB > LocalStorage)
+            
+            // Fazenda
+            if (dadosDB.fazenda && dadosDB.fazenda !== ctxFazenda) {
+                localStorage.setItem('ctx_fazenda', dadosDB.fazenda);
+                houveCorrecao = true;
+                logCorrecoes.push(`Fazenda: ${ctxFazenda} -> ${dadosDB.fazenda}`);
+            }
+
+            // Frente
+            if (dadosDB.frente && dadosDB.frente !== ctxFrente) {
+                localStorage.setItem('ctx_frente', dadosDB.frente);
+                houveCorrecao = true;
+                logCorrecoes.push(`Frente: ${ctxFrente} -> ${dadosDB.frente}`);
+            }
+
+            // Turno
+            if (dadosDB.turno && dadosDB.turno !== ctxTurno) {
+                localStorage.setItem('ctx_turno', dadosDB.turno);
+                houveCorrecao = true;
+                logCorrecoes.push(`Turno: ${ctxTurno} -> ${dadosDB.turno}`);
+            }
+
+            // 4. Aplicação da Correção na Interface
+            if (houveCorrecao) {
+                console.warn("🛡️ Guardian: Desalinhamento detectado e corrigido!", logCorrecoes);
+                
+                // Atualiza visualmente os selects para refletir a correção
+                const elFazenda = document.getElementById('fazenda');
+                const elFrente = document.getElementById('frente');
+                const elTurno = document.getElementById('turnoLetra');
+
+                if(elFazenda) elFazenda.value = dadosDB.fazenda;
+                if(elFrente) elFrente.value = dadosDB.frente;
+                if(elTurno) elTurno.value = dadosDB.turno;
+                
+                // Feedback sutil para o usuário (opcional, para não assustar)
+                if(typeof showToast === 'function') {
+                    showToast("Sessão restaurada e sincronizada.", "info");
+                }
+            } else {
+                console.log("🛡️ Guardian: Integridade do contexto verificada. Tudo OK.");
+            }
+
+        } catch (e) {
+            console.error("🛡️ Guardian: Erro ao verificar integridade (não crítico).", e);
+        }
+    },
+
+    // 3. Prevenção de Corrupção Básica (O "Bug do Null")
     sanitizeLocalStorage: function() {
-        const criticalKeys = ['secaoAtiva', 'tutorial_v2_visto'];
+        const criticalKeys = ['secaoAtiva', 'tutorial_v2_visto', 'ctx_fazenda', 'ctx_frente'];
         let repaired = false;
 
         criticalKeys.forEach(key => {
             const val = localStorage.getItem(key);
             if (val === "null" || val === "undefined" || val === null) {
-                console.warn(`🛡️ Guardian: Corrupção detectada em '${key}'. Reparando...`);
-                // Define valores padrão seguros
-                if (key === 'secaoAtiva') localStorage.setItem(key, 'turno');
-                repaired = true;
+                // Se for chave crítica, não remove, apenas ignora ou seta padrão se necessário
+                if (key === 'secaoAtiva') {
+                    localStorage.setItem(key, 'turno');
+                    repaired = true;
+                }
             }
         });
 
-        if (repaired && window.showToast) {
-            window.showToast("Sistema auto-reparado com sucesso.", "success");
-        }
+        if (repaired) console.log("🛡️ Guardian: Cache corrompido reparado.");
     },
 
-    // 3. Monitoramento de Armazenamento (IndexedDB)
+    // 4. Monitoramento de Armazenamento (Cota do Navegador)
     checkStorageQuota: async function() {
         if ('storage' in navigator && 'estimate' in navigator.storage) {
             try {
                 const estimate = await navigator.storage.estimate();
                 const usagePercent = estimate.usage / estimate.quota;
-                
-                // Formatação para MB
                 const usageMB = (estimate.usage / 1024 / 1024).toFixed(2);
+                
                 console.log(`🛡️ Guardian: Uso de Disco: ${usageMB} MB (${(usagePercent * 100).toFixed(2)}%)`);
 
                 if (usagePercent > this.config.quotaWarningPercent) {
-                    alert("⚠️ ATENÇÃO: O espaço no seu dispositivo está acabando! O Meu Turno pode parar de salvar dados offline. Libere espaço no celular.");
+                    alert("⚠️ ATENÇÃO: O espaço no seu celular está acabando! O App pode parar de salvar dados offline. Libere espaço urgentemente.");
                 }
             } catch (e) {
-                console.error("Erro ao verificar quota", e);
+                console.warn("Guardian: Não foi possível verificar quota de disco.");
             }
         }
     },
 
-    // 4. Captura Global de Erros (Log Local)
+    // 5. Captura Global de Erros (Log Local)
     setupGlobalErrorHandling: function() {
         window.onerror = (msg, url, line, col, error) => {
             this.logError('JS_CRASH', { msg, line, stack: error?.stack });
-            // Não bloqueia o erro, mas avisa o usuário se for crítico
-            if (msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('database')) {
+            // Erros críticos de quota ou DB exigem reload
+            if (String(msg).toLowerCase().includes('quota') || String(msg).toLowerCase().includes('database')) {
                 alert("Erro Crítico de Dados: O sistema tentará reiniciar.");
                 window.location.reload();
             }
@@ -769,15 +929,16 @@ init: async function() {
 
     logError: function(type, details) {
         // Salva no LocalStorage temporariamente para debug
-        const logs = JSON.parse(localStorage.getItem('guardian_logs') || '[]');
-        logs.unshift({ ts: new Date().toISOString(), type, details });
-        if (logs.length > this.config.maxLogs) logs.pop();
-        localStorage.setItem('guardian_logs', JSON.stringify(logs));
+        try {
+            const logs = JSON.parse(localStorage.getItem('guardian_logs') || '[]');
+            logs.unshift({ ts: new Date().toISOString(), type, details });
+            if (logs.length > this.config.maxLogs) logs.pop();
+            localStorage.setItem('guardian_logs', JSON.stringify(logs));
+        } catch(e) { /* Ignora erro de log cheio */ }
         console.error(`🛡️ [${type}]`, details);
     },
 
-    // 5. Utilitário de Renderização Segura (Anti-XSS)
-    // Substitua seus innerHTML diretos por chamadas a esta função quando lidar com input de usuário
+    // 6. Utilitário de Renderização Segura (Anti-XSS)
     escapeHTML: function(str) {
         if (!str) return "";
         return String(str)
@@ -787,8 +948,13 @@ init: async function() {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     },
+    
+    // Injeta a função safeText globalmente para uso no HTML
+    injectSafeRender: function() {
+        window.safeText = this.escapeHTML;
+    },
 
-    // 6. Diagnóstico Manual (Para chamar no console ou menu secreto)
+    // 7. Diagnóstico Manual (Para suporte técnico)
     runDiagnostics: async function() {
         const dbStatus = await this.testDBConnection();
         const network = navigator.onLine ? "Online" : "Offline";
@@ -799,25 +965,20 @@ init: async function() {
         Status Rede: ${network}
         Banco de Dados: ${dbStatus ? "OK" : "ERRO"}
         Erros Registrados: ${logs.length}
-        Último Erro: ${logs[0] ? JSON.stringify(logs[0].details) : "Nenhum"}
+        Contexto Local: ${localStorage.getItem('ctx_fazenda') || 'N/A'} / ${localStorage.getItem('ctx_frente') || 'N/A'}
         ============================
         `;
     },
 
     testDBConnection: async function() {
         try {
-            // Tenta abrir uma transação de leitura rápida
-            if (!db) return false;
+            if (!db) await initDB();
             const tx = db.transaction('turno', 'readonly');
             return true;
         } catch(e) { return false; }
-    },
-    
-    injectSafeRender: function() {
-        // Expõe globalmente para uso nas suas funções de renderização
-        window.safeText = this.escapeHTML;
     }
 };
+
 
 /**
  * FAXINA AUTOMÁTICA
@@ -1287,9 +1448,14 @@ async function main() {
     const loader = document.getElementById('app-loader');
     
     try {
+        
         // 1. SEGURANÇA & MONITORAMENTO
         await Guardian.init(); // Injeta safeText e proteções
+        
         iniciarMonitoramentoRedeUI();
+        
+          // Inicia o Agente de Sincronização
+            Sincronizador.init();
         
         // 2. SERVICE WORKER (Cache de Arquivos)
         registrarServiceWorker();
@@ -1321,6 +1487,7 @@ async function main() {
         verificarOnboarding();
         
         // 8. NAVEGAÇÃO E PERSISTÊNCIA
+        
         iniciarSincronizacaoHistorico();
         
         // Recuperação segura da aba ativa
@@ -4346,13 +4513,14 @@ async function salvarOSnoHistorico(serviceId) {
     const turnoValor = turnoInput && turnoInput.value ? turnoInput.value : "A";
 
     try {
-        // Recupera dados antigos se existirem (para não perder status ou número da OS)
+        // Recupera dados antigos para manter consistência
         let dadosAntigos = {};
         try {
             const itemExistente = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(servico.id));
             if (itemExistente) dadosAntigos = itemExistente;
         } catch (e) { /* Novo registro */ }
 
+        // --- MONTAGEM DO OBJETO ---
         const itemHistorico = {
             uniqueId: servico.id,
             id: servico.id,
@@ -4370,42 +4538,34 @@ async function salvarOSnoHistorico(serviceId) {
             dataOS: servico.data,
             dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'),
             
-            // Mantém dados existentes ou define padrão
-            status: dadosAntigos.status || "pendente",
+            // Mantém dados existentes
+            status: dadosAntigos.status || "pendente", // Status da O.S. (Negócio)
             osNumero: dadosAntigos.osNumero || "",
             datahoraRegistro: dadosAntigos.datahoraRegistro || new Date().toLocaleString('pt-BR'),
-            atualizadoEm: new Date().toISOString()
+            atualizadoEm: new Date().toISOString(),
+
+            // --- NOVO: CONTROLE DE SINCRONIZAÇÃO ---
+            // Marca como pendente. O Sincronizador vai pegar isso depois.
+            _syncStatus: 'pendente', 
+            _dataSincronizacao: null
         };
 
-        // 1. SALVA LOCALMENTE (Prioridade Absoluta - IndexedDB)
-        // Isso garante que o dado está seguro no aparelho instantaneamente
+        // 1. SALVA LOCALMENTE (GARANTIA IMEDIATA)
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico));
-        console.log(`✅ O.S. ${servico.id} salva no histórico local.`);
+        console.log(`💾 O.S. salva localmente. Status: Pendente de Envio.`);
 
-        // 2. TENTA ENVIAR PARA NUVEM (Background)
-        // A lógica aqui mudou: Não usamos 'await' para não travar a tela se a net estiver ruim.
-        
-        if (navigator.onLine) {
-            // Se tem internet, tenta enviar e loga o sucesso
-            firestore.collection('historico_os').doc(String(servico.id))
-                .set(itemHistorico, { merge: true })
-                .then(() => console.log("☁️ Sincronizado com nuvem"))
-                .catch(err => {
-                    // Se falhar no envio, o Firebase guarda na fila interna automaticamente
-                    console.warn("⚠️ Falha momentânea no envio (Firebase tentará novamente):", err);
-                });
-        } else {
-            // Se está offline, joga para a fila do Firebase silenciosamente
-            // O catch vazio evita o erro "Network Error" no console
-            firestore.collection('historico_os').doc(String(servico.id))
-                .set(itemHistorico, { merge: true })
-                .catch(() => {}); 
-            console.log("💤 Offline: Item salvo na fila de sincronização.");
-        }
-
-        // 3. Atualiza a tela se o histórico estiver aberto
+        // 2. ATUALIZA A TELA (FEEDBACK INSTANTÂNEO)
         if (document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
             mostrarHistorico();
+        }
+
+        // 3. ACIONA O SINCRONIZADOR (TENTATIVA OTIMISTA)
+        // Não esperamos (await) isso terminar. É "Fire and Forget" local.
+        if (navigator.onLine) {
+            // Pequeno delay para garantir que o IndexedDB liberou a transação
+            setTimeout(() => Sincronizador.processarFila(), 100);
+        } else {
+            console.log("📴 Offline. Dado salvo na fila e será enviado quando a rede voltar.");
         }
 
     } catch (err) {
@@ -4624,16 +4784,26 @@ async function mostrarHistorico() {
                 
                 <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
                     ${itensDoDia.map(s => {
+                        // --- INÍCIO DA LÓGICA (ANTES DO RETURN) ---
                         const isFinalizada = s.status === 'finalizada';
                         const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
-                        // Usa uniqueId se existir (novo padrão), senão usa id (legado)
                         const safeId = s.uniqueId || s.id;
+
+                        // LÓGICA DO ÍCONE DE SINCRONIZAÇÃO
+                        // Se for pendente OU indefinido (item antigo ou recém criado), assume pendente
+                        let iconSync = '';
+                        if (s._syncStatus === 'pendente' || typeof s._syncStatus === 'undefined') {
+                            iconSync = `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse" title="Aguardando envio">⏳ Enviando</span>`;
+                        } else {
+                            iconSync = `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded" title="Salvo na nuvem">☁️ Salvo</span>`;
+                        }
 
                         const infoTecnica = [
                             (s.atividade || "N/A").split(' - ')[0],
                             s.sistema || "?",
                             (s.subsistema || "?").split(' - ')[0]
                         ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
+                        // --- FIM DA LÓGICA ---
 
                         return `
                         <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
@@ -4647,10 +4817,11 @@ async function mostrarHistorico() {
                                         ${infoTecnica}
                                     </div>
                                 </div>
-                                <div class="text-right">
+                                <div class="text-right flex flex-col items-end gap-1">
                                     <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
                                         🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
                                     </span>
+                                    ${iconSync}
                                 </div>
                             </div>
 
