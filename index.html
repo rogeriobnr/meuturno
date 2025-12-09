@@ -3891,7 +3891,6 @@ async function abrirPopupImportarServico() {
     listaCombinada.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
     // --- GERAÇÃO DO HTML (Visual Moderno) ---
-    // --- DENTRO DE abrirPopupImportarServico ---
     const listaHtml = listaCombinada.map(s => {
         // Verifica se tem OS, senão define como PENDENTE
         const temOS = s.osNumero && String(s.osNumero).trim() !== "";
@@ -3904,31 +3903,32 @@ async function abrirPopupImportarServico() {
         const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
         const infoTecnica = `${codAtiv} • ${sist} • ${sub}`;
         
-        // MUDANÇA 1: A ação AGORA É SEMPRE PERMITIDA (removemos o explicarFaltaOS)
-        // Passamos 'numeroOS' que pode ser o número ou a string "PENDENTE"
         const action = `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')`;
         
-        // Estilos Dinâmicos (Visual Pendente vs OK)
+        // --- CORREÇÃO SOLICITADA: Lógica Visual do Ícone 📥 ---
+        
         let cardStyle = "bg-white border-l-[5px] border-green-500 hover:bg-green-50";
         let badgeOS = "bg-green-100 text-green-800 border-green-200";
-        let iconStatus = `<span class="text-green-600 text-xl font-bold">📥</span>`;
+        // Ícone padrão: 📥 (Importar)
+        let iconStatus = `<span class="text-blue-600 text-2xl font-bold transition-transform group-hover:scale-110 drop-shadow-sm">📥</span>`;
 
         if (!temOS) {
-            // Estilo Amarelo para Pendente
+            // Estilo Amarelo para Pendente (Mas mantém o ícone de importar)
             cardStyle = "bg-white border-l-[5px] border-yellow-400 hover:bg-yellow-50";
             badgeOS = "bg-yellow-100 text-yellow-800 border-yellow-200 font-bold";
-            iconStatus = `<span class="text-yellow-600 text-xs font-bold px-2 py-1 bg-yellow-100 rounded border border-yellow-300">PENDENTE</span>`;
         } 
         
         if (jaImportado) {
-            cardStyle = "bg-blue-50 border-l-[5px] border-blue-300 opacity-70"; 
+            // Estilo acinzentado para já importado
+            cardStyle = "bg-blue-50 border-l-[5px] border-blue-300 opacity-70 cursor-not-allowed"; 
             badgeOS = "bg-blue-100 text-blue-800 border-blue-200";
-            iconStatus = `<span class="text-blue-600 text-xs font-bold uppercase tracking-wide border border-blue-200 px-2 py-1 rounded bg-white">Já Importado</span>`;
+            // Ícone muda para texto "Já Importado"
+            iconStatus = `<span class="text-blue-600 text-2xl font-bold transition-transform group-hover:scale-110 drop-shadow-sm">✅</span>`;
         }
 
         return `
         <div onclick="${!jaImportado ? action : ''}" 
-             class="group relative rounded-lg shadow-sm mb-3 p-3 flex items-center justify-between transition-all cursor-pointer active:scale-[0.98] border border-gray-100 ${cardStyle}">
+             class="group relative rounded-lg shadow-sm mb-3 p-3 flex items-center justify-between transition-all cursor-pointer active:scale-[0.99] border border-gray-100 ${cardStyle}">
             
             <div class="flex-1 min-w-0 pr-3">
                 <div class="flex items-center justify-between mb-1.5">
@@ -3940,7 +3940,7 @@ async function abrirPopupImportarServico() {
                     </span>
                 </div>
 
-                <div class="text-xs font-bold text-gray-600 font-mono mb-1">
+                <div class="text-xs font-bold text-gray-600 font-mono mb-1 truncate">
                    ${infoTecnica}
                 </div>
                 
@@ -3952,7 +3952,7 @@ async function abrirPopupImportarServico() {
                 </div>
             </div>
 
-            <div class="flex-shrink-0 pl-2 border-l border-gray-200/50 h-full flex items-center justify-center">
+            <div class="flex-shrink-0 pl-2 border-l border-gray-200/50 h-full flex items-center justify-center w-12">
                 ${iconStatus}
             </div>
         </div>`;
@@ -3976,8 +3976,7 @@ async function abrirPopupImportarServico() {
         </div>
     `;
 
-    // Botão de fechar grande e fácil de clicar
-    abrirPopup('📥 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: fecharPopup }]);
+    abrirPopup('🔧 Importar Serviço', conteudoFinal, [{ texto: 'Cancelar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: fecharPopup }]);
 }
 
 
