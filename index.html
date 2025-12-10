@@ -145,6 +145,18 @@
     <p class="text-blue-200 text-xs mt-2 font-mono">Carregando recursos...</p>
 </div>
 
+<script>
+    // SISTEMA DE SEGURANÇA (FAIL-SAFE)
+    // Se o app travar e não remover o loader em 5 segundos, este script remove à força.
+    setTimeout(() => {
+        const l = document.getElementById('app-loader');
+        if (l) {
+            console.warn("⚠️ Loader removido pelo sistema de segurança (timeout).");
+            l.style.display = 'none'; // Some na hora
+            l.remove();
+        }
+    }, 5000); // 5 segundos tolerância máxima
+</script>
 
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-20">
        
@@ -621,12 +633,29 @@ function concluirOnboarding() {
         const sistemas = { "Tratores": [{ cod: "1", nome: "Estrutura" }, { cod: "2", nome: "Cabine" }, { cod: "3", nome: "Motor Combustao" }, { cod: "4", nome: "Eletrico" }, { cod: "5", nome: "Trem de Forca" }, { cod: "6", nome: "Tracao" }, { cod: "7", nome: "Hidraulico" }, { cod: "8", nome: "Direcao" }, { cod: "9", nome: "Freio" }], "Implementos": [{ cod: "10", nome: "Estrutura" }, { cod: "11", nome: "Tracao" }, { cod: "12", nome: "Adubo" }, { cod: "13", nome: "Hidraulico" }, { cod: "14", nome: "Eletrico" }, { cod: "15", nome: "V-SHEAR" }] };
         const subsistemas = { "1": ["1.1 - Chassi", "1.2 - Protecao", "1.3 - Escapamento", "1.4 - Suportes", "1.5 - Escada", "1.6 - Fixacao", "1.7 - Paralama", "1.8 - Tanque", "1.9 - Eixo", "1.10 - Chaparia", "1.11 - Alavanca"], "2": ["2.1 - Refrigecao", "2.2 - Banco", "2.3 - Vidros", "2.4 - Painel", "2.5 - Portas", "2.6 - Hodometro", "2.7 - Radio", "2.8 - Tacografo", "2.9 - Cinto de Seguranca", "2.10 - Cabine", "2.11 - Capo", "2.12 - Buzina"], "3": ["3.1 - Radiador", "3.2 - Motor", "3.3 - Intercooler", "3.4 - Arla", "3.5 - Filtro", "3.6 - Ignicao"], "4": ["4.1 - Iluminacao", "4.2 - Eletrica", "4.3 - Bateria", "4.4 - Chicote", "4.5 - Rastreador", "4.6 - Alternador", "4.7 - Encoder", "4.8 - Camera", "4.9 - Modulo", "4.10 - Comutador", "4.11 - Fluxometro", "4.12 - GPS"], "5": ["5.1 - Cubo", "5.2 - Embreagem", "5.3 - Cambio", "5.4 - Diferencial", "5.5 - Transmissao"], "6": ["6.1 - Pneu", "6.2 - Roda", "6.3 - Esteira", "6.4 - Roda Motriz", "6.5 - Roda Estrelada"], "7": ["7.1 - Mangueiras", "7.2 - Valvulas", "7.3 - Atuador", "7.4 - Bombas", "7.5 - Cilindro", "7.6 - VCR"], "8": ["8.1 - Barra de direcao", "8.2 - Coluna Direcao", "8.3 - Volante"], "9": ["9.1 - Freio", "9.2 - Acumulador"], "10": ["10.1 - Disco de Corte", "10.2 - Cabecalho", "10.3 - Ferramenta Traseira", "10.4 - Limpa Trilho", "10.5 - Quadro", "10.6 - Escarificador", "10.7 - Fixacao", "10.8 - Tanque", "10.9 - Eixo", "10.10 - Braco"], "11": ["11.1 - Pneus", "11.2 - Roda", "11.3 - Mancal"], "12": ["12.1 - Caixa de Adubo"], "13": ["13.1 - Cilindro", "13.2 - Mangueira", "13.3 - Bloco", "13.4 - Valvula"], "14": ["14.1 - Sensores", "14.2 - Chicote"], "15": ["15.1 - Lamina", "15.2 - Ball"] };
         
-        const firebaseConfig = { apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok", authDomain: "meu-turno-app.firebaseapp.com", projectId: "meu-turno-app", storageBucket: "meu-turno-app.firebasestorage.app", messagingSenderId: "967200929614", appId: "1:967200929614:web:3acbf1049a10cdbf87501f" };
+        // ============================================================
+// 1. CONFIGURAÇÃO E VARIÁVEIS GLOBAIS (Não inicia nada ainda)
+// ============================================================
 
+const firebaseConfig = { 
+    apiKey: "AIzaSyDYVPQ2XFdsg5ViKnE5tyzczTZEVsM2kok", 
+    authDomain: "meu-turno-app.firebaseapp.com", 
+    projectId: "meu-turno-app", 
+    storageBucket: "meu-turno-app.firebasestorage.app", 
+    messagingSenderId: "967200929614", 
+    appId: "1:967200929614:web:3acbf1049a10cdbf87501f" 
+};
 
-// --- 1. Função Visual de Alerta (Adicione antes da inicialização do Firebase) ---
+// Definimos como 'let' para atribuir valor depois.
+// Isso evita o erro "firebase is not defined" no topo do script.
+let firebaseApp;
+let firestore;
+
+// ============================================================
+// 2. FUNÇÕES AUXILIARES VISUAIS
+// ============================================================
+
 function exibirAlertaCritico(titulo, mensagem) {
-    // Cria o elemento dinamicamente para não depender do HTML fixo
     const div = document.createElement('div');
     div.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-lg shadow-2xl z-[9999] flex items-center gap-4 min-w-[320px] border-2 border-red-800 transition-all duration-500 animate-bounce";
     
@@ -640,45 +669,65 @@ function exibirAlertaCritico(titulo, mensagem) {
 
     document.body.appendChild(div);
 
-    // Remove automaticamente após 8 segundos
     setTimeout(() => {
         div.classList.add('opacity-0', 'translate-y-10');
         setTimeout(() => div.remove(), 500);
     }, 8000);
 }
 
-// --- 2. Sua Inicialização do Firebase Atualizada ---
+// ============================================================
+// 3. FUNÇÃO DE INICIALIZAÇÃO SEGURA (Chamada pelo main)
+// ============================================================
 
-// Inicializa App e Firestore
-const firebaseApp = firebase.initializeApp(firebaseConfig);
-const firestore = firebase.firestore();
+function iniciarServicosFirebase() {
+    // Verificação de Segurança: A biblioteca carregou?
+    if (typeof firebase === 'undefined') {
+        console.error("❌ Erro Crítico: A biblioteca Firebase não foi carregada pelo navegador.");
+        // Opcional: Tentar recarregar ou avisar o usuário
+        return false;
+    }
 
-// Configura Long Polling (Rede Rural)
-firestore.settings({ experimentalForceLongPolling: true,
-merge:true});
-    
-// Tenta ativar a persistência com Feedback Visual
-firestore.enablePersistence({ synchronizeTabs: true })
-    .then(() => {
-        console.log("💾 Persistência Offline Ativada!");
-    })
-    .catch((err) => {
-        if (err.code == 'failed-precondition') {
-            // ERRO CRÍTICO 1: Múltiplas Abas
-            console.warn('⚠️ Múltiplas abas detectadas.');
-            exibirAlertaCritico(
-                "Atenção: Abas Duplicadas", 
-                "O App já está aberto em outra janela. Feche esta para não perder dados."
-            );
-        } else if (err.code == 'unimplemented') {
-            // ERRO CRÍTICO 2: Navegador Incompatível/Anônimo
-            console.warn('⚠️ Navegador não suporta persistência.');
-            exibirAlertaCritico(
-                "Modo Offline Indisponível", 
-                "Seu navegador (ou modo anônimo) não salva dados offline. Cuidado com quedas de internet!"
-            );
+    // Se já foi iniciado, não faz nada
+    if (firebaseApp) return true;
+
+    try {
+        console.log("🔥 Iniciando Firebase...");
+        
+        if (!firebase.apps.length) {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+        } else {
+            firebaseApp = firebase.app();
         }
-    });
+        
+        firestore = firebase.firestore();
+
+        // Configurações Rurais (Long Polling)
+        firestore.settings({ 
+            experimentalForceLongPolling: true,
+            merge: true 
+        });
+            
+        // Persistência Offline
+        firestore.enablePersistence({ synchronizeTabs: true })
+            .then(() => {
+                console.log("💾 Persistência Offline Ativada!");
+            })
+            .catch((err) => {
+                if (err.code == 'failed-precondition') {
+                    console.warn('⚠️ Múltiplas abas detectadas.');
+                    exibirAlertaCritico("Atenção: Abas Duplicadas", "O App já está aberto em outra janela.");
+                } else if (err.code == 'unimplemented') {
+                    console.warn('⚠️ Navegador sem suporte a persistência.');
+                }
+            });
+
+        return true;
+
+    } catch (e) {
+        console.error("Erro fatal ao iniciar Firebase:", e);
+        return false;
+    }
+}
 
 /**
  * MÓDULO GUARDIAN - Sistema de Proteção e Integridade do App
@@ -1503,88 +1552,116 @@ function renderizarLayoutInicialVisual() {
 // =================================================================================
 
 async function main() {
+    console.log("🚀 Main: Iniciando aplicação...");
+    
     // Referência ao loader (Tela Azul)
     const loader = document.getElementById('app-loader');
 
-    // -----------------------------------------------------------
-    // FASE 1: RENDERIZAÇÃO INSTANTÂNEA (Visual)
+    // ============================================================
+    // FASE 1: RENDERIZAÇÃO INSTANTÂNEA (Visual / Skeleton)
     // Objetivo: Mostrar a interface em menos de 500ms
-    // -----------------------------------------------------------
+    // ============================================================
     try {
-        // 1. Segurança e UI Básica
-        await Guardian.init(); 
-        iniciarMonitoramentoRedeUI();
-        inicializarMenuHamburguer();
+        // 1. Segurança e UI Básica (Leves)
+        if (typeof Guardian !== 'undefined') await Guardian.init(); 
+        if (typeof iniciarMonitoramentoRedeUI === 'function') iniciarMonitoramentoRedeUI();
+        if (typeof inicializarMenuHamburguer === 'function') inicializarMenuHamburguer();
         
         // 2. "Pinta" a tela usando o cache rápido (LocalStorage)
-        renderizarLayoutInicialVisual(); 
+        // Isso preenche Data, Fazenda e Frente visualmente antes do DB abrir
+        if (typeof renderizarLayoutInicialVisual === 'function') {
+            renderizarLayoutInicialVisual(); 
+        }
         
-        // 3. Recupera a aba ativa para abrir a tela certa
+        // 3. Recupera a aba ativa para abrir a tela certa (Visualmente)
         let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
         
         // 4. REMOVE O LOADER AGORA! (Não espera o banco de dados)
+        // Isso resolve o problema do "App load não fecha"
         if (loader) {
             // Fade out suave
             loader.style.transition = "opacity 0.3s ease-out";
             loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 300);
+            setTimeout(() => {
+                if (loader) loader.remove();
+            }, 300);
         }
 
     } catch (e) {
-        console.error("Erro na UI Inicial:", e);
+        console.error("❌ Erro na Fase Visual:", e);
+        // Em caso de erro grave, remove o loader na força bruta para não travar o usuário
         if (loader) loader.remove();
     }
 
-    // -----------------------------------------------------------
+    // ============================================================
     // FASE 2: CARREGAMENTO DE DADOS (Background)
-    // Objetivo: Conectar no banco e preencher as listas sem travar o scroll
-    // -----------------------------------------------------------
+    // Objetivo: Conectar no banco e preencher as listas reais
+    // ============================================================
+    
+    // Pequeno delay (100ms) para garantir que o navegador desenhou a Fase 1
     setTimeout(async () => {
         try {
-            console.log("🚀 Main: Interface carregada. Iniciando conexão com DB...");
+            console.log("📡 Main: Interface carregada. Conectando serviços...");
             
-            // 1. Inicia serviços
-            Sincronizador.init();
-            registrarServiceWorker();
+            // 1. INICIALIZAÇÃO SEGURA DO FIREBASE (A Correção do Erro no Console)
+            // Só chamamos agora, garantindo que o script 'defer' já carregou
+            if (typeof iniciarServicosFirebase === 'function') {
+                iniciarServicosFirebase();
+            } else {
+                console.warn("⚠️ Função iniciarServicosFirebase não encontrada.");
+            }
             
-            // 2. Conexão Pesada (IndexedDB)
-            await initDB(); 
+            // 2. Outros Serviços
+            if (typeof Sincronizador !== 'undefined') Sincronizador.init();
+            if (typeof registrarServiceWorker === 'function') registrarServiceWorker();
             
-            // 3. Preenche os dados reais (valida o que foi pintado na Fase 1)
-            await carregarDadosIniciais();
+            // 3. Conexão Pesada (IndexedDB)
+            // Agora podemos usar await porque a tela já está visível
+            if (typeof initDB === 'function') await initDB(); 
             
-            // 4. Inicia Listeners do Firebase (Sincronização)
-            sincronizarCatalogoFrotas();
-            iniciarSincronizacaoAuxiliares(); 
-            iniciarSincronizacaoEquipe();
-            iniciarSincronizacaoHistorico();
+            // 4. Preenche os dados reais (valida o que foi pintado na Fase 1)
+            if (typeof carregarDadosIniciais === 'function') await carregarDadosIniciais();
+            
+            // 5. Inicia Listeners do Firebase (Sincronização em Tempo Real)
+            if (typeof sincronizarCatalogoFrotas === 'function') sincronizarCatalogoFrotas();
+            if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
+            if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
+            if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
 
-            // 5. Garante que a seção atual está renderizada com dados completos
+            // 6. Garante que a seção atual está renderizada com dados completos
             let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
-            abrir(secaoInicial);
+            if (typeof abrir === 'function') abrir(secaoInicial);
             
-            // 6. Verifica tutoriais
-            verificarOnboarding();
+            // 7. Verifica tutoriais
+            if (typeof verificarOnboarding === 'function') verificarOnboarding();
 
-            // 7. Agendamento de Tarefas Pesadas (Manutenção)
+            // 8. Agendamento de Tarefas Pesadas (Manutenção)
             // Joga para 5 segundos depois, quando o processador estiver livre
             setTimeout(() => {
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(() => limparHistoricoAntigoLocal());
-                } else {
-                    limparHistoricoAntigoLocal();
+                // Faxina de Histórico Antigo
+                if (typeof limparHistoricoAntigoLocal === 'function') {
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(() => limparHistoricoAntigoLocal());
+                    } else {
+                        limparHistoricoAntigoLocal();
+                    }
                 }
                 
-                migrarDadosLocaisParaNuvem();
-                carregarCatalogoBackground();
+                // Migração de Legado
+                if (typeof migrarDadosLocaisParaNuvem === 'function') migrarDadosLocaisParaNuvem();
+                
+                // Carregamento do Catálogo Gigante
+                if (typeof carregarCatalogoBackground === 'function') carregarCatalogoBackground();
+                
             }, 5000);
 
         } catch (err) {
-            console.error("Erro no carregamento de dados (Background):", err);
+            console.error("❌ Erro no carregamento de dados (Background):", err);
             showToast("Erro de conexão com banco local.", "error");
         }
-    }, 50); // Delay mínimo de 50ms para garantir que o navegador desenhou a Fase 1
+    }, 100); 
 }
+
 
 // Inicia a aplicação quando o DOM estiver pronto
 document.addEventListener("DOMContentLoaded", main);
