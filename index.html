@@ -3,58 +3,60 @@
     
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
-   
 
-<link rel="preload" href="./libs/tailwind.css" as="style">
-<link rel="preload" href="./libs/firebase-app.js" as="script">
+    <link rel="preload" href="./libs/tailwind.css" as="style">
+    <link href="./libs/tailwind.css" rel="stylesheet">
 
-<link href="./libs/tailwind.css" rel="stylesheet">
+    <script src="./libs/jspdf.js" defer></script>
+    <script src="./libs/xlsx.js" defer></script>
+    <script src="./libs/chart.js" defer></script>
 
-<script src="./libs/jspdf.js" defer></script>
-<script src="./libs/xlsx.js" defer></script>
-<script src="./libs/chart.js" defer></script>
+    <script src="./libs/firebase-app.js" defer></script>
+    <script src="./libs/firebase-firestore.js" defer></script>
 
-<script src="./libs/firebase-app.js"></script>
-<script src="./libs/firebase-firestore.js"></script>
     <style>
         /* --- CSS OBRIGATÓRIO PARA O VIRTUAL SCROLLER (CORREÇÃO FINAL) --- */
-#listaCatalogo {
-    position: relative;
-    height: 100%; /* Ocupa 100% do pai */
-    width: 100%;
-    overflow-y: auto;
-    contain: strict;
-    background: #f8fafc;
-    display: block;
-}
+        #listaCatalogo {
+            position: relative;
+            height: 100%; /* Ocupa 100% do pai */
+            width: 100%;
+            overflow-y: auto;
+            contain: strict;
+            background: #f8fafc;
+            display: block;
+        }
 
-.virtual-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 85px; /* Altura fixa */
-    padding: 0.5rem;
-    box-sizing: border-box;
-}
+        .virtual-item {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 85px; /* Altura fixa */
+            padding: 0.5rem;
+            box-sizing: border-box;
+        }
 
-.virtual-inner-content {
-    background: white;
-    height: 100%;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 0.75rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
+        .virtual-inner-content {
+            background: white;
+            height: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 0.75rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            /* Suavização de entrada visual */
+            opacity: 1; 
+            transition: opacity 0.3s;
         }
 
         /* --- TOAST (Notificações) --- */
@@ -134,8 +136,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
     </style>
-
-
 </head>
 
 <body class="bg-gray-50 text-gray-800">
@@ -681,96 +681,6 @@ firestore.enablePersistence({ synchronizeTabs: true })
     });
 
 /**
- * 🔄 AGENTE DE SINCRONIZAÇÃO (RURAL-PROOF)
- * Gerencia a fila de envio para o Firebase, garantindo que nada se perca.
- */
-const Sincronizador = {
-    isRunning: false,
-
-    init: function() {
-        // Escuta quando a internet volta
-        window.addEventListener('online', () => {
-            console.log("🟢 Conexão detectada. Iniciando sincronização...");
-            this.processarFila();
-        });
-        
-        // Tentativa periódica (Heartbeat) a cada 60s
-        setInterval(() => {
-            if (navigator.onLine && !this.isRunning) this.processarFila();
-        }, 60000);
-    },
-
-    processarFila: async function() {
-        if (this.isRunning || !navigator.onLine) return;
-        this.isRunning = true;
-        
-        // Feedback visual discreto
-        const elStatus = document.getElementById('network-text');
-        if(elStatus) elStatus.innerText = "SINCRONIZANDO...";
-
-        try {
-            await this.sincronizarTabela(STORE_HISTORICO, 'historico_os');
-            // await this.sincronizarTabela('apontamentos_diarios', 'apontamentos_diarios_cloud'); // Exemplo futuro
-            
-            if(elStatus) elStatus.innerText = "ONLINE";
-        } catch (e) {
-            console.error("Erro no sincronizador:", e);
-        } finally {
-            this.isRunning = false;
-        }
-    },
-
-    // Função genérica para sincronizar qualquer tabela
-    sincronizarTabela: async function(storeName, firebaseCollection) {
-        // 1. Busca APENAS os pendentes
-        const todos = await dbExec(storeName, 'readonly', s => s.getAll());
-        const pendentes = todos.filter(i => i._syncStatus === 'pendente');
-
-        if (pendentes.length === 0) return;
-
-        console.log(`📡 Enviando ${pendentes.length} itens de ${storeName}...`);
-
-        const batch = firestore.batch();
-        const tx = db.transaction(storeName, 'readwrite');
-        const store = tx.objectStore(storeName);
-        let count = 0;
-
-        for (const item of pendentes) {
-            // Cria cópia para envio (limpa campos internos se necessário)
-            const payload = { ...item };
-            delete payload._syncStatus; // Opcional: não enviar flag interna pra nuvem
-            
-            // Adiciona status de "sincronizado" para a nuvem saber
-            payload.atualizadoEm = new Date().toISOString();
-
-            const ref = firestore.collection(firebaseCollection).doc(String(item.uniqueId || item.id || item.id_composto));
-            batch.set(ref, payload, { merge: true });
-
-            // Atualiza localmente para "sincronizado"
-            item._syncStatus = 'sincronizado';
-            item._dataSincronizacao = new Date().toISOString();
-            store.put(item);
-            
-            count++;
-            if (count >= 400) break; // Limite de segurança do batch
-        }
-
-        await batch.commit();
-        console.log(`✅ ${count} itens de ${storeName} sincronizados!`);
-        
-        // Atualiza a tela se o usuário estiver olhando para ela
-        if (storeName === STORE_HISTORICO && document.getElementById('historico_lista')) {
-             // Pequeno delay para garantir que o IndexedDB terminou
-             setTimeout(() => mostrarHistorico(), 200);
-        }
-    }
-};
-
-// INICIE ISSO NO SEU MAIN:
-// Sincronizador.init();
-
-
-/**
  * MÓDULO GUARDIAN - Sistema de Proteção e Integridade do App
  * Versão: 2.0 (Com Auto-Reparo de Contexto)
  */
@@ -981,52 +891,158 @@ const Guardian = {
     }
 };
 
+/**
+ * 🔄 AGENTE DE SINCRONIZAÇÃO OTIMIZADO (CURSOR V2)
+ * Evita o travamento usando cursores em vez de carregar todo o banco.
+ */
+const Sincronizador = {
+    isRunning: false,
+
+    init: function() {
+        // Debounce: Espera 5s após a internet voltar para não competir com a inicialização
+        let timer;
+        window.addEventListener('online', () => {
+            clearTimeout(timer);
+            console.log("🟢 Rede detectada. Agendando sincronização suave...");
+            timer = setTimeout(() => {
+                this.processarFila();
+            }, 5000); 
+        });
+        
+        // Heartbeat a cada 60s
+        setInterval(() => {
+            if (navigator.onLine && !this.isRunning) this.processarFila();
+        }, 60000);
+    },
+
+    processarFila: async function() {
+        if (this.isRunning || !navigator.onLine) return;
+        this.isRunning = true;
+        
+        const elStatus = document.getElementById('network-text');
+        if(elStatus) elStatus.innerText = "SINCRONIZANDO...";
+
+        try {
+            // Usa a nova função otimizada
+            await this.sincronizarTabelaOtimizada(STORE_HISTORICO, 'historico_os');
+            
+            if(elStatus) elStatus.innerText = "ONLINE";
+        } catch (e) {
+            console.error("Erro no sincronizador:", e);
+        } finally {
+            this.isRunning = false;
+        }
+    },
+
+    // NOVA FUNÇÃO: Lê o banco item a item (Cursor) e para ao achar 50 pendentes
+    sincronizarTabelaOtimizada: async function(storeName, firebaseCollection) {
+        if (!db) return;
+
+        // 1. Busca APENAS os pendentes usando Cursor (Leve para a memória)
+        const pendentes = await new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            const request = store.openCursor();
+            const resultados = [];
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const item = cursor.value;
+                    // Verifica se é pendente
+                    if (item._syncStatus === 'pendente') {
+                        resultados.push(item);
+                    }
+                    
+                    // TRAVA DE SEGURANÇA: Limite de 50 itens por lote para não congelar a tela
+                    if (resultados.length < 50) {
+                        cursor.continue();
+                    } else {
+                        resolve(resultados); // Envia o que achou até agora
+                    }
+                } else {
+                    resolve(resultados); // Fim do banco
+                }
+            };
+            request.onerror = () => reject(request.error);
+        });
+
+        if (pendentes.length === 0) return;
+
+        console.log(`📡 Enviando lote de ${pendentes.length} itens de ${storeName}...`);
+
+        const batch = firestore.batch();
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+
+        for (const item of pendentes) {
+            const payload = { ...item };
+            delete payload._syncStatus; 
+            payload.atualizadoEm = new Date().toISOString();
+
+            const docId = String(item.uniqueId || item.id || item.id_composto);
+            const ref = firestore.collection(firebaseCollection).doc(docId);
+            
+            batch.set(ref, payload, { merge: true });
+
+            // Atualiza localmente para "sincronizado"
+            item._syncStatus = 'sincronizado';
+            item._dataSincronizacao = new Date().toISOString();
+            store.put(item);
+        }
+
+        await batch.commit();
+        console.log(`✅ Lote sincronizado com sucesso!`);
+        
+        // Se a tela de histórico estiver aberta, atualiza ela suavemente
+        if (storeName === STORE_HISTORICO && document.getElementById('historico_lista') && !document.getElementById('historico').classList.contains('hidden')) {
+             setTimeout(() => mostrarHistorico(), 500);
+        }
+    }
+};
 
 /**
- * FAXINA AUTOMÁTICA
- * Remove do celular dados muito antigos para economizar memória.
- * Critérios: Mais de 120 dias E Status Finalizado.
- * Itens Pendentes NUNCA são apagados.
+ * FAXINA AUTOMÁTICA OTIMIZADA (CURSOR)
+ * Remove dados antigos sem carregar tudo na memória.
  */
 async function limparHistoricoAntigoLocal() {
-    console.log("🧹 Iniciando faxina de cache local...");
+    console.log("🧹 Iniciando faxina de cache local (Modo Suave)...");
     
     try {
-        const todos = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+        if (!db) await initDB();
         
-        // Define o limite (120 dias atrás)
-        // Damos uma folga de 30 dias em relação ao sync da nuvem (90 dias) para segurança
+        // Data limite: 120 dias atrás
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() - 120);
         const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
         const tx = db.transaction(STORE_HISTORICO, 'readwrite');
         const store = tx.objectStore(STORE_HISTORICO);
+        const request = store.openCursor();
+        
         let contagem = 0;
 
-        todos.forEach(item => {
-            // 1. Verifica a data
-            if (item.dataOS < dataLimiteStr) {
-                // 2. TRAVA DE SEGURANÇA: Só apaga se estiver FINALIZADA ou SINCRONIZADA
-                // Se for "pendente", o mecânico pode ter esquecido de enviar, então NÃO APAGA.
-                if (item.status === 'finalizada' || (item.osNumero && item.osNumero.length > 0)) {
-                    // Garante ID numérico para exclusão
-                    const idParaApagar = item.uniqueId || item.id;
-                    store.delete(idParaApagar);
-                    contagem++;
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                const item = cursor.value;
+                
+                // Verifica data E se está finalizado/sincronizado
+                if (item.dataOS < dataLimiteStr) {
+                    if (item.status === 'finalizada' || (item.osNumero && item.osNumero.length > 0)) {
+                        cursor.delete();
+                        contagem++;
+                    }
                 }
-            }
-        });
-
-        tx.oncomplete = () => {
-            if (contagem > 0) {
-                console.log(`🧹 Faxina concluída: ${contagem} itens antigos removidos do celular.`);
-                // Atualiza a lista se estiver aberta para sumir com os velhos
-                if (document.getElementById('historico_lista')) {
-                    mostrarHistorico();
-                }
+                cursor.continue();
             } else {
-                console.log("🧹 Nenhum item antigo para limpar.");
+                // Fim do cursor
+                if (contagem > 0) {
+                    console.log(`🧹 Faxina concluída: ${contagem} itens antigos removidos.`);
+                    if (document.getElementById('historico_lista')) mostrarHistorico();
+                } else {
+                    console.log("🧹 Nenhum item antigo para limpar.");
+                }
             }
         };
 
@@ -1034,7 +1050,6 @@ async function limparHistoricoAntigoLocal() {
         console.error("Erro na faxina automática:", e);
     }
 }
-
 
 // =================================================================================
 // 2. GESTÃO DE ATUALIZAÇÕES (SW)
@@ -1449,109 +1464,131 @@ async function carregarDadosIniciais() {
     }
 }
 
+// Função ultra-rápida que só lê do localStorage para "pintar" a tela
+// Não usa await nem IndexedDB
+function renderizarLayoutInicialVisual() {
+    try {
+        // 1. Preenche a Data (Padrão: Hoje)
+        const elData = document.getElementById("dataTurno");
+        if (elData && !elData.value) elData.value = dataHojeInputLocal();
+
+        // 2. Recupera o contexto visual do cache rápido
+        const savedFazenda = localStorage.getItem('ctx_fazenda');
+        const savedFrente = localStorage.getItem('ctx_frente');
+        const savedTurno = localStorage.getItem('ctx_turno');
+
+        // 3. Força o HTML dos selects para não ficarem vazios "Carregando..."
+        const elFazenda = document.getElementById("fazenda");
+        if (elFazenda && savedFazenda) {
+            // Cria uma opção temporária visual
+            elFazenda.innerHTML = `<option value="${savedFazenda}" selected>${savedFazenda}</option>`;
+        }
+
+        const elFrente = document.getElementById("frente");
+        if (elFrente && savedFrente) {
+            elFrente.innerHTML = `<option value="${savedFrente}" selected>${savedFrente}</option>`;
+        }
+        
+        const elTurno = document.getElementById("turnoLetra");
+        if (elTurno && savedTurno) {
+            elTurno.value = savedTurno;
+        }
+    } catch (e) {
+        console.warn("Erro ao renderizar visual inicial:", e);
+    }
+}
+
 // =================================================================================
 // 2. MAIN OTIMIZADA (PRPL PATTERN)
 // =================================================================================
 
 async function main() {
+    // Referência ao loader (Tela Azul)
     const loader = document.getElementById('app-loader');
-    
+
+    // -----------------------------------------------------------
+    // FASE 1: RENDERIZAÇÃO INSTANTÂNEA (Visual)
+    // Objetivo: Mostrar a interface em menos de 500ms
+    // -----------------------------------------------------------
     try {
-        
-        // 1. SEGURANÇA & MONITORAMENTO
-        await Guardian.init(); // Injeta safeText e proteções
-        
+        // 1. Segurança e UI Básica
+        await Guardian.init(); 
         iniciarMonitoramentoRedeUI();
-        
-          // Inicia o Agente de Sincronização
-            Sincronizador.init();
-        
-        // 2. SERVICE WORKER (Cache de Arquivos)
-        registrarServiceWorker();
-        
-// Nova lógica para o main()
-// 3. BANCO DE DADOS (IndexedDB) com Retry Visual
-let dbCarregado = false;
-
-// Tenta carregar, mas mostra aviso se demorar
-const promessaDB = initDB().then(() => {
-    dbCarregado = true;
-    return carregarDadosIniciais();
-});
-
-// Apenas para feedback visual, não cancela o load!
-const avisoLentidao = new Promise(resolve => setTimeout(resolve, 4000)).then(() => {
-    if (!dbCarregado) {
-        // Altera o texto do loader para acalmar o usuário
-        const msg = document.querySelector('#app-loader p');
-        if(msg) msg.innerText = "O banco de dados está sendo otimizado. Aguarde...";
-    }
-});
-
-// Espera o DB de verdade, independente do tempo
-try {
-    await Promise.all([promessaDB, avisoLentidao]);
-} catch (err) {
-    console.error("Falha fatal no DB:", err);
-    alert("Erro ao acessar armazenamento. O app pode não funcionar offline.");
-    // Só aqui iniciamos vazio como último recurso
-    inicializarEstadoVazio();
-}
-
-        // 4. SINCRONIZAÇÃO EM BACKGROUND (Listeners)
-        // Não usamos await aqui propositalmente para não bloquear
-        sincronizarCatalogoFrotas();
-        iniciarSincronizacaoAuxiliares(); // Fazendas e Frentes
-        iniciarSincronizacaoEquipe();
-        
-        // 5. CARREGAMENTO DE DADOS (AGORA LEVE ⚡)
-        await carregarDadosIniciais();
-        
-        // 6. PROCESSOS DE MANUTENÇÃO (Baixa prioridade)
-        setTimeout(() => limparHistoricoAntigoLocal(), 8000); // Adia faxina para 8s
-        migrarDadosLocaisParaNuvem();
-        
-        // 7. RENDERIZAÇÃO DA INTERFACE
-        renderizarLayoutInicial();
         inicializarMenuHamburguer();
-        verificarOnboarding();
         
-        // 8. NAVEGAÇÃO E PERSISTÊNCIA
+        // 2. "Pinta" a tela usando o cache rápido (LocalStorage)
+        renderizarLayoutInicialVisual(); 
         
-        iniciarSincronizacaoHistorico();
-        
-        // Recuperação segura da aba ativa
+        // 3. Recupera a aba ativa para abrir a tela certa
         let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
-        if (!document.getElementById(secaoInicial)) {
-            secaoInicial = 'turno';
-            localStorage.setItem('secaoAtiva', 'turno');
-        }
-        abrir(secaoInicial);
         
-    } catch (err) {
-        console.error("Erro Crítico no Main:", err);
-        // Fallback de emergência
-        try {
-            renderizarLayoutInicial();
-            abrir('turno');
-        } catch (e) { console.error("Falha fatal:", e); }
-    } finally {
-        // 9. REMOÇÃO DO LOADER (Prioridade Visual)
+        // 4. REMOVE O LOADER AGORA! (Não espera o banco de dados)
         if (loader) {
-            // Fade out rápido
-            loader.style.transition = "opacity 0.4s ease-out";
+            // Fade out suave
+            loader.style.transition = "opacity 0.3s ease-out";
             loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 400);
+            setTimeout(() => loader.remove(), 300);
         }
-        
-// 10. CARREGAMENTO PESADO EM BACKGROUND
-// Dispara e esquece (não usa await). A variável catalogoLoaderPromise guardará o estado.
-        carregarCatalogoBackground();
+
+    } catch (e) {
+        console.error("Erro na UI Inicial:", e);
+        if (loader) loader.remove();
+    }
+
+    // -----------------------------------------------------------
+    // FASE 2: CARREGAMENTO DE DADOS (Background)
+    // Objetivo: Conectar no banco e preencher as listas sem travar o scroll
+    // -----------------------------------------------------------
+    setTimeout(async () => {
+        try {
+            console.log("🚀 Main: Interface carregada. Iniciando conexão com DB...");
+            
+            // 1. Inicia serviços
+            Sincronizador.init();
+            registrarServiceWorker();
+            
+            // 2. Conexão Pesada (IndexedDB)
+            await initDB(); 
+            
+            // 3. Preenche os dados reais (valida o que foi pintado na Fase 1)
+            await carregarDadosIniciais();
+            
+            // 4. Inicia Listeners do Firebase (Sincronização)
+            sincronizarCatalogoFrotas();
+            iniciarSincronizacaoAuxiliares(); 
+            iniciarSincronizacaoEquipe();
+            iniciarSincronizacaoHistorico();
+
+            // 5. Garante que a seção atual está renderizada com dados completos
+            let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
+            abrir(secaoInicial);
+            
+            // 6. Verifica tutoriais
+            verificarOnboarding();
+
+            // 7. Agendamento de Tarefas Pesadas (Manutenção)
+            // Joga para 5 segundos depois, quando o processador estiver livre
+            setTimeout(() => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => limparHistoricoAntigoLocal());
+                } else {
+                    limparHistoricoAntigoLocal();
+                }
+                
+                migrarDadosLocaisParaNuvem();
+                carregarCatalogoBackground();
+            }, 5000);
+
+        } catch (err) {
+            console.error("Erro no carregamento de dados (Background):", err);
+            showToast("Erro de conexão com banco local.", "error");
         }
+    }, 50); // Delay mínimo de 50ms para garantir que o navegador desenhou a Fase 1
 }
 
 // Inicia a aplicação quando o DOM estiver pronto
 document.addEventListener("DOMContentLoaded", main);
+
 
 
         // =================================================================================
@@ -1635,70 +1672,6 @@ function carregarEstado(dados) {
 
     salvarTudo(); 
 }
-
-        // =================================================================================
-        // 5. RENDERIZAÇÃO E UI
-        // =================================================================================
-     async function renderizarLayoutInicial() { 
-    try { 
-        // 1. Carrega as listas (Fazendas/Frentes)
-        await carregarFazendasDoCache();
-        await carregarFrentesDoCache();
-
-        // --- CORREÇÃO GENIUSES FIXER: Recuperação Híbrida ---
-        // Recupera valores salvos no localStorage (rápido) e no IndexedDB (lento/persistente)
-        const d = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID)) || {}; 
-        
-        const savedFazenda = localStorage.getItem('ctx_fazenda');
-        const savedFrente = localStorage.getItem('ctx_frente');
-        const savedTurno = localStorage.getItem('ctx_turno');
-
-        // Prioridade: 1. Dados do Banco (se existirem) -> 2. LocalStorage -> 3. Vazio
-        const valFazenda = d.fazenda || savedFazenda || "";
-        const valFrente = d.frente || savedFrente || "";
-        const valTurno = d.turno || savedTurno || "";
-
-        // 2. Preenche Data
-        document.getElementById("dataTurno").value = d.data || dataHojeInputLocal(); 
-        
-        // 3. Define Fazenda com fallback inteligente
-        const elFazenda = document.getElementById("fazenda");
-        if (elFazenda) {
-            elFazenda.value = valFazenda;
-            // Se o valor não existir na lista (ex: lista não carregou), salva no atributo temporário
-            if (!elFazenda.value && valFazenda) {
-                // Cria opção temporária visualmente para não ficar em branco
-                const opt = document.createElement('option');
-                opt.value = valFazenda;
-                opt.text = valFazenda;
-                elFazenda.appendChild(opt);
-                elFazenda.value = valFazenda;
-            }
-        }
-
-        // 4. Define Frente com fallback inteligente
-        const elFrente = document.getElementById("frente");
-        if (elFrente) {
-            elFrente.value = valFrente;
-            if (!elFrente.value && valFrente) {
-                const opt = document.createElement('option');
-                opt.value = valFrente;
-                opt.text = valFrente;
-                elFrente.appendChild(opt);
-                elFrente.value = valFrente;
-            }
-        }
-
-        // 5. Define Turno
-        if(document.getElementById("turnoLetra")) {
-            document.getElementById("turnoLetra").value = valTurno; 
-        }
-
-    } catch (e) { 
-        console.error("Erro render inicial", e); 
-    } 
-}
-
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
         function abrir(secaoId) {
