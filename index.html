@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1d4ed8">
     <title>Meu Turno</title>
 
-    <link rel="preload" href="./libs/tailwind.css" as="style">
-    <link href="./libs/tailwind.css" rel="stylesheet">
+    <link rel="preload" href="/libs/tailwind.css" as="style">
+    <link href="/libs/tailwind.css" rel="stylesheet">
 
-    <script src="./libs/jspdf.js" defer></script>
-    <script src="./libs/xlsx.js" defer></script>
-    <script src="./libs/chart.js" defer></script>
+    <script src="/libs/jspdf.js" defer></script>
+    <script src="/libs/xlsx.js" defer></script>
+    <script src="/libs/chart.js" defer></script>
 
-    <script src="./libs/firebase-app.js" defer></script>
-    <script src="./libs/firebase-firestore.js" defer></script>
+    <script src="/libs/firebase-app.js" defer></script>
+    <script src="/libs/firebase-firestore.js" defer></script>
 
     <style>
         /* --- CSS OBRIGATÓRIO PARA O VIRTUAL SCROLLER (CORREÇÃO FINAL) --- */
@@ -409,46 +409,44 @@
         </div>
     </div>
 
-<div class="mt-6">
-    <div class="flex items-center justify-between mb-3">
+<div class="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm p-4 relative overflow-hidden">
+    
+    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+
+    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
         <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
-            <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg">🕒</span>
+            <span class="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full text-lg shadow-sm">🕒</span>
             Linha do Tempo
         </h3>
-        <span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-            Sequência do Dia
-        </span>
+      
     </div>
 
-          <div class="grid grid-cols-3 gap-2 mb-3">
-        
+    <div class="grid grid-cols-3 gap-2 mb-4">
         <button onclick="adicionarLinhaManual()" 
-            class="flex items-center justify-center gap-1 py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-yellow-400 hover:bg-yellow-50 transition-all group shadow-sm h-12">
-            <span class="text-base group-hover:scale-110 transition-transform">☕</span>
-            <span class="text-sm font-bold text-gray-700 group-hover:text-yellow-600 uppercase leading-tight text-center">Adicionar<br>Manual</span>
+            class="flex flex-col items-center justify-center py-2 px-1 bg-white border border-dashed border-gray-300 rounded-lg hover:border-yellow-400 hover:bg-yellow-50 transition-all group shadow-sm active:scale-95 h-16">
+            <span class="text-lg group-hover:scale-110 transition-transform">☕</span>
+            <span class="text-xs font-bold text-gray-600 group-hover:text-yellow-700 uppercase leading-tight text-center mt-1">Não Produtiva</span>
         </button>
 
         <button onclick="abrirPopupAddPreventiva()" 
-            class="flex items-center justify-center gap-1 py-2 px-1 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all group shadow-sm h-12">
-            <span class="text-base group-hover:scale-110 transition-transform">📋</span>
-            <span class="text-sm font-bold text-purple-700 uppercase leading-tight text-center">Adicionar<br>Preventiva</span>
+            class="flex flex-col items-center justify-center py-2 px-1 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all group shadow-sm active:scale-95 h-16">
+            <span class="text-lg group-hover:scale-110 transition-transform">📋</span>
+            <span class="text-xs font-bold text-purple-700 uppercase leading-tight text-center mt-1">Preventiva</span>
         </button>
 
         <button onclick="abrirPopupImportarServico()" 
-            class="flex items-center justify-center gap-1 py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm h-12">
-            <span class="text-base group-hover:scale-110 transition-transform">🔧</span>
-            <span class="text-sm font-bold text-blue-700 uppercase leading-tight text-center">Importar<br>Serviço</span>
+            class="flex flex-col items-center justify-center py-2 px-1 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all group shadow-sm active:scale-95 h-16">
+            <span class="text-lg group-hover:scale-110 transition-transform">🔧</span>
+            <span class="text-xs font-bold text-blue-700 uppercase leading-tight text-center mt-1">Serviços</span>
         </button>
-
     </div>
 
-
-
-    <div id="listaLinhasApontamento" class="space-y-3 min-h-[100px]">
-        <div class="text-center py-8 text-gray-400 text-sm italic">
+    <div id="listaLinhasApontamento" class="space-y-3 min-h-[50px]">
+        <div class="text-center py-8 text-gray-400 text-sm italic bg-gray-50 rounded-lg border border-dashed border-gray-100">
             Nenhuma atividade registrada ainda.
         </div>
     </div>
+
 </div>
 
 
@@ -873,20 +871,32 @@ const Guardian = {
     },
 
     // 5. Captura Global de Erros (Log Local)
-    setupGlobalErrorHandling: function() {
-        window.onerror = (msg, url, line, col, error) => {
-            this.logError('JS_CRASH', { msg, line, stack: error?.stack });
-            // Erros críticos de quota ou DB exigem reload
-            if (String(msg).toLowerCase().includes('quota') || String(msg).toLowerCase().includes('database')) {
-                alert("Erro Crítico de Dados: O sistema tentará reiniciar.");
-                window.location.reload();
-            }
-        };
+    // Dentro do objeto Guardian:
 
-        window.onunhandledrejection = (event) => {
-            this.logError('PROMISE_FAIL', { reason: event.reason });
-        };
-    },
+setupGlobalErrorHandling: function() {
+    window.onerror = (msg, url, line, col, error) => {
+        // 1. Registra o erro silenciosamente
+        this.logError('JS_CRASH', { msg, line, stack: error?.stack });
+
+        // 2. Se for erro de cota (memória cheia), avisa o usuário
+        if (String(msg).toLowerCase().includes('quota')) {
+             alert("⚠️ Atenção: Seu dispositivo está sem espaço! O App pode não salvar dados.");
+        }
+        
+        // 3. CORREÇÃO CRÍTICA: Removemos o window.location.reload()
+        // Isso impede que o app fique reiniciando para sempre se houver um erro.
+        console.error("❌ Erro Global Capturado:", msg);
+
+        // Retorna false para que o erro ainda apareça no console (útil para você corrigir)
+        return false; 
+    };
+
+    window.onunhandledrejection = (event) => {
+        this.logError('PROMISE_FAIL', { reason: event.reason });
+        // Não recarrega a página em erros de promessa (como falha de rede silenciosa)
+    };
+},
+
 
     logError: function(type, details) {
         // Salva no LocalStorage temporariamente para debug
@@ -3333,6 +3343,20 @@ const COORD_FORM = {
         }
     }
 };
+// --- ADICIONE ISTO NO TOPO DO SEU SCRIPT (Junto com as variáveis globais) ---
+
+// Função para gerar ID único para CADA LINHA do apontamento
+function gerarIdUnico() {
+    // Pega a hora atual em milissegundos + um número aleatório
+    // Isso garante que nunca existam duas linhas com o mesmo ID
+    const id = Date.now() + Math.floor(Math.random() * 100000);
+    
+    console.log("🔑 [NOVA LINHA] ID Gerado:", id);
+    
+    return id;
+}
+
+
 // ============================================================
 // GESTÃO DE LINHA DO TEMPO POR DATA (Time Travel)
 // ============================================================
@@ -3558,127 +3582,164 @@ function renderizarSecaoApontamento(container) {
 }
 
 
+/**
+ * FUNÇÃO PRINCIPAL DE RENDERIZAÇÃO DA LISTA (TIMELINE)
+ * Responsável por desenhar os cards de Serviço e Manuais na tela.
+ */
+/**
+ * FUNÇÃO PRINCIPAL DE RENDERIZAÇÃO DA LISTA (TIMELINE)
+ * Responsável por desenhar os cards de Serviço e Manuais na tela.
+ */
 function renderizarListaLinhas() {
+    // 1. SEGURANÇA: Verifica se o elemento HTML onde a lista vai entrar existe
     const container = document.getElementById('listaLinhasApontamento');
     if (!container) return;
-    
-    container.innerHTML = '';
 
+    // 2. ESTADO VAZIO: O que aparece se não houver nenhuma linha?
     if (linhasApontamento.length === 0) {
+        // EDITE AQUI: Mude o texto ou ícone do estado vazio
         container.innerHTML = `
-            <div class="text-center p-6 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl">
-                <p class="text-sm text-gray-500 font-medium">Nenhuma atividade registrada.</p>
-                <p class="text-xs text-gray-400 mt-1">Toque nos botões acima para começar.</p>
+            <div class="text-center py-6 bg-gray-50 border border-dashed border-gray-200 rounded-lg">
+                <p class="text-xs text-gray-400">Nenhuma atividade.</p>
             </div>`;
         return;
     }
 
-    linhasApontamento.forEach((linha, index) => {
-        const isServico = linha.tipo === 'servico';
-        const isSelecionado = (indiceOrigemTroca === index);
-        
-        let borderClass = isServico ? 'border-l-[4px] border-blue-600' : 'border-l-[4px] border-yellow-400';
-        let bgClass = 'bg-white';
-        
-        if (isSelecionado) {
-            borderClass = 'border-l-[4px] border-yellow-400 ring-2 ring-yellow-200';
-            bgClass = 'bg-yellow-50';
-        }
+    // 3. ESTILO DOS INPUTS DE HORA (Reutilizável)
+    // EDITE AQUI: Para mudar o tamanho dos quadradinhos de hora
+    // w-[36px] = Largura | h-6 = Altura | text-[10px] = Tamanho da fonte
+    const inputTimeClass = "block w-[36px] h-6 text-[10px] font-bold text-center bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none p-0 shadow-sm appearance-none leading-none tracking-tighter";
 
+    // 4. LOOP DE CRIAÇÃO (Gera o HTML de todos os cards de uma vez)
+    const htmlFinal = linhasApontamento.map((linha, index) => {
+        
+        // --- VARIÁVEIS DE LÓGICA ---
+        const isServico = linha.tipo === 'servico';
+        const isSelecionado = (indiceOrigemTroca === index); // Se o usuário clicou para mover
+        
+        // EDITE AQUI: Cores da borda lateral esquerda (Azul = Serviço, Amarelo = Manual)
+        let borderClass = isServico ? 'border-l-[3px] border-blue-600' : 'border-l-[3px] border-yellow-400';
+        
+        // EDITE AQUI: Cor de fundo quando o item está selecionado para troca
+        let bgClass = isSelecionado ? 'bg-blue-50 ring-2 ring-blue-500' : 'bg-white';
+        
+        // --- BOTÕES DE AÇÃO (Lado Direito: Mover e Excluir) ---
+        // EDITE AQUI: Se quiser mudar os ícones SVG ou cores dos botões
         const acoesHtml = `
-            <div class="flex items-center gap-0.5 ml-auto pl-2 border-l border-gray-100 shrink-0">
-                <button onclick="trocarOrdem(${index})" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+            <div class="flex items-center gap-0 ml-auto pl-1 border-l border-gray-100 shrink-0">
+                <button onclick="trocarOrdem(${index})" class="p-1 text-gray-400 hover:text-blue-600 rounded active:bg-gray-100" title="Mover">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                 </button>
-                <button onclick="removerLinhaApontamento(${index})" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                <button onclick="removerLinhaApontamento(${index})" class="p-1 text-gray-400 hover:text-red-600 rounded active:bg-red-50" title="Remover">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                 </button>
             </div>
         `;
 
-        const inputTimeClass = "block w-[48px] h-8 text-[11px] font-bold text-center bg-gray-50 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none p-0";
-
-        let html = '';
-
+        // ============================================================
+        // TIPO A: CARD DE SERVIÇO (Preventiva/Corretiva)
+        // ============================================================
         if (isServico) {
-            // [PROTEÇÃO APLICADA]
-            const atividadeSegura = safeText(linha.atividade.split(' - ')[0]);
-            const sistemaSeguro = safeText(linha.sistema);
-            const subSeguro = safeText((linha.subsistema||'?').split(' - ')[0]);
+            // -- Preparação dos Dados (Limpeza e Formatação) --
             const frotaSegura = safeText(linha.frota || 'N/A');
             
-            // LÓGICA VISUAL DE PENDÊNCIA
-            const isPendente = linha.os === 'PENDENTE' || !linha.os;
-            const osSegura = safeText(linha.os || 'PENDENTE');
-
-            const infoTecnica = `${atividadeSegura} • ${sistemaSeguro} • ${subSeguro}`;
+            // Quebra as strings para pegar só o código (Ex: "P019 - Trocar..." vira "P019")
+            const ativCod = safeText((linha.atividade || "").split(' - ')[0]);
+            const sis = safeText(linha.sistema || "");
+            const subRaw = safeText(linha.subsistema || "");
+            const sub = subRaw.includes("-") ? subRaw.split("-")[0].trim() : subRaw;
             
-            // Se for pendente muda a cor da borda do OS e do texto
-            const estiloOS = isPendente 
-                ? "bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse" 
-                : "bg-white text-blue-700 border-gray-200";
+            // EDITE AQUI: Formatação da linha do meio (Separador •)
+            const infoTecnica = `${ativCod} • ${sis} • ${sub}`; 
+            
+            // Lógica da O.S. (Pendente ou Número)
+            const osSegura = safeText(linha.os || 'PENDENTE');
+            const isPendente = linha.os === 'PENDENTE' || !linha.os;
+            
+            // EDITE AQUI: Cores do Badge de O.S.
+            // Amarelo se pendente, Azul se tiver número
+            const corOS = isPendente ? "text-yellow-700 font-bold shadow-sm bg-yellow-100 px-1 rounded" : "text-blue-700 font-bold";
 
-            html = `
-            <div class="${bgClass} rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
-                <div class="p-3 flex flex-col gap-2">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-start gap-2 overflow-hidden">
-                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200 mt-0.5">${index + 1}</span>
-                            <div class="min-w-0">
-                                <span class="block font-black text-sm text-gray-800 leading-tight truncate">${frotaSegura}</span>
-                                <span class="block text-[10px] text-gray-400 font-mono mt-0.5 truncate">${infoTecnica}</span>
+            // -- HTML DO CARD DE SERVIÇO --
+            return `
+            <div class="${bgClass} rounded-md shadow-sm mb-2 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden w-full">
+                <div class="flex flex-col w-full">
+                    
+                    <div class="flex items-center justify-between mt-1 mb-1">
+                        
+                        <div class="flex items-center gap-2 bg-gray-100 border-y border-l border-gray-300 border-r-0 rounded-l-md py-1 px-2 shadow-sm relative pr-4">
+                            <span class="w-4 h-4 flex items-center justify-center bg-white text-gray-500 text-[9px] font-bold rounded-full border border-gray-200 shadow-sm">${index + 1}</span>
+                            
+                            <div class="flex items-baseline gap-2 text-[10px] text-gray-600">
+                                <span>FROTA: <b class="text-gray-900 text-[11px]">${frotaSegura}</b></span>
+                                <span class="w-[1px] h-3 bg-gray-300"></span>
+                                <span>OS: <span class="${corOS}">${osSegura}</span></span>
                             </div>
                         </div>
-                        ${acoesHtml}
-                    </div>
-                    <div class="flex flex-wrap items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100 gap-y-2">
-                        <div class="flex items-center gap-1 px-2 py-0.5 rounded border shadow-sm ${estiloOS}">
-                            <span class="text-[9px] font-bold opacity-70 uppercase">OS</span>
-                            <span class="text-xs font-black">${osSegura}</span>
+
+                        <div class="pr-2">
+                            ${acoesHtml}
                         </div>
-                        <div class="flex items-center gap-1 ml-auto">
+                    </div>
+
+                    <div class="px-2 mb-1.5">
+                        <div class="text-[11px] text-gray-500 font-mono font-medium tracking-tight border-b border-gray-100 pb-1 border-dashed">
+                            ${infoTecnica}
+                        </div>
+                    </div>
+
+                    <div class="px-2 pb-2 flex items-center justify-end gap-2">
+                        <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <span class="text-[9px] font-bold text-gray-400 uppercase mr-1">Tempo:</span>
                             <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
-                            <span class="text-gray-300 text-[10px]">➜</span>
+                            <span class="text-gray-300 text-[9px] font-bold">➜</span>
                             <input type="time" value="${safeText(linha.fim)}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
                         </div>
                     </div>
+
                 </div>
             </div>`;
-
+        
+        // ============================================================
+        // TIPO B: CARD MANUAL (DDS, Refeição, Limpeza)
+        // ============================================================
         } else {
-            // [PROTEÇÃO APLICADA NO MANUAL]
+            // Gera as opções do <select> filtrando apenas atividades "H"
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
-                `<option value="${a}" ${linha.atividade===a?'selected':''}>${a}</option>`
+                `<option value="${a}" ${linha.atividade === a ? 'selected' : ''}>${a}</option>`
             ).join('');
             
-            html = `
-            <div class="bg-white rounded-xl shadow-sm mb-3 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden">
-                <div class="p-2">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-xs font-bold rounded-full border border-gray-200">${index + 1}</span>
+            return `
+            <div class="bg-white rounded-md shadow-sm mb-2 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden w-full">
+                <div class="p-1.5 flex flex-col gap-1.5">
+                    
+                    <div class="flex items-center gap-2">
+                        <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center bg-gray-100 text-gray-500 text-[9px] font-bold rounded-full border border-gray-200">${index + 1}</span>
                         <div class="flex-grow min-w-0 relative">
                             <select onchange="atualizarLinha(${index}, 'atividade', this.value)" 
-                                class="w-full h-9 pl-2 pr-6 text-xs font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded-lg focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
+                                class="w-full h-7 pl-1 pr-4 text-[10px] font-bold text-gray-700 bg-yellow-50 border border-yellow-200 rounded focus:ring-1 focus:ring-yellow-400 outline-none appearance-none truncate">
                                 ${opsH}
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-yellow-400">
-                                <svg class="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-yellow-500">
+                                <svg class="fill-current h-2 w-2" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                             </div>
                         </div>
                         ${acoesHtml}
                     </div>
-                    <div class="flex items-center justify-end gap-1 pr-1">
-                        <span class="text-[9px] font-bold text-gray-400 mr-1">DURAÇÃO:</span>
+                    
+                    <div class="flex items-center justify-end gap-1 pr-0 bg-gray-50 p-1 rounded border border-gray-100 w-full">
+                        <span class="text-[8px] font-bold text-gray-400 mr-1 uppercase">Tempo:</span>
                         <input type="time" value="${safeText(linha.inicio)}" onchange="atualizarLinha(${index}, 'inicio', this.value)" class="${inputTimeClass}">
-                        <span class="text-gray-300 text-[10px]">➜</span>
+                        <span class="text-gray-300 text-[8px] px-0.5">➜</span>
                         <input type="time" value="${safeText(linha.fim)}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
                     </div>
                 </div>
             </div>`;
         }
-        
-        container.innerHTML += html;
-    });
+    }).join(''); // Finaliza a criação do HTML
+
+    // 5. INJEÇÃO NO DOM (Atualiza a tela)
+    container.innerHTML = htmlFinal;
 }
 
 // ============================================================
@@ -3825,7 +3886,7 @@ function salvarPreventiva() {
 
     let valido = true;
 
-    // Validação Visual
+    // 1. VALIDAÇÃO VISUAL (Campos vazios)
     const campos = ['prevOS', 'prevFrota', 'prevAtividade', 'prevSistema', 'prevSubsistema', 'prevInicio', 'prevFim'];
     campos.forEach(id => {
         const el = document.getElementById(id);
@@ -3837,33 +3898,47 @@ function salvarPreventiva() {
         }
     });
 
+    // 2. VALIDAÇÃO DE LÓGICA (Hora)
     if (valido && inicio >= fim) {
         showToast("Hora final deve ser maior que a inicial.", "error");
         document.getElementById('prevFim').classList.add('campo-invalido');
-        return false; // 🛑 ERRO: Retorna false para manter popup aberto
+        return false; // 🛑 Para aqui se a hora estiver errada
     }
 
     if (!valido) {
         showToast("Preencha os campos obrigatórios.", "error");
-        return false; // 🛑 ERRO
+        return false; // 🛑 Para aqui se faltar campo
     }
 
-    // Sucesso
+    // ============================================================
+    // ✅ SUCESSO! SÓ AGORA GERAMOS O ID
+    // ============================================================
+    
+    // O console.log aparecerá aqui, pois está dentro desta função
+    const novoId = gerarIdUnico(); 
+
     linhasApontamento.push({
-        id: Date.now(),
+        id: novoId, // Usa o ID recém-criado
         tipo: 'servico',
-        atividade, inicio, fim, frota, os, sistema, subsistema
+        atividade, 
+        inicio, 
+        fim, 
+        frota, 
+        os, 
+        sistema, 
+        subsistema
     });
 
     renderizarListaLinhas();
     rolarParaUltimoItemApontamento();
     marcarComoDesatualizado();
     salvarTudo();
-    showToast("Adicionado com sucesso!", "success");
-    salvarLinhaDoTempoDoDia(); // ✅ Garante que a preventiva vá para a nuvem
-    return true; // ✅ SUCESSO: Permite fechar o popup
+    
+    showToast("Preventiva adicionada!", "success");
+    salvarLinhaDoTempoDoDia(); // Garante salvamento específico da timeline
+    
+    return true; // Fecha o popup
 }
-
 
 
 
@@ -3886,6 +3961,7 @@ function adicionarLinhaManual() {
     const inicioSugerido = ultima ? ultima.fim : '07:00';
 
     linhasApontamento.push({
+        id: gerarIdUnico(), 
         id: Date.now(),
         tipo: 'manual',
         atividade: 'H04 - Organização/Limpeza', // Padrão, usuário muda
@@ -3980,7 +4056,7 @@ async function abrirPopupImportarServico() {
         const codAtiv = s.atividade ? s.atividade.split(' - ')[0] : '???';
         const sist = s.sistema || '?';
         const sub = s.subsistema ? s.subsistema.split(' - ')[0] : '?'; 
-        const infoTecnica = `${codAtiv} • ${sist} • ${sub}`;
+        const infoTecnica = `${codAtiv} • ${sist} • ${sub}`
         
         const action = `tentarImportarServico('${s.id}', '${s.frota}', '${s.atividade}', '${s.sistema}', '${s.subsistema}', '${s.inicio}', '${s.fim}', '${numeroOS}')`;
         
@@ -4305,24 +4381,43 @@ async function executarRenderizacaoCanvas() {
     const ajusteY = elAjuste ? parseFloat(elAjuste.value) || 0 : 0;
 
     const img = new Image();
-    img.src = COORD_FORM.imagemBase;
+    // Certifique-se de que esta imagem existe na pasta do projeto!
+    img.src = COORD_FORM.imagemBase; 
 
     try {
-        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+        await new Promise((resolve, reject) => { 
+            img.onload = resolve; 
+            img.onerror = () => {
+                console.warn("Imagem de fundo falhou. Usando fallback branco.");
+                // Fallback: Cria um fundo branco se a imagem falhar para não travar o usuário
+                canvas.width = 2480; // Largura A4 padrão px (alta resolução)
+                canvas.height = 3508;
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                resolve(); // Resolve mesmo com erro para continuar escrevendo o texto
+            }; 
+        });
+        
+        // Se a imagem carregou, desenha ela. Se falhou, o fallback acima já definiu o tamanho.
+        if (img.complete && img.naturalWidth !== 0) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+        }
+
     } catch (e) { 
-        showToast("ERRO: Imagem 'fundo_apontamento.jpg' não encontrada!", "error"); 
+        showToast("Erro ao inicializar Canvas.", "error"); 
         return; 
     }
-
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
 
     ctx.font = "28px Arial"; 
     ctx.fillStyle = "#000000"; 
     ctx.textBaseline = "middle";
 
-    // --- CABEÇALHO ---
+    // ... (MANTENHA O RESTANTE DO CÓDIGO DE DESENHO DO TEXTO IGUAL AO ORIGINAL) ...
+    // ... Do trecho "--- CABEÇALHO ---" para baixo continua igual ...
+    
+    // (Apenas para referência, o final da função):
     const tipoOficina = document.getElementById('apontamentoTipoOficina')?.value || 'externa';
     const dadosColab = document.getElementById('apontamentoColaborador')?.value || ' - ';
     const [nome, matricula] = dadosColab.split(' - ');
@@ -4334,7 +4429,7 @@ async function executarRenderizacaoCanvas() {
     } else {
         ctx.fillText("X", COORD_FORM.cabecalho.oficinaInterna.x, COORD_FORM.cabecalho.oficinaInterna.y);
     }
-
+    
     ctx.fillText(nome.toUpperCase(), COORD_FORM.cabecalho.colaborador.x, COORD_FORM.cabecalho.colaborador.y);
     ctx.fillText(matricula, COORD_FORM.cabecalho.id.x, COORD_FORM.cabecalho.id.y);
     ctx.fillText(setor.toUpperCase(), COORD_FORM.cabecalho.setor.x, COORD_FORM.cabecalho.setor.y);
@@ -4346,7 +4441,6 @@ async function executarRenderizacaoCanvas() {
         ctx.fillText(ano.slice(-2), COORD_FORM.cabecalho.dataAno.x, COORD_FORM.cabecalho.dataAno.y);
     }
 
-    // --- LINHAS ---
     linhasApontamento.forEach((linha, i) => {
         if (i > 19) return; 
 
@@ -4359,26 +4453,14 @@ async function executarRenderizacaoCanvas() {
         const sist = linha.sistema || '';
         const sub = linha.subsistema ? linha.subsistema.split(' - ')[0] : '';
 
-        // --- DESENHO DAS COLUNAS ---
-        
-        // 1. O.S. (LÓGICA AJUSTADA)
-        // Se for "PENDENTE" ou vazio, NÃO imprime nada (deixa em branco).
-        // Se tiver um número real, imprime.
         if (numOS && numOS !== 'PENDENTE') {
             ctx.fillText(numOS, x.os, y); 
         }
 
-        // 2. Frota
         ctx.fillText(frota, x.frota, y);
-        
-        // 4. Atividade (Código Curto)
         ctx.fillText(codAtiv, x.atividade, y);
-
-        // 5. Sistema e Subsistema
         ctx.fillText(sist, x.sistema, y);
         ctx.fillText(sub, x.subsistema, y);
-
-        // 6. Horários
         ctx.fillText(linha.inicio, x.inicio, y);
         ctx.fillText(linha.fim, x.fim, y);
     });
@@ -4386,6 +4468,7 @@ async function executarRenderizacaoCanvas() {
     showToast("Preview gerado com sucesso!", "success");
     marcarComoAtualizado(); 
 }
+
 
 function baixarApontamento(tipo) {
     // 1. TRAVA DE SEGURANÇA
@@ -6125,77 +6208,100 @@ console.error(`❌ Erro em ${contexto}:`, err);
 let monitoramentoCatalogoIniciado = false;
 
 function sincronizarCatalogoPecas() {
-if (monitoramentoCatalogoIniciado) return;
-monitoramentoCatalogoIniciado = true;
+    if (monitoramentoCatalogoIniciado) return;
+    monitoramentoCatalogoIniciado = true;
 
-console.log("📡 Iniciando Sincronização Inteligente do Catálogo...");
+    console.log("📡 Iniciando Sincronização Inteligente do Catálogo...");
 
-firestore.collection('catalogo')
-.onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
-// Se o DB não estiver pronto, não tenta gravar
-if (!db) return;
+    firestore.collection('catalogo').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+        // Se o DB não estiver pronto ou for apenas gravação local pendente, ignora
+        if (!db) return;
+        if (snapshot.metadata.hasPendingWrites) return;
 
-// Ignora escritas locais pendentes (evita duplicidade de processamento)
-if (snapshot.metadata.hasPendingWrites) return;
+        // Pega apenas o que mudou
+        const mudancas = snapshot.docChanges();
+        
+        // Se não tem mudanças, não faz nada
+        if (mudancas.length === 0) return;
 
-// Abre transação para gravação no disco (IndexedDB)
-const tx = db.transaction('catalogo', 'readwrite');
-const store = tx.objectStore('catalogo');
+        console.log(`📥 Recebendo ${mudancas.length} atualizações do catálogo...`);
 
-let houveMudanca = false;
+        // --- LÓGICA DE LOTES (CHUNKING) PARA NÃO TRAVAR O CELULAR ---
+        let indiceAtual = 0;
+        const TAMANHO_LOTE = 200; // Processa 200 itens por vez
 
-snapshot.docChanges().forEach(change => {
-houveMudanca = true;
-const dadosDoc = change.doc.data();
-const docId = change.doc.id;
+        const processarProximoLote = () => {
+            // Se acabou, finaliza e atualiza a tela
+            if (indiceAtual >= mudancas.length) {
+                console.log("✅ Sincronização do catálogo concluída.");
+                const secaoCatalogo = document.getElementById('catalogo');
+                // Só renderiza se a tela de catálogo estiver aberta
+                if (secaoCatalogo && !secaoCatalogo.classList.contains('hidden')) {
+                     renderizarCatalogo();
+                }
+                return;
+            }
 
-// Objeto padronizado
-const item = {
-...dadosDoc,
-docId: docId,
-// Garante que campos vitais existam para evitar erros de renderização
-descricao: dadosDoc.descricao || 'Sem descrição',
-codigoSap: dadosDoc.codigoSap || '',
-partNumber: dadosDoc.partNumber || ''
-};
+            // Abre uma transação para este lote específico
+            const tx = db.transaction('catalogo', 'readwrite');
+            const store = tx.objectStore('catalogo');
+            
+            // Define o fim deste lote
+            const fimLote = Math.min(indiceAtual + TAMANHO_LOTE, mudancas.length);
 
-// 1. Atualiza o DISCO (Persistência)
-if (change.type === 'added' || change.type === 'modified') {
-store.put(item);
+            // Loop apenas neste lote
+            for (let i = indiceAtual; i < fimLote; i++) {
+                const change = mudancas[i];
+                const dadosDoc = change.doc.data();
+                const docId = change.doc.id;
+                
+                // Tratamento de segurança para campos vazios
+                const item = {
+                    ...dadosDoc,
+                    docId: docId,
+                    descricao: dadosDoc.descricao || 'Sem descrição',
+                    codigoSap: dadosDoc.codigoSap || '',
+                    partNumber: dadosDoc.partNumber || ''
+                };
 
-// 2. Atualiza a RAM (Cirúrgico - Sem reler tudo)
-const index = catalogoLocal.findIndex(i => i.docId === docId);
-if (index > -1) {
-catalogoLocal[index] = item; // Atualiza existente
-} else {
-catalogoLocal.push(item); // Adiciona novo
+                // Adiciona/Atualiza
+                if (change.type === 'added' || change.type === 'modified') {
+                    store.put(item);
+                    
+                    // Atualiza memória RAM
+                    const index = catalogoLocal.findIndex(x => x.docId === docId);
+                    if(index > -1) catalogoLocal[index] = item; 
+                    else catalogoLocal.push(item);
+                }
+
+                // Remove
+                if (change.type === 'removed') {
+                    store.delete(docId);
+                    catalogoLocal = catalogoLocal.filter(x => x.docId !== docId);
+                }
+            }
+
+            // Quando o banco terminar de gravar este lote, agenda o próximo
+            tx.oncomplete = () => {
+                indiceAtual += TAMANHO_LOTE;
+                // setTimeout(..., 50) libera o processador por 50ms para a tela não congelar
+                setTimeout(processarProximoLote, 50); 
+            };
+
+            tx.onerror = (e) => {
+                console.error("Erro ao gravar lote do catálogo:", e);
+                // Tenta pular para o próximo lote em caso de erro
+                indiceAtual += TAMANHO_LOTE;
+                setTimeout(processarProximoLote, 100);
+            };
+        };
+
+        // Inicia o primeiro lote
+        processarProximoLote();
+
+    }, (error) => tratarErroOffline(error, 'Catálogo Peças'));
 }
-}
 
-if (change.type === 'removed') {
-store.delete(docId);
-
-// Remove da RAM cirurgicamente
-catalogoLocal = catalogoLocal.filter(i => i.docId !== docId);
-}
-});
-
-// Só renderiza se realmente houve mudança E se a tela estiver visível
-if (houveMudanca) {
-const secaoCatalogo = document.getElementById('catalogo');
-// Verifica se o elemento existe e não tem a classe 'hidden'
-if (secaoCatalogo && !secaoCatalogo.classList.contains('hidden')) {
-// Debounce simples: evita renderizar 50x se entrarem 50 itens rápido
-clearTimeout(window.renderCatalogoTimer);
-window.renderCatalogoTimer = setTimeout(() => {
-console.log("♻️ Atualizando visualização do catálogo...");
-renderizarCatalogo();
-}, 200);
-}
-}
-
-}, (error) => tratarErroOffline(error, 'Catálogo Peças'));
-}
 
 let monitoramentoFrotasIniciado = false;
 
