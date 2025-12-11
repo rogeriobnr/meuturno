@@ -3508,16 +3508,15 @@ async function carregarLinhaDoTempoPorData(novaData) {
 function trocarDataApontamento(novaData) {
     if(!novaData) return;
     
-    // 1. O PULO DO GATO: Salva os dados atuais usando a DATA ANTIGA (que estava na memória)
-    // Se não tiver memória (primeira vez), usa a nova mesmo.
     const dataParaSalvar = dataMemoriaApontamento || novaData;
 
     salvarLinhaDoTempoDoDia(dataParaSalvar).then(() => {
-        // 2. Atualiza a memória para a NOVA data
         dataMemoriaApontamento = novaData;
-
-        // 3. Carrega os dados da nova data
-        carregarLinhaDoTempoPorData(novaData);
+        
+        // --- MUDANÇA AQUI: Em vez de apenas carregar uma vez, iniciamos a sincronização ---
+        carregarLinhaDoTempoPorData(novaData); 
+        iniciarSincronizacaoEmTempoRealApontamento(); // <--- NOVA CHAMADA
+        // ---------------------------------------------------------------------------------
         
         if(typeof atualizarPreviewSeNecessario === 'function') atualizarPreviewSeNecessario();
     });
@@ -3577,10 +3576,11 @@ function renderizarSecaoApontamento(container) {
         renderizarListaLinhas();
     }
 
-    // 3. Inicia monitoramento para o botão de "Atualizar Preview" (amarelo/azul)
-    iniciarMonitoramentoFormulario();
-}
+// ATIVA O MODO MULTIPLAYER
+iniciarSincronizacaoEmTempoRealApontamento();
 
+iniciarMonitoramentoFormulario();
+}
 
 /**
  * FUNÇÃO PRINCIPAL DE RENDERIZAÇÃO DA LISTA (TIMELINE)
@@ -6507,6 +6507,56 @@ function mostrarTelaDeCarregamento() {
         console.error("Erro na limpeza:", e);
         showToast("Erro ao limpar dados.", "error");
     }
+}
+// =================================================================================
+// SOLUÇÃO REAL-TIME: SINCRONIZAÇÃO DE APONTAMENTO EM EQUIPE
+// =================================================================================
+
+let unsubscribeApontamento = null; // Variável para controlar a conexão
+
+function iniciarSincronizacaoEmTempoRealApontamento() {
+    const dataAlvo = document.getElementById('apontamentoData')?.value || dataHojeInputLocal();
+    const idComposto = gerarIDComposto(dataAlvo);
+
+    // 1. Se já estiver ouvindo outro dia, desliga o anterior para economizar bateria
+    if (unsubscribeApontamento) {
+        unsubscribeApontamento();
+        unsubscribeApontamento = null;
+    }
+
+    console.log(`📡 Conectando ao vivo no apontamento: ${idComposto}`);
+
+    // 2. Inicia a escuta na Nuvem
+    unsubscribeApontamento = firestore.collection('apontamentos_diarios_cloud')
+        .doc(idComposto)
+        .onSnapshot((doc) => {
+            // Ignora se for a própria escrita local (evita loops)
+            if (doc.metadata.hasPendingWrites) return;
+
+            if (doc.exists) {
+                const dadosNuvem = doc.data();
+                
+                // Verifica se há linhas para atualizar
+                if (dadosNuvem.linhas) {
+                    console.log("🔄 Recebida atualização do parceiro na nuvem!");
+                    
+                    // ATUALIZA A RAM
+                    linhasApontamento = dadosNuvem.linhas;
+                    
+                    // ATUALIZA A TELA
+                    renderizarListaLinhas();
+                    
+                    // ATUALIZA O BANCO LOCAL (Para backup)
+                    dbExec('apontamentos_diarios', 'readwrite', s => s.put(dadosNuvem));
+                    
+                    // Se o preview estiver gerado, avisa que mudou
+                    marcarComoDesatualizado();
+                    showToast("Dados atualizados pelo parceiro.", "info");
+                }
+            }
+        }, (error) => {
+            console.warn("⚠️ Sem conexão realtime (Modo Offline Ativo).");
+        });
 }
 
     
