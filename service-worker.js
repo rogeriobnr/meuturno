@@ -1,8 +1,8 @@
 'use strict';
 
 // 1. VERSÃO E CONFIGURAÇÃO
-// Incremento a versão para v51 para forçar o ciclo de update no navegador
-const CACHE_NAME = 'meuturno-cache-v58';
+// Incremento a versão para v59 para forçar o ciclo de update no navegador
+const CACHE_NAME = 'meuturno-cache-v59';
 
 // Tempo limite para esperar pela rede em navegações (3 segundos)
 const NETWORK_TIMEOUT_MS = 3000;
@@ -14,7 +14,7 @@ const urlsToCache = [
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/fundo_apontamento.jpg',
+  '/assets.js',
   '/libs/tailwind.css',
   '/libs/jspdf.js',
   '/libs/firebase-app.js',

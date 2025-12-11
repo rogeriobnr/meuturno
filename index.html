@@ -11,6 +11,7 @@
     <link rel="preload" href="/libs/tailwind.css" as="style">
     <link href="/libs/tailwind.css" rel="stylesheet">
 
+    <script src="assets.js"></script>
     <script src="/libs/jspdf.js" defer></script>
     <script src="/libs/xlsx.js" defer></script>
     <script src="/libs/chart.js" defer></script>
@@ -3316,7 +3317,7 @@ let indiceOrigemTroca = null;
 
 // Configuração das coordenadas (Mantida, ajuste fino se necessário)
 const COORD_FORM = {
-    imagemBase: 'fundo_apontamento.jpg',
+    imagemBase: IMAGEM_FUNDO_BASE64,
     cabecalho: {
         oficinaInterna: { x: 323, y: 230 }, // Checkbox Interna
         oficinaExterna: { x: 1420, y: 230 }, // Checkbox Externa
@@ -4372,101 +4373,118 @@ function gerarPreviewApontamento() {
 
 // --- A FUNÇÃO DE DESENHO REAL (Antiga gerarPreviewApontamento renomeada) ---
 // --- A FUNÇÃO DE DESENHO REAL (Gera a Imagem) ---
+// =================================================================================
+// FUNÇÃO DE RENDERIZAÇÃO (OTIMIZADA PARA BASE64 E OFFLINE)
+// =================================================================================
 async function executarRenderizacaoCanvas() {
+    console.log("🎨 Iniciando renderização do Canvas (Modo Base64)...");
+    
     const canvas = document.getElementById('canvasApontamento');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    const elAjuste = document.getElementById('ajusteYGlobal');
-    const ajusteY = elAjuste ? parseFloat(elAjuste.value) || 0 : 0;
 
+    // 1. Carrega a Imagem da Variável Global
     const img = new Image();
-    // Certifique-se de que esta imagem existe na pasta do projeto!
-    img.src = COORD_FORM.imagemBase; 
+    
+    // Define a imagem usando a variável do arquivo assets.js
+    // Se a variável não existir (esqueceu o arquivo), usa um fallback vazio
+    img.src = (typeof IMAGEM_FUNDO_BASE64 !== 'undefined') ? IMAGEM_FUNDO_BASE64 : '';
 
     try {
-        await new Promise((resolve, reject) => { 
-            img.onload = resolve; 
-            img.onerror = () => {
-                console.warn("Imagem de fundo falhou. Usando fallback branco.");
-                // Fallback: Cria um fundo branco se a imagem falhar para não travar o usuário
-                canvas.width = 2480; // Largura A4 padrão px (alta resolução)
-                canvas.height = 3508;
-                ctx.fillStyle = "white";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                resolve(); // Resolve mesmo com erro para continuar escrevendo o texto
-            }; 
+        await new Promise((resolve, reject) => {
+            if (!img.src) reject(new Error("Variável IMAGEM_FUNDO_BASE64 não encontrada. Verifique o arquivo assets.js"));
+            
+            img.onload = () => resolve();
+            img.onerror = (e) => reject(new Error("Falha ao decodificar Base64."));
         });
-        
-        // Se a imagem carregou, desenha ela. Se falhou, o fallback acima já definiu o tamanho.
-        if (img.complete && img.naturalWidth !== 0) {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-        }
 
-    } catch (e) { 
-        showToast("Erro ao inicializar Canvas.", "error"); 
-        return; 
+        // 2. Ajusta e Desenha
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+    } catch (erro) {
+        console.error(erro);
+        showToast("⚠️ Erro na imagem de fundo. Gerando em branco.", "warning");
+        
+        // Fallback para fundo branco se der erro no Base64
+        canvas.width = 2480; 
+        canvas.height = 3508;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    ctx.font = "28px Arial"; 
+    // 3. Configurações de Texto
+    ctx.font = "bold 28px Arial"; 
     ctx.fillStyle = "#000000"; 
     ctx.textBaseline = "middle";
 
-    // ... (MANTENHA O RESTANTE DO CÓDIGO DE DESENHO DO TEXTO IGUAL AO ORIGINAL) ...
-    // ... Do trecho "--- CABEÇALHO ---" para baixo continua igual ...
+    // --- (O RESTANTE DA LÓGICA DE TEXTO PERMANECE IGUAL) ---
+    // Copie aqui a parte de baixo da sua função antiga que escreve
+    // os textos (nome, matricula, linhas, etc).
+    // ...
     
-    // (Apenas para referência, o final da função):
+    // 4. Coleta de Dados do Cabeçalho
     const tipoOficina = document.getElementById('apontamentoTipoOficina')?.value || 'externa';
     const dadosColab = document.getElementById('apontamentoColaborador')?.value || ' - ';
-    const [nome, matricula] = dadosColab.split(' - ');
+    const splitColab = dadosColab.includes('-') ? dadosColab.split('-') : [dadosColab, ''];
+    const nome = (splitColab[0] || '').trim().toUpperCase();
+    const matricula = (splitColab[1] || '').trim();
     const setor = document.getElementById('apontamentoSetor')?.value || '';
     const dataRaw = document.getElementById('apontamentoData')?.value || '';
 
-    if (tipoOficina === 'externa') {
-        ctx.fillText("X", COORD_FORM.cabecalho.oficinaExterna.x, COORD_FORM.cabecalho.oficinaExterna.y);
-    } else {
-        ctx.fillText("X", COORD_FORM.cabecalho.oficinaInterna.x, COORD_FORM.cabecalho.oficinaInterna.y);
-    }
-    
-    ctx.fillText(nome.toUpperCase(), COORD_FORM.cabecalho.colaborador.x, COORD_FORM.cabecalho.colaborador.y);
-    ctx.fillText(matricula, COORD_FORM.cabecalho.id.x, COORD_FORM.cabecalho.id.y);
-    ctx.fillText(setor.toUpperCase(), COORD_FORM.cabecalho.setor.x, COORD_FORM.cabecalho.setor.y);
+    // Função helper para escrever
+    const escrever = (txt, x, y) => { if(x && y) ctx.fillText(String(txt || "").toUpperCase(), x, y); };
 
-    if (dataRaw) {
-        const [ano, mes, dia] = dataRaw.split('-');
-        ctx.fillText(dia, COORD_FORM.cabecalho.dataDia.x, COORD_FORM.cabecalho.dataDia.y);
-        ctx.fillText(mes, COORD_FORM.cabecalho.dataMes.x, COORD_FORM.cabecalho.dataMes.y);
-        ctx.fillText(ano.slice(-2), COORD_FORM.cabecalho.dataAno.x, COORD_FORM.cabecalho.dataAno.y);
-    }
+    // Desenho do Cabeçalho
+    if (COORD_FORM.cabecalho) {
+        const cab = COORD_FORM.cabecalho;
+        if (tipoOficina === 'externa') escrever("X", cab.oficinaExterna.x, cab.oficinaExterna.y);
+        else escrever("X", cab.oficinaInterna.x, cab.oficinaInterna.y);
+        
+        escrever(nome, cab.colaborador.x, cab.colaborador.y);
+        escrever(matricula, cab.id.x, cab.id.y);
+        escrever(setor, cab.setor.x, cab.setor.y);
 
-    linhasApontamento.forEach((linha, i) => {
-        if (i > 19) return; 
-
-        const y = COORD_FORM.grid.inicioY + (i * COORD_FORM.grid.alturaLinha) + ajusteY;
-        const x = COORD_FORM.grid.colunas;
-
-        const numOS = linha.os || '';
-        const frota = linha.frota || '';
-        const codAtiv = linha.atividade ? linha.atividade.split(' - ')[0] : ''; 
-        const sist = linha.sistema || '';
-        const sub = linha.subsistema ? linha.subsistema.split(' - ')[0] : '';
-
-        if (numOS && numOS !== 'PENDENTE') {
-            ctx.fillText(numOS, x.os, y); 
+        if (dataRaw) {
+            const [ano, mes, dia] = dataRaw.split('-');
+            escrever(dia, cab.dataDia.x, cab.dataDia.y);
+            escrever(mes, cab.dataMes.x, cab.dataMes.y);
+            escrever(ano.slice(-2), cab.dataAno.x, cab.dataAno.y);
         }
+    }
 
-        ctx.fillText(frota, x.frota, y);
-        ctx.fillText(codAtiv, x.atividade, y);
-        ctx.fillText(sist, x.sistema, y);
-        ctx.fillText(sub, x.subsistema, y);
-        ctx.fillText(linha.inicio, x.inicio, y);
-        ctx.fillText(linha.fim, x.fim, y);
-    });
+    // Desenho das Linhas
+    const elAjuste = document.getElementById('ajusteYGlobal');
+    const ajusteY = elAjuste ? (parseFloat(elAjuste.value) || 0) : 0;
 
-    showToast("Preview gerado com sucesso!", "success");
-    marcarComoAtualizado(); 
+    if (linhasApontamento && COORD_FORM.grid) {
+        linhasApontamento.forEach((linha, i) => {
+            if (i > 19) return; 
+
+            const y = COORD_FORM.grid.inicioY + (i * COORD_FORM.grid.alturaLinha) + ajusteY;
+            const cols = COORD_FORM.grid.colunas;
+
+            const numOS = (linha.os && linha.os !== 'PENDENTE') ? linha.os : '';
+            let sub = linha.subsistema || '';
+            if (sub.includes(' - ')) sub = sub.split(' - ')[0];
+            let ativ = linha.atividade || '';
+            if (ativ.includes(' - ')) ativ = ativ.split(' - ')[0];
+
+            escrever(numOS, cols.os, y);
+            escrever(linha.frota, cols.frota, y);
+            escrever(ativ, cols.atividade, y);
+            escrever(linha.sistema, cols.sistema, y);
+            escrever(sub, cols.subsistema, y);
+            escrever(linha.inicio, cols.inicio, y);
+            escrever(linha.fim, cols.fim, y);
+            
+            if (cols.local && linha.local) escrever(linha.local, cols.local, y);
+        });
+    }
+
+    showToast("Preview atualizado!", "success");
+    if (typeof marcarComoAtualizado === 'function') marcarComoAtualizado(); 
 }
 
 
