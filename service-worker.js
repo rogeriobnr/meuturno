@@ -2,7 +2,7 @@
 
 // 1. VERSÃO E CONFIGURAÇÃO
 // Incremento a versão para v51 para forçar o ciclo de update no navegador
-const CACHE_NAME = 'meuturno-cache-v56';
+const CACHE_NAME = 'meuturno-cache-v57';
 
 // Tempo limite para esperar pela rede em navegações (3 segundos)
 const NETWORK_TIMEOUT_MS = 3000;
