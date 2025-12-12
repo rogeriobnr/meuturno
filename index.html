@@ -398,15 +398,18 @@
                     <label class="block text-xs font-bold text-gray-500 mb-1">Setor</label>
                     <input type="text" id="apontamentoSetor" value="Manutenção Silvicultura" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
-        <div>
-             <label class="block text-xs font-bold text-gray-500 mb-1">Data do Apontamento</label>
-<input type="date" id="apontamentoData" 
+<div class="flex gap-2 items-end">
+    <div class="flex-grow">
+        <label class="block text-xs font-bold text-gray-500 mb-1">Data do Apontamento</label>
+        <input type="date" id="apontamentoData" 
            class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
            onchange="trocarDataApontamento(this.value)">
-
+    </div>
+    <button onclick="abrirGaleriaApontamentos()" class="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 p-2.5 rounded-lg transition-colors h-[42px] w-[42px] flex items-center justify-center shadow-sm" title="Consultar Salvos">
+        <span class="text-xl">📂</span>
+    </button>
+</div>
         </div>
-
-            </div>
         </div>
     </div>
 
@@ -1842,9 +1845,17 @@ function carregarEstado(dados) {
         function abrirPopup(titulo, mensagem, botoes = []) { 
     document.getElementById('popupTitulo').innerHTML = titulo; 
     document.getElementById('popupMensagem').innerHTML = mensagem; 
+    
     const divBotoes = document.getElementById('popupBotoes'); 
+    
+    // --- CORREÇÃO AQUI ---
+    // Força a barra a aparecer novamente (caso o popup de exclusão tenha escondido)
+    divBotoes.style.display = 'flex'; 
+    // ---------------------
+
     divBotoes.innerHTML = ''; 
     
+    // Lógica padrão: Se não passar botões, cria o "Fechar"
     if (botoes.length === 0) {
         botoes.push({ texto: 'Fechar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }); 
     }
@@ -1855,14 +1866,11 @@ function carregarEstado(dados) {
         btn.className = `${classesBase} ${b.classe}`; 
         btn.innerHTML = b.texto; 
         
-        // --- CORREÇÃO DA LÓGICA DE FECHAMENTO ---
         btn.onclick = () => { 
             // 1. Executa a ação se existir
             const resultado = b.acao ? b.acao() : undefined;
             
-            // 2. LÓGICA ROBUSTA:
-            // Só mantém aberto se a função retornar EXPLICITAMENTE 'false'.
-            // Qualquer outra coisa (true, undefined, Promise do async) FECHA o popup.
+            // 2. LÓGICA ROBUSTA: Fecha, a menos que retorne 'false'
             if (resultado !== false) {
                 fecharPopup();
             }
@@ -6577,8 +6585,538 @@ function iniciarSincronizacaoEmTempoRealApontamento() {
         });
 }
 
+// ============================================================
+// MÓDULO: GALERIA DE APONTAMENTOS (CONSULTA)
+// ============================================================
+
+async function abrirGaleriaApontamentos() {
+    // Feedback visual
+    const btn = event?.currentTarget;
+    const iconeOriginal = btn ? btn.innerHTML : '';
+    if(btn) btn.innerHTML = '⏳';
+
+    try {
+        // 1. Busca TUDO do banco local
+        const todos = await dbExec('apontamentos_diarios', 'readonly', s => s.getAll());
+
+        if (!todos || todos.length === 0) {
+            showToast("Nenhum apontamento salvo no histórico.", "info");
+            if(btn) btn.innerHTML = iconeOriginal;
+            return;
+        }
+
+        // 2. Ordena por Data (Decrescente)
+        todos.sort((a, b) => b.data.localeCompare(a.data));
+
+        // 3. Monta o HTML da Lista
+        const listaHTML = todos.map(item => {
+            const linhas = item.linhas || [];
+            const qtdServicos = linhas.filter(l => l.tipo === 'servico').length;
+            const qtdManual = linhas.filter(l => l.tipo === 'manual').length;
+            
+            // Tratamento visual da Frente/Turno
+            // Tenta pegar do ID composto se não tiver salvo explícito
+            let [dataId, frenteId, turnoId] = item.id_composto ? item.id_composto.split('_') : [item.data, '?', '?'];
+            
+            // Prioriza os campos salvos, se existirem
+            const frenteExibicao = item.frente || frenteId || "GERAL";
+            const turnoExibicao = item.turno || turnoId || "UNK";
+            const dataFormatada = formatarDataParaExibicao(item.data);
+
+            return `
+            <div onclick="carregarApontamentoDaGaleria('${item.data}', '${frenteExibicao}', '${turnoExibicao}')" 
+                 class="bg-white border border-gray-200 p-3 rounded-xl mb-3 shadow-sm active:scale-95 transition-all cursor-pointer hover:border-blue-400 hover:bg-blue-50 group relative">
+                
+                <div class="flex justify-between items-start mb-1">
+                    <h4 class="text-sm font-black text-gray-800 flex items-center gap-2">
+                        📅 ${dataFormatada}
+                    </h4>
+                   
+                </div>
+               
+                <div class=" flex justify-start items-center text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide truncate">
+                    📍 ${frenteExibicao}
+                     
+                     &#160;
+                    
+                    
+                        <span class="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">
+                        ${turnoExibicao}
+                        </span>
+                    
+                </div>
+
+                <div class="flex gap-2 text-[10px]">
+                    <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">
+                        🔧 ${qtdServicos} Serviços
+                    </span>
+                    <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-bold border border-yellow-200">
+                        ☕ ${qtdManual} Manuais
+                    </span>
+                </div>
+
+                <button onclick="apagarApontamentoLocal(event, '${item.id_composto}')" 
+                    class="absolute bottom-3 right-3 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors z-10" title="Apagar do Celular">
+                    🗑️
+                </button>
+            </div>
+            `;
+        }).join('');
+
+        // 4. Exibe no Popup
+        const conteudo = `
+<div class="bg-gray-50 -m-5 p-4 h-full flex flex-col">
+    <div class="mb-4 px-1 border-b pb-3 border-gray-200 flex justify-between items-center">
+        <div>
+            <h3 class="font-bold text-gray-700">Histórico Local</h3>
+            <p class="text-xs text-gray-400">Clique para carregar e editar.</p>
+        </div>
+        <button onclick="abrirCentralLimpezaMacro()" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 p-2 rounded-lg shadow-sm transition-colors text-xs font-bold flex items-center gap-1">
+            <span>🧹</span> Faxina
+        </button>
+    </div>
+    <div class="overflow-y-auto pr-1 custom-scrollbar space-y-1" style="max-height: 60vh;">
+        ${listaHTML}
+    </div>
+</div>
+`;
+
+        abrirPopup('📂 Meus Apontamentos', conteudo, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: fecharPopup }]);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao ler banco de dados.", "error");
+    } finally {
+        if(btn) btn.innerHTML = iconeOriginal;
+    }
     
-    </script>
+}
+
+// Função para carregar ao clicar no card
+function carregarApontamentoDaGaleria(data, frente, turno) {
+    // 1. Atualiza os campos de contexto na tela (se existirem)
+    const elFrente = document.getElementById('frente');
+    const elTurno = document.getElementById('turnoLetra');
+    const elData = document.getElementById('apontamentoData');
+
+    if(elFrente) elFrente.value = frente;
+    if(elTurno) elTurno.value = turno;
+    if(elData) elData.value = data;
+
+    // 2. Salva o contexto no LocalStorage para não perder no reload
+    localStorage.setItem('ctx_frente', frente);
+    localStorage.setItem('ctx_turno', turno);
+
+    // 3. Aciona a função principal de troca de data
+    trocarDataApontamento(data);
+    
+    // 4. Feedback e Fecha
+    fecharPopup();
+    showToast(`Carregando: ${formatarDataParaExibicao(data)}...`, "success");
+}
+
+// Função para apagar lixo local (Opcional)
+async function apagarApontamentoLocal(event, idComposto) {
+    event.stopPropagation(); // Impede de abrir o apontamento ao clicar na lixeira
+    
+    const confirmado = await new Promise(r => abrirPopupConfirmar('Apagar Registro', 'Isso remove apenas do seu celular. Deseja continuar?', r));
+    
+    if(confirmado) {
+        await dbExec('apontamentos_diarios', 'readwrite', s => s.delete(idComposto));
+        showToast("Registro removido do aparelho.", "success");
+        // Reabre a galeria para atualizar a lista
+        setTimeout(() => abrirGaleriaApontamentos(), 300);
+    }
+}
+// ============================================================
+// MÓDULO: CENTRAL DE LIMPEZA EM CASCATA (ANO > MÊS > SEMANA)
+// ============================================================
+
+// Variável global temporária para manter os dados enquanto a janela está aberta
+let cacheDadosLimpeza = [];
+
+async function abrirCentralLimpezaMacro() {
+    fecharPopup(); // Fecha a galeria anterior
+    abrirPopupLoading("Organizando arquivos...");
+
+    try {
+        // 1. Busca TUDO do banco local
+        cacheDadosLimpeza = await dbExec('apontamentos_diarios', 'readonly', s => s.getAll());
+        
+        if (!cacheDadosLimpeza || cacheDadosLimpeza.length === 0) {
+            fecharPopup();
+            showToast("O histórico está vazio.", "info");
+            return;
+        }
+
+        // 2. Identifica os Anos disponíveis para o filtro
+        const anosDisponiveis = [...new Set(cacheDadosLimpeza.map(i => i.data.split('-')[0]))].sort().reverse();
+        const anoAtual = new Date().getFullYear().toString();
+        const anoSelecionado = anosDisponiveis.includes(anoAtual) ? anoAtual : anosDisponiveis[0];
+
+        // 3. Prepara o HTML do Cabeçalho (Seletor de Ano)
+        let htmlBase = `
+            <div class="bg-gray-50 -m-5 p-4 h-full flex flex-col">
+                <div class="mb-2 px-1 border-b pb-3 border-gray-200 flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                    <div>
+                        <h3 class="font-bold text-gray-700 text-sm">📅 Gestão de Arquivos</h3>
+                        <p class="text-[10px] text-gray-400">Selecione para expandir e apagar</p>
+                    </div>
+                    
+                    <select id="filtroAnoLimpeza" onchange="renderizarCascataPorAno(this.value)" class="bg-blue-50 border border-blue-200 text-blue-800 text-sm font-bold rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none">
+                        ${anosDisponiveis.map(ano => `<option value="${ano}" ${ano === anoSelecionado ? 'selected' : ''}>Ano ${ano}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div id="conteudoCascata" class="overflow-y-auto pr-1 custom-scrollbar space-y-2 flex-1" style="max-height: 60vh;">
+                    </div>
+            </div>
+        `;
+
+        // 4. Abre o Popup Vazio primeiro
+        abrirPopup('🧹 Central de Faxina', htmlBase, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: () => { fecharPopup(); abrirGaleriaApontamentos(); } }]);
+
+        // 5. Renderiza o conteúdo do ano inicial
+        renderizarCascataPorAno(anoSelecionado);
+
+    } catch (e) {
+        console.error(e);
+        fecharPopup();
+        showToast("Erro ao processar dados.", "error");
+    }
+}
+
+// Função que desenha a árvore (Mês -> Semana -> Dia)
+function renderizarCascataPorAno(ano) {
+    const container = document.getElementById('conteudoCascata');
+    if (!container) return;
+
+    // Filtra dados do ano
+    const dadosAno = cacheDadosLimpeza.filter(i => i.data.startsWith(ano));
+    
+    if (dadosAno.length === 0) {
+        container.innerHTML = '<div class="text-center p-4 text-gray-400 text-xs">Nenhum registro neste ano.</div>';
+        return;
+    }
+
+    // Agrupa por Mês
+    const porMes = {};
+    dadosAno.forEach(item => {
+        const mes = item.data.split('-')[1]; // '01', '02'...
+        if (!porMes[mes]) porMes[mes] = [];
+        porMes[mes].push(item);
+    });
+
+    // Ordena Meses (Dezembro -> Janeiro)
+    const mesesOrdenados = Object.keys(porMes).sort().reverse();
+
+    let html = '';
+
+    mesesOrdenados.forEach(mes => {
+        const itensMes = porMes[mes];
+        const nomeMes = obterNomeMes(mes);
+        const idFnMes = criarIdFuncaoDeletar(itensMes, `o Mês de ${nomeMes}`);
+
+        // --- NÍVEL 1: MÊS (DETAILS) ---
+        html += `
+        <details class="group bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-2">
+            <summary class="flex justify-between items-center p-3 cursor-pointer list-none hover:bg-gray-50 transition-colors select-none">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400 transition-transform group-open:rotate-90">▶</span>
+                    <span class="font-bold text-gray-700 text-sm">${nomeMes}</span>
+                    <span class="text-[10px] bg-blue-100 text-blue-700 px-2 rounded-full font-bold">${itensMes.length}</span>
+                </div>
+                <button onclick="${idFnMes}" class="p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Apagar Mês Inteiro">
+                    🗑️
+                </button>
+            </summary>
+            
+            <div class="border-t border-gray-100 bg-gray-50 p-2 space-y-2 pl-4">
+                ${gerarHtmlSemanas(itensMes)}
+            </div>
+        </details>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// Sub-função para agrupar e gerar HTML das Semanas
+function gerarHtmlSemanas(itensDoMes) {
+    const porSemana = {};
+    
+    itensDoMes.forEach(item => {
+        const semana = obterNumeroSemana(new Date(item.data));
+        if (!porSemana[semana]) porSemana[semana] = [];
+        porSemana[semana].push(item);
+    });
+
+    // Ordena Semanas (Maior -> Menor)
+    const semanasOrdenadas = Object.keys(porSemana).sort((a, b) => b - a);
+    let htmlSemana = '';
+
+    semanasOrdenadas.forEach(sem => {
+        const itensSemana = porSemana[sem];
+        const idFnSem = criarIdFuncaoDeletar(itensSemana, `a Semana ${sem}`);
+
+        // --- NÍVEL 2: SEMANA (BLOCK) ---
+        htmlSemana += `
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div class="flex justify-between items-center p-2 bg-blue-50/50 border-b border-gray-100">
+                <span class="text-[11px] font-bold text-blue-800 uppercase tracking-wide ml-1">
+                    📆 Semana ${sem}
+                </span>
+                <button onclick="${idFnSem}" class="text-[10px] text-red-400 hover:text-red-600 font-bold hover:underline px-2">
+                    Apagar Semana
+                </button>
+            </div>
+            
+            <div class="p-1">
+                ${gerarHtmlDias(itensSemana)}
+            </div>
+        </div>`;
+    });
+
+    return htmlSemana;
+}
+
+// Sub-função para gerar a lista de dias (CORRIGIDA COM TURNO)
+function gerarHtmlDias(itensDaSemana) {
+    // Ordena Dias (Recente -> Antigo)
+    itensDaSemana.sort((a, b) => b.data.localeCompare(a.data));
+
+    return itensDaSemana.map(item => {
+        const dataFmt = formatarDataParaExibicao(item.data);
+        const idFnDia = criarIdFuncaoDeletar([item], `o dia ${dataFmt}`);
+        
+        // --- LÓGICA DE EXIBIÇÃO CORRIGIDA ---
+        const frente = item.frente || "Geral";
+        
+        // Pega o turno e remove a palavra "TURNO " se existir, deixando só a letra/número
+        const turnoRaw = item.turno || "?";
+        const turnoLimpo = turnoRaw.replace("TURNO ", "").trim();
+        
+        // Monta o texto final: "PLANTIO 2 [B]"
+        const textoExibicao = `${frente} [${turnoLimpo}]`;
+        // -------------------------------------
+        
+        // Aumentei um pouco o max-w para caber o texto maior
+        return `
+        <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors border-b border-gray-100 last:border-0">
+            <div class="flex items-center gap-3">
+                <span class="font-bold text-gray-700 text-xs">${dataFmt}</span>
+                <span class="text-[10px] text-gray-500 font-medium truncate max-w-[160px]" title="${textoExibicao}">
+                    ${textoExibicao}
+                </span>
+            </div>
+            <button onclick="${idFnDia}" class="text-gray-300 hover:text-red-500 transition-colors p-1" title="Apagar Dia">
+                🗑️
+            </button>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// AUXILIARES DE LÓGICA E SEGURANÇA
+// ============================================================
+
+// Cria um "link" global temporário para a função de deletar
+// Isso evita problemas de passar objetos complexos via string no onclick HTML
+function criarIdFuncaoDeletar(itens, nomeLote) {
+    const idUnico = 'del_fn_' + Math.random().toString(36).substr(2, 9);
+    window[idUnico] = () => confirmarTipoExclusao(itens, nomeLote);
+    return `window['${idUnico}'](event)`;
+}
+
+// Passo 1: O Popup de Escolha
+// --- PASSO 2: ESCOLHA DO TIPO DE EXCLUSÃO (LAYOUT CORRIGIDO) ---
+function confirmarTipoExclusao(itensParaApagar, nomeLote) {
+    if (event) event.stopPropagation();
+
+    // Globais temporárias
+    window.tempDadosExclusao = itensParaApagar;
+    window.tempNomeLote = nomeLote;
+
+    const qtd = itensParaApagar.length;
+    
+    const conteudo = `
+        <div class="text-center px-2 py-1">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl animate-bounce">
+                🗑️
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-1">Modo de Exclusão</h3>
+            <p class="text-sm text-gray-600 mb-6">
+                Você selecionou <b>${nomeLote}</b>.<br>
+                Isso afeta <b>${qtd} registros</b>.
+            </p>
+
+            <div class="space-y-3">
+                
+                <button onclick="confirmarAntesDeApagarLocal()" 
+                    class="w-full p-4 rounded-xl border-2 border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-sm">
+                    <span class="text-lg">📱</span> 
+                    <span>Apagar só do Celular</span>
+                </button>
+
+                <button onclick="iniciarProtocoloSegurancaNuvem(window.tempDadosExclusao, window.tempNomeLote)" 
+                    class="w-full p-4 rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-md">
+                    <span class="text-lg">☁️</span> 
+                    <span>Apagar do celular e Servidor (Nuvem)</span>
+                </button>
+
+                <div class="py-2"></div>
+
+                <button onclick="fecharPopup();abrirCentralLimpezaMacro()" 
+                    class="w-full py-4 rounded-xl bg-gray-100 text-gray-500 font-extrabold uppercase tracking-wider text-xs hover:bg-gray-200 hover:text-gray-700 transition-colors">
+                    Cancelar e Voltar
+                </button>
+            </div>
+        </div>
+    `;
+
+    abrirPopup('', conteudo, []);
+    
+    // Limpa rodapé padrão
+    const rodape = document.getElementById('popupBotoes');
+    if (rodape) {
+        rodape.innerHTML = ''; 
+        rodape.style.display = 'none'; 
+    }
+}
+// --- NOVO: CONFIRMAÇÃO INTERMEDIÁRIA PARA APAGAR LOCAL ---
+function confirmarAntesDeApagarLocal() {
+    fecharPopup(); // Fecha o menu de escolha
+
+    // Pequeno delay para transição suave de popups
+    setTimeout(() => {
+        const nome = window.tempNomeLote || "Item Selecionado";
+        
+        abrirPopupConfirmar(
+            `Apagar Registro (${nome})`, // Título dinâmico
+            'Isso remove apenas do seu celular.<br>Deseja continuar?', // Mensagem solicitada
+            (confirmado) => {
+                if (confirmado) {
+                    // Se confirmou, aí sim executa a exclusão
+                    executarExclusaoLocal(window.tempDadosExclusao);
+                }else{
+                abrirCentralLimpezaMacro();
+                }
+                // Se cancelar, apenas fecha (padrão do abrirPopupConfirmar)
+            },
+            'Sim, Apagar'
+        );
+    }, 200);
+}
+
+
+// Passo 2A: Exclusão Local
+async function executarExclusaoLocal(itens) {
+    const tx = db.transaction('apontamentos_diarios', 'readwrite');
+    const store = tx.objectStore('apontamentos_diarios');
+    
+    itens.forEach(item => store.delete(item.id_composto));
+    
+    tx.oncomplete = () => {
+        // Atualiza o cache global para refletir na tela sem recarregar tudo
+        const idsApagados = new Set(itens.map(i => i.id_composto));
+        cacheDadosLimpeza = cacheDadosLimpeza.filter(i => !idsApagados.has(i.id_composto));
+        
+        // Re-renderiza a tela atual
+        const anoAtual = document.getElementById('filtroAnoLimpeza').value;
+        renderizarCascataPorAno(anoAtual);
+        
+        fecharPopup(); // Fecha o menu de escolha
+        showToast(`Sucesso! ${itens.length} itens removidos do celular.`, "success");
+    };
+}
+
+// Passo 2B: Protocolo de Segurança (Código)
+function iniciarProtocoloSegurancaNuvem(itens, nomeLote) {
+    const codigoSeguranca = Math.floor(100000 + Math.random() * 900000);
+    
+    fecharPopup(); // Fecha o anterior
+
+    setTimeout(() => {
+        abrirPopupInput(
+            '🔒 Segurança Nuclear',
+            `Esta ação é <b>IRREVERSÍVEL</b> e apagará os dados de <b>${nomeLote}</b> para TODOS da equipe.<br><br>Digite o código para confirmar:<br><div class="text-center text-3xl font-black text-red-600 my-3 bg-gray-100 p-2 rounded tracking-widest border border-gray-200">${codigoSeguranca}</div>`,
+            'Digite o código aqui...',
+            '',
+            (digitado) => {
+                if (String(digitado) === String(codigoSeguranca)) {
+                    executarExclusaoTotal(itens);
+                } else if (digitado !== null) {
+                    showToast("Código incorreto! Operação cancelada.", "error");
+                }
+            },
+            'number'
+        );
+        setTimeout(() => document.getElementById('popup-input-field')?.focus(), 100);
+    }, 200);
+}
+
+// Passo 3: Exclusão Total (Local + Nuvem)
+async function executarExclusaoTotal(itens) {
+    abrirPopupLoading("Apagando da Nuvem e Local...");
+    
+    try {
+        // 1. Apaga Local
+        const tx = db.transaction('apontamentos_diarios', 'readwrite');
+        const store = tx.objectStore('apontamentos_diarios');
+        itens.forEach(item => store.delete(item.id_composto));
+
+        // 2. Apaga Nuvem (Lote / Batch de 500 em 500)
+        const batch = firestore.batch();
+        itens.forEach(item => {
+            const ref = firestore.collection('apontamentos_diarios_cloud').doc(item.id_composto);
+            batch.delete(ref);
+        });
+
+        await Promise.all([
+            new Promise(resolve => { tx.oncomplete = resolve; }),
+            batch.commit()
+        ]);
+
+        // Atualiza cache e interface
+        const idsApagados = new Set(itens.map(i => i.id_composto));
+        cacheDadosLimpeza = cacheDadosLimpeza.filter(i => !idsApagados.has(i.id_composto));
+        const anoAtual = document.getElementById('filtroAnoLimpeza')?.value;
+        if(anoAtual) renderizarCascataPorAno(anoAtual);
+
+        fecharPopup();
+        showToast("✅ Limpeza completa realizada com sucesso!", "success");
+
+    } catch (e) {
+        console.error(e);
+        fecharPopup();
+        showToast("Erro durante a exclusão na nuvem.", "error");
+    }
+}
+
+// Helper para nome do mês
+function obterNomeMes(mesNumerico) {
+    const meses = {
+        '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+        '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+        '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+    };
+    return meses[mesNumerico] || mesNumerico;
+}
+// --- HELPER: Calcular Número da Semana (Padrão ISO) ---
+function obterNumeroSemana(d) {
+    // Copia a data para não alterar a original
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    // Define para a quinta-feira mais próxima: dia atual + 4 - dia da semana atual
+    // Domingo é 0, torna-se 7
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    // Início do ano
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    // Calcula número da semana
+    var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+    return weekNo;
+}
+
+</script>
     
   <div id="modalOnboarding" class="fixed inset-0 bg-black bg-opacity-90 z-[10002] hidden flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden relative">
