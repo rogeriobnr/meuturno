@@ -4,14 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Gestão Inteligente de Turnos e Frotas">
+    
+    <title>Meu Turno</title>
+
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1d4ed8">
-    <title>Meu Turno</title>
+
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Meu Turno">
 
     <link rel="preload" href="/libs/tailwind.css" as="style">
     <link href="/libs/tailwind.css" rel="stylesheet">
 
     <script src="assets.js"></script>
+
     <script src="/libs/jspdf.js" defer></script>
     <script src="/libs/xlsx.js" defer></script>
     <script src="/libs/chart.js" defer></script>
@@ -20,10 +29,37 @@
     <script src="/libs/firebase-firestore.js" defer></script>
 
     <style>
-        /* --- CSS OBRIGATÓRIO PARA O VIRTUAL SCROLLER (CORREÇÃO FINAL) --- */
+    /* Correção específica para inputs de hora no iOS */
+input[type="time"]::-webkit-date-and-time-value {
+    text-align: center;
+}
+
+        /* --- LOADER CRÍTICO (Para aparecer instantaneamente) --- */
+        #app-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483647;
+            background-color: #1e40af; /* Azul Escuro */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .loader-spin {
+            width: 64px;
+            height: 64px;
+            border: 4px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* --- CSS VIRTUAL SCROLLER --- */
         #listaCatalogo {
             position: relative;
-            height: 100%; /* Ocupa 100% do pai */
+            height: 100%;
             width: 100%;
             overflow-y: auto;
             contain: strict;
@@ -36,7 +72,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 85px; /* Altura fixa */
+            height: 85px;
             padding: 0.5rem;
             box-sizing: border-box;
         }
@@ -53,14 +89,14 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
+        /* --- GERAIS E ANIMAÇÕES --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            /* Suavização de entrada visual */
             opacity: 1; 
             transition: opacity 0.3s;
         }
 
-        /* --- TOAST (Notificações) --- */
+        /* --- TOAST --- */
         #toast {
             position: fixed;
             left: 50%;
@@ -88,7 +124,7 @@
         #toast.error { background-color: #c0392b; }
         #toast.success { background-color: #27ae60; }
 
-        /* --- POPUP (Janelas Modais) --- */
+        /* --- POPUP --- */
         .popup-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -114,7 +150,7 @@
             overflow-y: auto;
         }
 
-        /* --- MENU LATERAL (Animação) --- */
+        /* --- MENU LATERAL --- */
         .menu-open #menu-lateral {
             transform: translateX(0);
         }
@@ -130,7 +166,6 @@
             box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
         }
       
-        /* Barra de rolagem personalizada (fina) */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -140,11 +175,12 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-<div id="app-loader" style="z-index: 2147483647;" class="fixed inset-0 bg-blue-800 flex flex-col items-center justify-center transition-opacity duration-500">
-    <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
-    <h1 class="text-2xl font-bold text-white tracking-wider animate-pulse">MeuTurno</h1>
-    <p class="text-blue-200 text-xs mt-2 font-mono">Carregando recursos...</p>
+<div id="app-loader">
+    <div class="loader-spin mb-4"></div>
+    <h1 style="color: white; font-size: 1.5rem; font-weight: bold; font-family: sans-serif;">MeuTurno</h1>
+    <p style="color: #bfdbfe; font-size: 0.75rem; margin-top: 0.5rem; font-family: monospace;">Carregando recursos...</p>
 </div>
+
 
 <script>
     // SISTEMA DE SEGURANÇA (FAIL-SAFE)
@@ -560,7 +596,6 @@
         <div class="servico-detalhes p-4 bg-white rounded-b-xl" style="display:none;"></div>
     </article>
 </template>
-
 
     <script>
     // ============================================================
@@ -3606,7 +3641,6 @@ function renderizarListaLinhas() {
 
     // 2. ESTADO VAZIO: O que aparece se não houver nenhuma linha?
     if (linhasApontamento.length === 0) {
-        // EDITE AQUI: Mude o texto ou ícone do estado vazio
         container.innerHTML = `
             <div class="text-center py-6 bg-gray-50 border border-dashed border-gray-200 rounded-lg">
                 <p class="text-xs text-gray-400">Nenhuma atividade.</p>
@@ -3614,26 +3648,22 @@ function renderizarListaLinhas() {
         return;
     }
 
-    // 3. ESTILO DOS INPUTS DE HORA (Reutilizável)
-    // EDITE AQUI: Para mudar o tamanho dos quadradinhos de hora
-    // w-[36px] = Largura | h-6 = Altura | text-[10px] = Tamanho da fonte
-    const inputTimeClass = "block w-[36px] h-6 text-[10px] font-bold text-center bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none p-0 shadow-sm appearance-none leading-none tracking-tighter";
+    // 3. ESTILO DOS INPUTS DE HORA (CORREÇÃO IOS)
+    // - Mudado w-[36px] para w-[45px] para caber os números no iPhone
+    // - Adicionado indent-0 para remover recuo nativo
+    const inputTimeClass = "block w-[45px] h-6 text-[10px] font-bold text-center bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none p-0 shadow-sm appearance-none leading-none tracking-tighter indent-0";
 
     // 4. LOOP DE CRIAÇÃO (Gera o HTML de todos os cards de uma vez)
     const htmlFinal = linhasApontamento.map((linha, index) => {
         
         // --- VARIÁVEIS DE LÓGICA ---
         const isServico = linha.tipo === 'servico';
-        const isSelecionado = (indiceOrigemTroca === index); // Se o usuário clicou para mover
+        const isSelecionado = (indiceOrigemTroca === index); 
         
-        // EDITE AQUI: Cores da borda lateral esquerda (Azul = Serviço, Amarelo = Manual)
         let borderClass = isServico ? 'border-l-[3px] border-blue-600' : 'border-l-[3px] border-yellow-400';
-        
-        // EDITE AQUI: Cor de fundo quando o item está selecionado para troca
         let bgClass = isSelecionado ? 'bg-blue-50 ring-2 ring-blue-500' : 'bg-white';
         
-        // --- BOTÕES DE AÇÃO (Lado Direito: Mover e Excluir) ---
-        // EDITE AQUI: Se quiser mudar os ícones SVG ou cores dos botões
+        // --- BOTÕES DE AÇÃO ---
         const acoesHtml = `
             <div class="flex items-center gap-0 ml-auto pl-1 border-l border-gray-100 shrink-0">
                 <button onclick="trocarOrdem(${index})" class="p-1 text-gray-400 hover:text-blue-600 rounded active:bg-gray-100" title="Mover">
@@ -3646,49 +3676,33 @@ function renderizarListaLinhas() {
         `;
 
         // ============================================================
-        // TIPO A: CARD DE SERVIÇO (Preventiva/Corretiva)
+        // TIPO A: CARD DE SERVIÇO
         // ============================================================
         if (isServico) {
-            // -- Preparação dos Dados (Limpeza e Formatação) --
             const frotaSegura = safeText(linha.frota || 'N/A');
-            
-            // Quebra as strings para pegar só o código (Ex: "P019 - Trocar..." vira "P019")
             const ativCod = safeText((linha.atividade || "").split(' - ')[0]);
             const sis = safeText(linha.sistema || "");
             const subRaw = safeText(linha.subsistema || "");
             const sub = subRaw.includes("-") ? subRaw.split("-")[0].trim() : subRaw;
-            
-            // EDITE AQUI: Formatação da linha do meio (Separador •)
             const infoTecnica = `${ativCod} • ${sis} • ${sub}`; 
-            
-            // Lógica da O.S. (Pendente ou Número)
             const osSegura = safeText(linha.os || 'PENDENTE');
             const isPendente = linha.os === 'PENDENTE' || !linha.os;
-            
-            // EDITE AQUI: Cores do Badge de O.S.
-            // Amarelo se pendente, Azul se tiver número
             const corOS = isPendente ? "text-yellow-700 font-bold shadow-sm bg-yellow-100 px-1 rounded" : "text-blue-700 font-bold";
 
-            // -- HTML DO CARD DE SERVIÇO --
             return `
             <div class="${bgClass} rounded-md shadow-sm mb-2 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden w-full">
                 <div class="flex flex-col w-full">
                     
                     <div class="flex items-center justify-between mt-1 mb-1">
-                        
                         <div class="flex items-center gap-2 bg-gray-100 border-y border-l border-gray-300 border-r-0 rounded-l-md py-1 px-2 shadow-sm relative pr-4">
                             <span class="w-4 h-4 flex items-center justify-center bg-white text-gray-500 text-[9px] font-bold rounded-full border border-gray-200 shadow-sm">${index + 1}</span>
-                            
                             <div class="flex items-baseline gap-2 text-[10px] text-gray-600">
                                 <span>FROTA: <b class="text-gray-900 text-[11px]">${frotaSegura}</b></span>
                                 <span class="w-[1px] h-3 bg-gray-300"></span>
                                 <span>OS: <span class="${corOS}">${osSegura}</span></span>
                             </div>
                         </div>
-
-                        <div class="pr-2">
-                            ${acoesHtml}
-                        </div>
+                        <div class="pr-2">${acoesHtml}</div>
                     </div>
 
                     <div class="px-2 mb-1.5">
@@ -3705,15 +3719,13 @@ function renderizarListaLinhas() {
                             <input type="time" value="${safeText(linha.fim)}" onchange="atualizarLinha(${index}, 'fim', this.value)" class="${inputTimeClass}">
                         </div>
                     </div>
-
                 </div>
             </div>`;
         
         // ============================================================
-        // TIPO B: CARD MANUAL (DDS, Refeição, Limpeza)
+        // TIPO B: CARD MANUAL
         // ============================================================
         } else {
-            // Gera as opções do <select> filtrando apenas atividades "H"
             const opsH = atividades.filter(a => a.startsWith('H')).map(a => 
                 `<option value="${a}" ${linha.atividade === a ? 'selected' : ''}>${a}</option>`
             ).join('');
@@ -3721,7 +3733,6 @@ function renderizarListaLinhas() {
             return `
             <div class="bg-white rounded-md shadow-sm mb-2 ${borderClass} border-t border-r border-b border-gray-200 overflow-hidden w-full">
                 <div class="p-1.5 flex flex-col gap-1.5">
-                    
                     <div class="flex items-center gap-2">
                         <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center bg-gray-100 text-gray-500 text-[9px] font-bold rounded-full border border-gray-200">${index + 1}</span>
                         <div class="flex-grow min-w-0 relative">
@@ -3745,11 +3756,12 @@ function renderizarListaLinhas() {
                 </div>
             </div>`;
         }
-    }).join(''); // Finaliza a criação do HTML
+    }).join('');
 
-    // 5. INJEÇÃO NO DOM (Atualiza a tela)
+    // 5. INJEÇÃO NO DOM
     container.innerHTML = htmlFinal;
 }
+
 
 // ============================================================
 // MÓDULO: ADICIONAR PREVENTIVA (NOVO)

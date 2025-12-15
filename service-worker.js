@@ -1,26 +1,25 @@
 'use strict';
 
 // 1. VERSÃO E CONFIGURAÇÃO
-// Incremento a versão para v59 para forçar o ciclo de update no navegador
-const CACHE_NAME = 'meuturno-cache-v3.0.1';
+// INCREMENTEI PARA FORÇAR A ATUALIZAÇÃO NOS CELULARES
+const CACHE_NAME = 'meuturno-app-v3.1.0';
 
-// Tempo limite para esperar pela rede em navegações (3 segundos)
+// Tempo limite (3s) para tentar rede antes de desistir e mostrar o cache
 const NETWORK_TIMEOUT_MS = 3000;
 
+// IMPORTANTE: Use ponto-barra (./) para garantir que funcione em qualquer pasta
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/logo.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/assets.js',
-  '/libs/tailwind.css',
-  '/libs/jspdf.js',
-  '/libs/firebase-app.js',
-  '/libs/firebase-firestore.js',
-  '/libs/xlsx.js',
-  '/libs/chart.js'
+  './',
+  './index.html',
+  './manifest.json',
+  './assets.js', // <--- SUA IMAGEM BASE64 ESTÁ AQUI
+  './libs/tailwind.css',
+  './libs/jspdf.js',
+  './libs/firebase-app.js',
+  './libs/firebase-firestore.js',
+  './libs/xlsx.js',
+  './libs/chart.js'
+  // Adicione seus ícones aqui se tiver (ex: './icon-192.png')
 ];
 
 // -----------------------------------------------------------
@@ -29,12 +28,12 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   console.log('[SW] Instalando versão:', CACHE_NAME);
   
-  // O "skipWaiting" foi REMOVIDO daqui intencionalmente.
-  // O SW vai instalar e ficar em estado de "waiting" até o usuário autorizar.
+  // NOTA: NÃO usamos skipWaiting() aqui.
+  // O novo SW espera o usuário clicar em "Atualizar Agora" no modal.
   
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[SW] Fazendo cache dos arquivos estáticos');
+      console.log('[SW] Cacheando arquivos vitais...');
       return cache.addAll(urlsToCache);
     })
   );
@@ -50,26 +49,24 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // Apaga qualquer cache que não seja o da versão atual (v51)
           if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Faxina: Apagando cache obsoleto:', cacheName);
+            console.log('[SW] Faxina: Removendo cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      // Assim que ativado, assume o controle das abas imediatamente
-      // (Isso só acontece DEPOIS que o skipWaiting for chamado no passo 5)
+      // Assume o controle imediatamente após a ativação (pós-clique do usuário)
       return self.clients.claim();
     })
   );
 });
 
 // -----------------------------------------------------------
-// 4. FETCH (Interceptação de rede)
+// 4. FETCH (Interceptação Inteligente)
 // -----------------------------------------------------------
 
-// Função auxiliar de Timeout para não travar a tela branca se a rede estiver lenta
+// Função de Timeout para não deixar o usuário esperando na tela branca
 function timeout(ms) {
     return new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout rede')), ms)
@@ -79,50 +76,46 @@ function timeout(ms) {
 self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
   
-  // A. Ignora requisições que não devem ser cacheadas (APIs externas, POSTs, etc)
+  // A. Ignora o que não é GET ou é externo (Google/Firebase)
   if (event.request.method !== 'GET') return;
   if (requestUrl.origin.includes('googleapis.com') || requestUrl.origin.includes('firebase')) return;
   
   // B. ESTRATÉGIA 1: HTML (Navegação) -> Network First com Timeout
-  // Tenta pegar o HTML fresco da rede. Se demorar > 3s ou falhar, pega do cache.
+  // Evita a tela branca tentando baixar o HTML por 3s. Se falhar, usa o cache.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       Promise.race([fetch(event.request), timeout(NETWORK_TIMEOUT_MS)])
         .then(response => {
-            return response; // Rede respondeu rápido
+            return response; // Rede funcionou rápido
         })
         .catch(() => {
-            // Se der erro de rede, timeout ou estiver offline:
-            console.log('[SW] Rede lenta/offline. Servindo HTML do cache.');
-            return caches.match(event.request).then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                // Fallback final: Garante que o index.html seja entregue
-                return caches.match('/index.html');
-            });
+            console.log('[SW] Offline ou lento. Servindo App do Cache.');
+            return caches.match('./index.html') // Tenta com ./
+                .then(response => response || caches.match('/index.html')) // Tenta com /
+                .then(response => response || caches.match(event.request)); // Tenta original
         })
     );
     return;
   }
   
-  // C. ESTRATÉGIA 2: Arquivos Estáticos (JS, CSS, Imagens) -> Cache First
-  // Prioriza velocidade máxima. Só vai na rede se não tiver no cache.
+  // C. ESTRATÉGIA 2: Assets (JS, CSS, Imagens) -> Cache First (Rápido!)
+  // Isso garante que o seu assets.js (imagem) carregue instantaneamente
   event.respondWith(
-    caches.match(event.request).then(response => {
-      // Retorna cache se existir, senão busca na rede
-      return response || fetch(event.request);
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request);
     })
   );
 });
 
 // -----------------------------------------------------------
-// 5. MENSAGERIA (O Segredo do Update Seguro)
+// 5. MENSAGERIA (Botão Atualizar)
 // -----------------------------------------------------------
-// Escuta a mensagem enviada pelo botão "Atualizar Agora" do modal
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'skipWaiting') {
-    console.log('[SW] Ordem do usuário recebida: Pular espera e assumir controle!');
+    console.log('[SW] Atualização autorizada pelo usuário. Trocando versão...');
     self.skipWaiting();
   }
 });

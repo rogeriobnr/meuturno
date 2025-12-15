@@ -2,20 +2,25 @@
   "name": "Meu Turno",
   "short_name": "MeuTurno",
   "description": "Aplicativo para gestão de turnos, frotas e serviços de manutenção.",
+  "id": "./",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "background_color": "#1d4ed8",
   "theme_color": "#1d4ed8",
-    "icons": [
+  "icons": [
     {
       "src": "icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ]
 }
