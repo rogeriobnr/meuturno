@@ -3238,7 +3238,36 @@ function preencherDetalhesServico(s) {
         }
 
         async function copiarTexto(id, button) { const servico = servicos.find(s => s.id === id); if (!servico || !servico.texto) { showToast("Gere a O.S. primeiro.", 'error'); return; } try { await navigator.clipboard.writeText(servico.texto); showToast("Texto da O.S. copiado!", 'success'); button.innerText = 'Copiado!'; setTimeout(() => { minimizarServico(id); button.innerText = 'Copiar'; }, 1000); } catch (err) { showToast("Falha ao copiar texto.", 'error'); } }
-        function compartilharWhatsApp(id) { const servico = servicos.find(s => s.id === id); if (!servico || !servico.texto) { showToast("Gere a O.S. primeiro.", 'error'); return; } servico.foiCompartilhado = true; salvarTudo(true); preencherDetalhesServico(servico); window.open(`https://wa.me/?text=${encodeURIComponent(servico.texto)}`, "_blank"); minimizarServico(id); }
+        async function compartilharWhatsApp(id) {
+    const servico = servicos.find(s => s.id === id);
+    if (!servico || !servico.texto) {
+        showToast("Gere a O.S. primeiro.", 'error');
+        return;
+    }
+
+    // Marca como compartilhado (Borda Verde)
+    servico.foiCompartilhado = true;
+    salvarTudo(true);
+    preencherDetalhesServico(servico);
+
+    // LÓGICA DE GRUPOS: Usa o compartilhamento nativo do celular
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                text: servico.texto
+            });
+        } catch (err) {
+            // Ignora erro se o usuário clicar em cancelar
+            if (err.name !== 'AbortError') console.error("Erro ao compartilhar:", err);
+        }
+    } else {
+        // Fallback para PC (Link direto, mas limita grupos em alguns casos)
+        window.open(`https://wa.me/?text=${encodeURIComponent(servico.texto)}`, "_blank");
+    }
+
+    minimizarServico(id);
+}
+
         function adicionarServicoDepois(idReferencia) { const refServico = servicos.find(s => s.id === idReferencia); if (!refServico) return; minimizarServico(idReferencia); const novoServico = { id: Date.now(), frota: refServico.frota, atividade: "", sistema: refServico.sistema, subsistema: "", descricao: "", tipo: "CORRETIVA", parada: "sim", falha: "não", data: refServico.dataFinal, dataFinal: refServico.dataFinal, inicio: refServico.fim, fim: "", texto: "", oportunidade: "", isExpanded: true, foiCompartilhado: false, pecasUtilizadas: [] }; const index = servicos.findIndex(s => s.id === idReferencia); servicos.splice(index + 1, 0, novoServico); renderizarServicos(); salvarTudo(); showToast("Novo serviço adicionado abaixo.", 'success'); setTimeout(() => document.getElementById(`servico_${novoServico.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }
         
         // ---------------------------------
@@ -3863,12 +3892,21 @@ function abrirPopupAddPreventiva() {
 }
 
 //função auxiliar para compartilhar no whatsapp.
-function compartilharHistorico(uniqueId) {
+async function compartilharHistorico(uniqueId) {
     // Busca no cache local (DOM hidden textarea)
     const textarea = document.getElementById(`texto_os_hist_${uniqueId}`);
+    
     if (textarea && textarea.value) {
         const texto = textarea.value;
-        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+        
+        // Usa Nativo para Grupos
+        if (navigator.share) {
+            try {
+                await navigator.share({ text: texto });
+            } catch (err) {}
+        } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+        }
     } else {
         showToast("Texto não encontrado para compartilhar.", "error");
     }
@@ -5712,12 +5750,11 @@ async function migrarDadosLocaisParaNuvem() {
 
 
         function calcularDuracaoEmHorasMinutos(horasDecimais) { if (isNaN(horasDecimais) || horasDecimais <= 0) return "0min"; const h = Math.floor(horasDecimais); const m = Math.round((horasDecimais - h) * 60); let texto = ""; if (h > 0) texto += `${h}h `; if (m > 0) texto += `${m}min`; return texto.trim() || "0min"; }
-        function compartilharRelatorio() { 
+        async function compartilharRelatorio() { 
     // 1. Verifica se está desatualizado
     const avisoDesatualizado = document.getElementById('aviso_relatorio_desatualizado');
     if (avisoDesatualizado && !avisoDesatualizado.classList.contains('hidden')) {
         showToast("⚠️ O relatório está desatualizado! Clique em 'Gerar Relatório' primeiro.", "error");
-        // Rola a tela até o botão de gerar para indicar a ação
         document.querySelector('button[onclick="gerarRelatorioFinal()"]').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
@@ -5729,9 +5766,16 @@ async function migrarDadosLocaisParaNuvem() {
         return; 
     } 
     
-    // 3. Compartilha
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); 
+    // 3. Compartilha (Nativo para funcionar em Grupos)
+    if (navigator.share) {
+        try {
+            await navigator.share({ text: texto });
+        } catch (err) {}
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank"); 
+    }
 }
+
 
 // --- FUNÇÕES AUXILIARES DO RELATÓRIO ---
 
