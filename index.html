@@ -1509,26 +1509,24 @@ function carregarCatalogoBackground() {
     return catalogoLoaderPromise;
 }
 
-/**
- * VERSÃO OTIMIZADA: Carrega apenas o essencial para abrir o turno.
- * Removemos o catálogo daqui para não travar o loader.
- */
+// ============================================================
+// CARREGAMENTO COM RECUPERAÇÃO DE FALHAS
+// ============================================================
 async function carregarDadosIniciais() {
     try {
-        // 1. Carrega Frotas (Leve e essencial para validação)
+        // 1. Carrega Catálogos (Frotas e Peças)
+        // Mantém carregamento leve para não travar a abertura
         catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll()) || [];
-        
-        // 2. Inicializa Catalogo vazio (Será preenchido pelo background)
-        catalogoLocal = [];
-        
-        // 3. Carrega o Turno Atual (Essencial)
+        catalogoLocal = []; // Será carregado em background depois
+
+        // 2. Tenta carregar o Turno do Banco de Dados
         const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID));
         const dataHoje = dataHojeInputLocal();
         
         if (dados) {
-            // Lógica de virada de dia
+            // Lógica de Virada de Dia (Mantida)
             if (dados.data && dados.data !== dataHoje) {
-                // Pequeno delay para garantir que o loader não pisque
+                // Pequeno delay visual
                 await new Promise(r => setTimeout(r, 100));
                 
                 const confirmado = await new Promise(resolve =>
@@ -1540,10 +1538,9 @@ async function carregarDadosIniciais() {
                 );
                 
                 if (confirmado) {
-                    equipe = dados.equipe || [];
-                    frotasTurno = dados.frotas || [];
+                    equipe = dados.equipe || []; // Mantém equipe
+                    frotasTurno = dados.frotas || []; // Mantém frotas
                     servicos = [];
-                    // Resetamos IDs de apontamento para evitar conflito
                     linhasApontamento = [];
                     await salvarTudo(true);
                     showToast("Novo turno iniciado!", 'success');
@@ -1551,16 +1548,40 @@ async function carregarDadosIniciais() {
                     carregarEstado(dados);
                 }
             } else {
+                // Data é a mesma, carrega tudo
                 carregarEstado(dados);
             }
         } else {
-            inicializarEstadoVazio();
+            // --- RECUPERAÇÃO DE EMERGÊNCIA (O PULO DO GATO) ---
+            // Se o DB retornou vazio (falha anterior), verificamos o LocalStorage
+            const backupEquipe = localStorage.getItem('emergencia_equipe');
+            const backupFrotas = localStorage.getItem('emergencia_frotas');
+
+            if (backupEquipe || backupFrotas) {
+                console.warn("⚠️ Recuperando dados do Crash anterior via LocalStorage.");
+                
+                equipe = backupEquipe ? JSON.parse(backupEquipe) : [];
+                frotasTurno = backupFrotas ? JSON.parse(backupFrotas) : [];
+                servicos = [];
+                
+                // Limpa os backups para não recuperar lixo antigo no futuro
+                localStorage.removeItem('emergencia_equipe');
+                localStorage.removeItem('emergencia_frotas');
+                
+                // Salva corretamente no DB agora
+                salvarTudo(true);
+                showToast("Sessão restaurada de fechamento inesperado.", "info");
+            } else {
+                inicializarEstadoVazio();
+            }
         }
     } catch (err) {
         console.error('Erro ao carregar dados iniciais:', err);
         inicializarEstadoVazio();
     }
 }
+
+
 
 // Função ultra-rápida que só lê do localStorage para "pintar" a tela
 // Não usa await nem IndexedDB
@@ -1741,46 +1762,78 @@ function carregarEstado(dados) {
 
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         
-   function salvarTudo(forcar = false) { 
-    clearTimeout(debounceTimer); 
-    const executar = async () => { 
-        try { 
-            // Pega os dados da tela (Mantido)
-            const relatorioBruto = document.getElementById("relatorio_bruto")?.value || ''; 
-            const snapshotServicos = document.getElementById("relatorio_snapshot")?.value || '[]'; 
-            
-            const dados = { 
-                id: TURNO_ATUAL_ID, 
-                data: document.getElementById("dataTurno")?.value, 
-                fazenda: document.getElementById("fazenda")?.value.trim(), 
-                frente: document.getElementById("frente")?.value.trim(), 
-                turno: document.getElementById("turnoLetra")?.value, 
-                equipe: equipe, 
-                frotas: frotasTurno, 
-                servicos: servicos, 
-                
-                // Mantemos 'linhasApontamento' aqui APENAS para persistência local de sessão (backup),
-                // mas isso NÃO gera custo de escrita na coleção 'apontamentos_diarios_cloud' do Firebase.
-                linhasApontamento: linhasApontamento, 
-                
-                relatorio: relatorioBruto, 
-                relatorioGeradoComServicos: snapshotServicos 
-            }; 
-            
-            // Salva no LocalStorage/IndexedDB do Turno (Sem custo de nuvem extra)
-            await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados)); 
-            
-            // ❌ REMOVIDO: await salvarLinhaDoTempoDoDia(); 
-            // Agora salvamos a linha do tempo apenas quando ela realmente muda.
 
-        } catch (err) { 
-            console.error("Erro ao salvar:", err); 
-        } 
-    }; 
-    
-    // Mantém o debounce de 5s ou execução imediata
-    if (forcar) executar(); 
-    else debounceTimer = setTimeout(executar, 5000); 
+// ============================================================
+// FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
+// ============================================================
+function salvarTudo(forcar = false) {
+    // 1. Cancela o timer anterior para evitar sobreposição
+    clearTimeout(debounceTimer);
+
+    const executar = async () => {
+        try {
+            // Segurança: Se o DB caiu, tenta reconectar antes de salvar
+            if (!db) { 
+                console.warn("⚠️ DB desconectado. Tentando reconectar...");
+                await initDB();
+            }
+
+            // 2. Coleta de dados com proteção contra null/undefined
+            const dados = {
+                id: TURNO_ATUAL_ID,
+                data: document.getElementById("dataTurno")?.value || dataHojeInputLocal(),
+                fazenda: document.getElementById("fazenda")?.value.trim() || '',
+                frente: document.getElementById("frente")?.value.trim() || '',
+                turno: document.getElementById("turnoLetra")?.value || '',
+                
+                // Garante que arrays nunca sejam nulos
+                equipe: Array.isArray(equipe) ? equipe : [],
+                frotas: Array.isArray(frotasTurno) ? frotasTurno : [],
+                servicos: Array.isArray(servicos) ? servicos : [],
+                
+                // Backup da Timeline (Apontamento)
+                linhasApontamento: Array.isArray(linhasApontamento) ? linhasApontamento : [],
+                
+                // Dados de Relatório (Rascunho)
+                relatorio: document.getElementById("relatorio_bruto")?.value || '',
+                relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
+                
+                timestamp: Date.now()
+            };
+
+            // 3. Salva no IndexedDB (Armazenamento Principal)
+            await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
+            
+            // 4. Salva Contexto Crítico no LocalStorage (Síncrono/Instantâneo)
+            // Isso garante que se o navegador fechar rápido demais para o IndexedDB,
+            // ao menos sabemos onde o usuário estava.
+            localStorage.setItem('ctx_fazenda', dados.fazenda);
+            localStorage.setItem('ctx_frente', dados.frente);
+            localStorage.setItem('ctx_turno', dados.turno);
+
+            // Log discreto para debug
+            // console.log("✅ Dados salvos.");
+
+        } catch (err) {
+            console.error("❌ Erro ao salvar dados:", err);
+            
+            // 5. BACKUP DE EMERGÊNCIA (Última linha de defesa)
+            // Se o IndexedDB falhar, salva a equipe e frotas no LocalStorage
+            try {
+                localStorage.setItem('emergencia_equipe', JSON.stringify(equipe));
+                localStorage.setItem('emergencia_frotas', JSON.stringify(frotasTurno));
+            } catch(e) { /* Ignora se cota excedida */ }
+        }
+    };
+
+    // LÓGICA DO TIMER:
+    if (forcar) {
+        executar(); // Salva IMEDIATAMENTE (usado ao fechar o app)
+    } else {
+        // Reduzido de 5000ms para 800ms. 
+        // O usuário mal percebe e o risco de perda cai drasticamente.
+        debounceTimer = setTimeout(executar, 800); 
+    }
 }
 
  function salvarDadosParciaisTurno() { 
@@ -7171,6 +7224,27 @@ function obterNumeroSemana(d) {
     var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
     return weekNo;
 }
+
+// ============================================================
+// GUARDIÃO DE CICLO DE VIDA (LIFE CYCLE API)
+// Força o salvamento ao minimizar ou fechar o app
+// ============================================================
+
+// 1. Padrão Moderno (Android/Chrome/iOS Recente)
+document.addEventListener('visibilitychange', () => {
+    // Se o estado mudou para 'hidden' (usuário trocou de aba ou foi pra home)
+    if (document.visibilityState === 'hidden') {
+        // console.log("💤 App minimizado. Salvando instantaneamente...");
+        salvarTudo(true); // O parâmetro TRUE ignora o timer de 5s
+    }
+});
+
+// 2. Padrão de Segurança (Safari iOS antigo / Fechamento Bruto)
+window.addEventListener('pagehide', () => {
+    // console.log("👋 App fechando. Salvamento final.");
+    salvarTudo(true);
+});
+
 
 </script>
     
