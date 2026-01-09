@@ -659,6 +659,7 @@ function concluirOnboarding() {
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
+        let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
         let catalogoLocal = [];
         let catalogoLoaderPromise = null; 
@@ -1513,73 +1514,163 @@ function carregarCatalogoBackground() {
 // CARREGAMENTO COM RECUPERAÇÃO DE FALHAS
 // ============================================================
 async function carregarDadosIniciais() {
-    try {
-        // 1. Carrega Catálogos (Frotas e Peças)
-        // Mantém carregamento leve para não travar a abertura
-        catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll()) || [];
-        catalogoLocal = []; // Será carregado em background depois
+    console.log("🚀 Iniciando carregamento de dados...");
 
-        // 2. Tenta carregar o Turno do Banco de Dados
+    try {
+        // ============================================================
+        // 1. CARREGAMENTO DE CATÁLOGOS E DADOS ESTÁTICOS
+        // ============================================================
+        // Carrega frotas cadastradas para popular o catálogo, se existir
+        catalogoFrotas = await dbExec(STORE_FROTAS, 'readonly', s => s.getAll()) || [];
+        
+        // Inicia o carregamento do catálogo de peças em background (lazy load)
+        if (typeof carregarCatalogoBackground === 'function') {
+            carregarCatalogoBackground(); 
+        }
+
+        // ============================================================
+        // 2. BUSCA DO ESTADO DO TURNO (INDEXEDDB)
+        // ============================================================
         const dados = await dbExec(STORE_TURNO, 'readonly', s => s.get(TURNO_ATUAL_ID));
-        const dataHoje = dataHojeInputLocal();
+        const dataHoje = dataHojeInputLocal(); // Retorna YYYY-MM-DD
         
         if (dados) {
-            // Lógica de Virada de Dia (Mantida)
+            // ------------------------------------------------------------
+            // CENÁRIO A: DADOS ENCONTRADOS NO BANCO
+            // ------------------------------------------------------------
+            
+            // Verifica se a data salva é diferente de hoje (Virada de Turno)
             if (dados.data && dados.data !== dataHoje) {
-                // Pequeno delay visual
+                
+                // Pequeno delay para a interface renderizar antes do popup
                 await new Promise(r => setTimeout(r, 100));
                 
                 const confirmado = await new Promise(resolve =>
                     abrirPopupConfirmar(
                         'Iniciar Novo Turno?',
-                        `Dados de ${formatarDataParaExibicao(dados.data)} encontrados.<br>Deseja iniciar um novo turno para hoje?`,
-                        resolve
+                        `Dados de <b>${formatarDataParaExibicao(dados.data)}</b> encontrados.<br><br>Deseja iniciar um novo turno para hoje mantendo a <b>Equipe</b> e <b>Frotas</b> atuais?`,
+                        resolve,
+                        'Sim, Iniciar Novo Dia'
                     )
                 );
                 
                 if (confirmado) {
-                    equipe = dados.equipe || []; // Mantém equipe
-                    frotasTurno = dados.frotas || []; // Mantém frotas
-                    servicos = [];
-                    linhasApontamento = [];
+                    // --- OPÇÃO 1: INICIAR NOVO DIA (MANTÉM EQUIPE/FROTA) ---
+                    console.log("📅 Iniciando novo turno. Migrando equipe/frota e limpando serviços.");
+                    
+                    equipe = Array.isArray(dados.equipe) ? dados.equipe : [];
+                    frotasTurno = Array.isArray(dados.frotas) ? dados.frotas : [];
+                    
+                    // ZERA a produção do dia
+                    servicos = []; 
+                    linhasApontamento = []; 
+                    
+                    // Atualiza o input de data visualmente para hoje
+                    const elData = document.getElementById("dataTurno");
+                    if(elData) elData.value = dataHoje;
+
+                    // IMPORTANTE: Libera a trava AGORA para poder salvar o novo estado
+                    appCarregadoComSucesso = true; 
+                    
+                    // Salva o novo estado limpo no banco
                     await salvarTudo(true);
-                    showToast("Novo turno iniciado!", 'success');
+                    
+                    showToast("Novo turno iniciado! Equipe e Frota mantidas.", 'success');
                 } else {
+                    // --- OPÇÃO 2: CARREGAR DADOS ANTIGOS (VISUALIZAÇÃO) ---
+                    console.log("📂 Carregando dados do dia anterior conforme escolha.");
                     carregarEstado(dados);
                 }
             } else {
-                // Data é a mesma, carrega tudo
+                // --- CENÁRIO NORMAL: MESMO DIA ---
+                console.log("✅ Dados do dia carregados.");
                 carregarEstado(dados);
             }
-        } else {
-            // --- RECUPERAÇÃO DE EMERGÊNCIA (O PULO DO GATO) ---
-            // Se o DB retornou vazio (falha anterior), verificamos o LocalStorage
-            const backupEquipe = localStorage.getItem('emergencia_equipe');
-            const backupFrotas = localStorage.getItem('emergencia_frotas');
 
-            if (backupEquipe || backupFrotas) {
-                console.warn("⚠️ Recuperando dados do Crash anterior via LocalStorage.");
-                
-                equipe = backupEquipe ? JSON.parse(backupEquipe) : [];
-                frotasTurno = backupFrotas ? JSON.parse(backupFrotas) : [];
+        } else {
+            // ------------------------------------------------------------
+            // CENÁRIO B: BANCO VAZIO OU FALHA (RECUPERAÇÃO DE EMERGÊNCIA)
+            // ------------------------------------------------------------
+            console.warn("⚠️ DB principal vazio. Verificando backup de emergência (LocalStorage)...");
+            
+            // 1. Tenta ler o backup SÍNCRONO (criado no fechamento da aba)
+            const jsonBackup = localStorage.getItem('shutdown_backup');
+            
+            // 2. Fallback legado (para versões anteriores)
+            const backupLegado = localStorage.getItem('emergencia_equipe');
+
+            if (jsonBackup) {
+                try {
+                    const backup = JSON.parse(jsonBackup);
+                    console.log(`♻️ Restaurando do Backup Síncrono (${new Date(backup.timestamp).toLocaleTimeString()})...`);
+                    
+                    equipe = Array.isArray(backup.equipe) ? backup.equipe : [];
+                    frotasTurno = Array.isArray(backup.frotas) ? backup.frotas : [];
+                    servicos = Array.isArray(backup.servicos) ? backup.servicos : [];
+                    linhasApontamento = Array.isArray(backup.linhasApontamento) ? backup.linhasApontamento : [];
+                    
+                    // Atualiza a data se necessário, ou mantém a do backup
+                    const elData = document.getElementById("dataTurno");
+                    if(elData && !elData.value) elData.value = dataHoje;
+
+                    showToast("Sessão restaurada com sucesso.", "info");
+                    
+                    // Força o salvamento no IndexedDB para regularizar
+                    appCarregadoComSucesso = true;
+                    salvarTudo(true);
+
+                } catch (errParse) {
+                    console.error("❌ Erro ao ler backup síncrono:", errParse);
+                    inicializarEstadoVazio();
+                }
+            } 
+            else if (backupLegado) {
+                // Recuperação Legada (apenas para garantir compatibilidade)
+                console.warn("⚠️ Usando backup legado.");
+                equipe = JSON.parse(localStorage.getItem('emergencia_equipe') || '[]');
+                frotasTurno = JSON.parse(localStorage.getItem('emergencia_frotas') || '[]');
                 servicos = [];
+                inicializarEstadoVazio(); // Resto vazio
                 
-                // Limpa os backups para não recuperar lixo antigo no futuro
+                // Limpa legado para usar o sistema novo daqui pra frente
                 localStorage.removeItem('emergencia_equipe');
                 localStorage.removeItem('emergencia_frotas');
-                
-                // Salva corretamente no DB agora
-                salvarTudo(true);
-                showToast("Sessão restaurada de fechamento inesperado.", "info");
-            } else {
+            } 
+            else {
+                // Sem dados, sem backup = Primeira vez ou limpeza total
+                console.log("✨ Nenhum dado anterior. Iniciando limpo.");
                 inicializarEstadoVazio();
             }
         }
+
     } catch (err) {
-        console.error('Erro ao carregar dados iniciais:', err);
+        console.error('❌ Erro fatal ao carregar dados iniciais:', err);
+        showToast("Erro ao carregar dados. Iniciando vazio.", "error");
         inicializarEstadoVazio();
+    } finally {
+        // ============================================================
+        // 3. FINALIZAÇÃO E RENDERIZAÇÃO
+        // ============================================================
+        
+        // LIBERA O CADEADO: Agora o app pode salvar dados
+        appCarregadoComSucesso = true;
+        
+        // Renderiza a interface com o que foi carregado (ou vazio)
+        if(typeof renderizarEquipe === 'function') renderizarEquipe();
+        if(typeof renderizarFrotasDoTurno === 'function') renderizarFrotasDoTurno();
+        
+        // Só renderiza serviços se a aba estiver ativa ou se for necessário
+        if(document.getElementById('servicosLista')) renderizarServicos();
+        
+        // Se houver dados de apontamento carregados do backup, renderiza a timeline
+        if(linhasApontamento.length > 0 && typeof renderizarListaLinhas === 'function') {
+            renderizarListaLinhas();
+        }
+
+        console.log("🏁 Carregamento concluído. App pronto.");
     }
 }
+
 
 
 
@@ -1767,18 +1858,25 @@ function carregarEstado(dados) {
 // FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
 // ============================================================
 function salvarTudo(forcar = false) {
+    // --- CORREÇÃO CRÍTICA: TRAVA DE INICIALIZAÇÃO ---
+    // Impede que o app salve arrays vazios sobre o banco de dados 
+    // enquanto ainda está carregando as informações iniciais.
+    if (!appCarregadoComSucesso && !forcar) {
+        console.warn("⛔ Salvamento bloqueado: O app ainda está carregando os dados.");
+        return;
+    }
+    // ------------------------------------------------
+
     // 1. Cancela o timer anterior para evitar sobreposição
     clearTimeout(debounceTimer);
 
     const executar = async () => {
         try {
-            // Segurança: Se o DB caiu, tenta reconectar antes de salvar
             if (!db) { 
                 console.warn("⚠️ DB desconectado. Tentando reconectar...");
                 await initDB();
             }
 
-            // 2. Coleta de dados com proteção contra null/undefined
             const dados = {
                 id: TURNO_ATUAL_ID,
                 data: document.getElementById("dataTurno")?.value || dataHojeInputLocal(),
@@ -1791,50 +1889,66 @@ function salvarTudo(forcar = false) {
                 frotas: Array.isArray(frotasTurno) ? frotasTurno : [],
                 servicos: Array.isArray(servicos) ? servicos : [],
                 
-                // Backup da Timeline (Apontamento)
                 linhasApontamento: Array.isArray(linhasApontamento) ? linhasApontamento : [],
-                
-                // Dados de Relatório (Rascunho)
                 relatorio: document.getElementById("relatorio_bruto")?.value || '',
                 relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
                 
                 timestamp: Date.now()
             };
 
-            // 3. Salva no IndexedDB (Armazenamento Principal)
             await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
             
-            // 4. Salva Contexto Crítico no LocalStorage (Síncrono/Instantâneo)
-            // Isso garante que se o navegador fechar rápido demais para o IndexedDB,
-            // ao menos sabemos onde o usuário estava.
+            // Salva Contexto Crítico no LocalStorage
             localStorage.setItem('ctx_fazenda', dados.fazenda);
             localStorage.setItem('ctx_frente', dados.frente);
             localStorage.setItem('ctx_turno', dados.turno);
 
-            // Log discreto para debug
-            // console.log("✅ Dados salvos.");
-
         } catch (err) {
             console.error("❌ Erro ao salvar dados:", err);
-            
-            // 5. BACKUP DE EMERGÊNCIA (Última linha de defesa)
-            // Se o IndexedDB falhar, salva a equipe e frotas no LocalStorage
+            // Backup de emergência
             try {
                 localStorage.setItem('emergencia_equipe', JSON.stringify(equipe));
                 localStorage.setItem('emergencia_frotas', JSON.stringify(frotasTurno));
-            } catch(e) { /* Ignora se cota excedida */ }
+            } catch(e) {}
         }
     };
 
-    // LÓGICA DO TIMER:
     if (forcar) {
-        executar(); // Salva IMEDIATAMENTE (usado ao fechar o app)
+        executar();
     } else {
-        // Reduzido de 5000ms para 800ms. 
-        // O usuário mal percebe e o risco de perda cai drasticamente.
         debounceTimer = setTimeout(executar, 800); 
     }
 }
+
+// ============================================================
+// SISTEMA DE SEGURANÇA: BACKUP SÍNCRONO (ANTI-CRASH)
+// ============================================================
+function backupEmergenciaSincrono() {
+    // Só faz backup se o app já tiver carregado os dados reais
+    if (typeof appCarregadoComSucesso !== 'undefined' && !appCarregadoComSucesso) return;
+
+    try {
+        // Criamos um pacote com o ESTADO ATUAL da memória RAM
+        const pacoteEmergencia = {
+            equipe: equipe || [],
+            frotas: frotasTurno || [],
+            servicos: servicos || [],
+            linhasApontamento: linhasApontamento || [],
+            // Adicionamos um timestamp para saber quão recente é esse backup
+            timestamp: Date.now() 
+        };
+
+        // .setItem é SÍNCRONO. O navegador congela até terminar de gravar isso.
+        // Isso garante que os dados sejam salvos mesmo no último milissegundo de vida da aba.
+        localStorage.setItem('shutdown_backup', JSON.stringify(pacoteEmergencia));
+        
+        console.log("💾 Backup de emergência (Síncrono) realizado com sucesso.");
+    } catch (e) {
+        // Se a memória do LocalStorage estiver cheia (quota exceeded), avisamos no console
+        console.warn("⚠️ Falha no backup síncrono (Possível falta de espaço):", e);
+    }
+}
+
 
  function salvarDadosParciaisTurno() { 
     validarCamposTurnoBasicos(); 
@@ -5057,11 +5171,12 @@ async function mostrarHistorico() {
             return acc;
         }, {});
 
-        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
+        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b
+        .localeCompare(a));
 
         // 4. Renderização (SEU DESIGN)
         div.innerHTML = datasOrdenadas.map(dataKey => {
-            const itensDoDia = agrupado[dataKey].sort((a, b) => (b.inicio || "").localeCompare(a.inicio || ""));
+            const itensDoDia = agrupado[dataKey].sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
             
             return `
             <div class="bg-white rounded-lg shadow-sm mb-5 overflow-hidden border border-gray-200">
@@ -7230,20 +7345,24 @@ function obterNumeroSemana(d) {
 // Força o salvamento ao minimizar ou fechar o app
 // ============================================================
 
-// 1. Padrão Moderno (Android/Chrome/iOS Recente)
+// Evento: O usuário trocou de aba ou minimizou o app
 document.addEventListener('visibilitychange', () => {
-    // Se o estado mudou para 'hidden' (usuário trocou de aba ou foi pra home)
     if (document.visibilityState === 'hidden') {
-        // console.log("💤 App minimizado. Salvando instantaneamente...");
-        salvarTudo(true); // O parâmetro TRUE ignora o timer de 5s
+        // 1. Tenta salvar no banco de dados normal (Assíncrono - Ideal)
+        salvarTudo(true); 
+        
+        // 2. Faz o backup de emergência no LocalStorage (Síncrono - Garantido)
+        backupEmergenciaSincrono();
     }
 });
 
-// 2. Padrão de Segurança (Safari iOS antigo / Fechamento Bruto)
+// Evento: O navegador está fechando a aba/app totalmente
 window.addEventListener('pagehide', () => {
-    // console.log("👋 App fechando. Salvamento final.");
-    salvarTudo(true);
+    // AQUI é onde o IndexedDB costuma falhar porque o navegador mata o processo.
+    // O backup síncrono é a nossa salvação aqui.
+    backupEmergenciaSincrono();
 });
+
 
 
 </script>
