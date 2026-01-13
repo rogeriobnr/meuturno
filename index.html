@@ -28,150 +28,174 @@
     <script src="/libs/firebase-app.js" defer></script>
     <script src="/libs/firebase-firestore.js" defer></script>
 
-    <style>
+<style>
     /* Correção específica para inputs de hora no iOS */
-input[type="time"]::-webkit-date-and-time-value {
-    text-align: center;
-}
+    input[type="time"]::-webkit-date-and-time-value {
+        text-align: center;
+    }
 
-        /* --- LOADER CRÍTICO (Para aparecer instantaneamente) --- */
-        #app-loader {
-            position: fixed;
-            inset: 0;
-            z-index: 2147483647;
-            background-color: #1e40af; /* Azul Escuro */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s ease-out;
-        }
-        .loader-spin {
-            width: 64px;
-            height: 64px;
-            border: 4px solid #ffffff;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* --- [NOVO] PATCH DE CORES TAILWIND (MOTORISTA/DIÁRIO) --- */
+    /* Adicione isto para garantir que o laranja/amarelo apareça no Spck/Mobile */
+    .bg-yellow-50 { background-color: #fefce8 !important; }
+    .bg-yellow-100 { background-color: #fef9c3 !important; }
+    .bg-yellow-500 { background-color: #eab308 !important; } /* Botões */
+    .bg-yellow-600 { background-color: #ca8a04 !important; } /* Hover */
+    
+    .hover\:bg-yellow-50:hover { background-color: #fefce8 !important; }
+    .hover\:bg-yellow-600:hover { background-color: #ca8a04 !important; }
+    
+    .text-yellow-600 { color: #ca8a04 !important; }
+    .text-yellow-700 { color: #a16207 !important; }
+    .text-yellow-800 { color: #854d0e !important; }
+    
+    .border-yellow-200 { border-color: #fef08a !important; }
+    .border-yellow-400 { border-color: #facc15 !important; }
+    .border-yellow-500 { border-color: #eab308 !important; }
+    
+    /* Simulação do Focus Ring Amarelo */
+    .focus\:ring-yellow-500:focus {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px #eab308 !important; 
+    }
+    /* --------------------------------------------------------- */
 
-        /* --- CSS VIRTUAL SCROLLER --- */
-        #listaCatalogo {
-            position: relative;
-            height: 100%;
-            width: 100%;
-            overflow-y: auto;
-            contain: strict;
-            background: #f8fafc;
-            display: block;
-        }
+    /* --- LOADER CRÍTICO (Para aparecer instantaneamente) --- */
+    #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background-color: #1e40af; /* Mantido Azul Escuro (Identidade Principal) */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.5s ease-out;
+    }
+    .loader-spin {
+        width: 64px;
+        height: 64px;
+        border: 4px solid #ffffff;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        .virtual-item {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 85px;
-            padding: 0.5rem;
-            box-sizing: border-box;
-        }
+    /* --- CSS VIRTUAL SCROLLER --- */
+    #listaCatalogo {
+        position: relative;
+        height: 100%;
+        width: 100%;
+        overflow-y: auto;
+        contain: strict;
+        background: #f8fafc;
+        display: block;
+    }
 
-        .virtual-inner-content {
-            background: white;
-            height: 100%;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 0.75rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
+    .virtual-item {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 85px;
+        padding: 0.5rem;
+        box-sizing: border-box;
+    }
 
-        /* --- GERAIS E ANIMAÇÕES --- */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            opacity: 1; 
-            transition: opacity 0.3s;
-        }
+    .virtual-inner-content {
+        background: white;
+        height: 100%;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 0.75rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
 
-        /* --- TOAST --- */
-        #toast {
-            position: fixed;
-            left: 50%;
-            bottom: 30px;
-            transform: translate(-50%, 100px);
-            min-width: 280px;
-            background-color: #2c3e50;
-            color: #fff;
-            text-align: center;
-            border-radius: 0.375rem;
-            padding: 1rem;
-            z-index: 10000;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
-        }
+    /* --- GERAIS E ANIMAÇÕES --- */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        opacity: 1; 
+        transition: opacity 0.3s;
+    }
 
-        #toast.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translate(-50%, 0);
-        }
+    /* --- TOAST --- */
+    #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 30px;
+        transform: translate(-50%, 100px);
+        min-width: 280px;
+        background-color: #2c3e50;
+        color: #fff;
+        text-align: center;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        z-index: 10000;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+    }
 
-        #toast.error { background-color: #c0392b; }
-        #toast.success { background-color: #27ae60; }
+    #toast.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, 0);
+    }
 
-        /* --- POPUP --- */
-        .popup-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 9998;
-            display: none;
-            backdrop-filter: blur(4px);
-        }
+    #toast.error { background-color: #c0392b; }
+    #toast.success { background-color: #27ae60; }
 
-        .popup {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 1.25rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            z-index: 9999;
-            width: 90%;
-            max-width: 400px;
-            display: none;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
+    /* --- POPUP --- */
+    .popup-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9998;
+        display: none;
+        backdrop-filter: blur(4px);
+    }
 
-        /* --- MENU LATERAL --- */
-        .menu-open #menu-lateral {
-            transform: translateX(0);
-        }
+    .popup {
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        z-index: 9999;
+        width: 90%;
+        max-width: 400px;
+        display: none;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
 
-        .menu-open #menu-overlay {
-            opacity: 1;
-            pointer-events: auto;
-        }
+    /* --- MENU LATERAL --- */
+    .menu-open #menu-lateral {
+        transform: translateX(0);
+    }
 
-        /* --- UTILITÁRIOS --- */
-        .campo-invalido {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
-        }
-      
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-    </style>
+    .menu-open #menu-overlay {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* --- UTILITÁRIOS --- */
+    .campo-invalido {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4) !important;
+    }
+  
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+
 </head>
 
 <body class="bg-gray-50 text-gray-800">
@@ -250,14 +274,18 @@ input[type="time"]::-webkit-date-and-time-value {
         </a>
         
 
-        <div class="px-4 mt-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Gestão</div>
+<div class="px-4 mt-6 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Gestão</div>
 
-        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="historico">
-            <span class="text-lg">🗄️</span> Histórico de O.S.
-        </a>
-        <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="frotas">
-            <span class="text-lg">🚜</span> Frotas Ativas
-        </a>
+<a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="historico">
+    <span class="text-lg">🗄️</span> Histórico de O.S.
+</a>
+
+<a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="motorista">
+    <span class="text-lg">🚙</span> Motoristas </a>
+<a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="frotas">
+    <span class="text-lg">🚜</span> Frotas Ativas
+</a>
+
         <a href="#" class="flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" data-secao="catalogo">
             <span class="text-lg">📦</span> Catálogo de Peças
         </a>
@@ -525,6 +553,46 @@ input[type="time"]::-webkit-date-and-time-value {
             <canvas id="canvasApontamento" class="max-w-full h-auto shadow-lg bg-white"></canvas>
         </div>
 </section>
+
+<section id="motorista" class="hidden">
+    <div class="space-y-6">
+        
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shadow-sm shrink-0">
+                <span class="text-2xl">🚙</span>
+            </div>
+            <div class="flex-grow">
+                <h2 class="text-xl font-bold text-gray-800">Diário de Bordo</h2>
+                <p class="text-xs text-gray-500 font-medium">Controle de Veículos e Condutores</p>
+            </div>
+            <button onclick="compartilharMotoristasWhatsApp()" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg shadow-sm transition-transform active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <input type="date" id="motoristaData" 
+               class="block w-full p-3 bg-white border border-gray-200 rounded-lg text-gray-700 font-bold focus:ring-2 focus:ring-yellow-500 outline-none transition-all"
+               onchange="carregarMotoristasDoDia(this.value)">
+            
+            <button onclick="abrirGaleriaDiarios()" class="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 p-3 rounded-lg transition-colors shadow-sm shrink-0 w-12 flex items-center justify-center text-xl" title="Meus Diários Salvos">
+    📂
+</button> 
+            
+            <button onclick="adicionarRegistroMotorista()" class="bg-yellow-500 hover:bg-yellow-600 text-white p-3 rounded-lg font-bold shadow-md transition-transform active:scale-95 shrink-0 w-12 flex items-center justify-center text-2xl">
+                +
+            </button>
+        </div>
+
+        <div id="listaMotoristas" class="space-y-3 min-h-[100px]">
+            <div class="text-center py-8 text-gray-400 text-sm italic bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                Carregando registros...
+            </div>
+        </div>
+    </div>
+</section>
+
+
         <button id="fabAddFrotaCatalogo" onclick="abrirPopupTipoFrota()"
             class="fixed bottom-12 right-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg z-30"
             style="display: none;" title="Adicionar Frota ao Catálogo">🚜</button>
@@ -658,13 +726,14 @@ function concluirOnboarding() {
         // =================================================================================
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
+        let registrosMotorista = [];
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
         let catalogoLocal = [];
         let catalogoLoaderPromise = null; 
         let dataMemoriaApontamento = ''; 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 28;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 30;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -1419,42 +1488,52 @@ function initDB() {
         
         request.onblocked = (event) => {
             console.warn("⚠️ Banco de dados bloqueado.");
-            alert("Atualização crítica: Feche outras abas do sistema.");
+            alert("Atualização crítica: Feche outras abas do sistema para aplicar a correção.");
         };
-
+        
+        // É AQUI QUE A MÁGICA ACONTECE
         request.onupgradeneeded = e => {
             const currentDb = e.target.result;
             console.log(`📦 Atualizando DB: v${e.oldVersion} -> v${e.newVersion}`);
             
-            // Lógica existente das outras tabelas...
+            // Tabelas Antigas (Mantidas)
             if (!currentDb.objectStoreNames.contains(STORE_TURNO)) currentDb.createObjectStore(STORE_TURNO, { keyPath: 'id' });
-            if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) { 
-                const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true }); 
-                hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false }); 
+            if (!currentDb.objectStoreNames.contains(STORE_HISTORICO)) {
+                const hStore = currentDb.createObjectStore(STORE_HISTORICO, { keyPath: 'uniqueId', autoIncrement: true });
+                hStore.createIndex('dataKeyIndex', 'dataKey', { unique: false });
             }
             if (!currentDb.objectStoreNames.contains('catalogo')) currentDb.createObjectStore('catalogo', { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FROTAS)) currentDb.createObjectStore(STORE_FROTAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FAZENDAS)) currentDb.createObjectStore(STORE_FAZENDAS, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_FRENTES)) currentDb.createObjectStore(STORE_FRENTES, { keyPath: 'docId' });
             if (!currentDb.objectStoreNames.contains(STORE_EQUIPE)) currentDb.createObjectStore(STORE_EQUIPE, { keyPath: 'docId' });
-
-            // --- CORREÇÃO CRÍTICA AQUI ---
-            // Se a tabela já existir (v24 bugada), APAGAMOS ELA.
+            
+            // Correção da tabela de Apontamentos (Mantida)
             if (currentDb.objectStoreNames.contains('apontamentos_diarios')) {
-                currentDb.deleteObjectStore('apontamentos_diarios');
+                // Só apaga se estiver migrando de uma versão muito antiga (opcional, melhor deixar quieto se já funcionava)
+                // currentDb.deleteObjectStore('apontamentos_diarios'); 
+            } else {
+                currentDb.createObjectStore('apontamentos_diarios', { keyPath: 'id_composto' });
             }
             
-            // Criamos a tabela nova limpa com a chave CERTA
-            currentDb.createObjectStore('apontamentos_diarios', { keyPath: 'id_composto' });
+            // --- A NOVA TABELA MOTORISTAS ---
+            if (!currentDb.objectStoreNames.contains('motoristas')) {
+                console.log("Criando tabela motoristas...");
+                currentDb.createObjectStore('motoristas', { keyPath: 'id_composto' });
+            }
         };
-
-        request.onsuccess = e => { 
-            db = e.target.result; 
-            db.onversionchange = () => { db.close(); window.location.reload(); };
-            resolve(db); 
+        
+        request.onsuccess = e => {
+            db = e.target.result;
+            db.onversionchange = () => { db.close();
+                window.location.reload(); };
+            resolve(db);
         };
-
-        request.onerror = e => { console.error("Erro DB:", e); reject(e.target.error); };
+        
+        request.onerror = e => {
+            console.error("Erro DB:", e);
+            reject(e.target.error);
+        };
     });
 }
 
@@ -3958,10 +4037,6 @@ function renderizarListaLinhas() {
     container.innerHTML = htmlFinal;
 }
 
-
-// ============================================================
-// MÓDULO: ADICIONAR PREVENTIVA (NOVO)
-// ============================================================
 
 // ============================================================
 // MÓDULO: ADICIONAR PREVENTIVA (ATUALIZADO - FROTA LIVRE)
@@ -6952,38 +7027,474 @@ async function apagarApontamentoLocal(event, idComposto) {
         setTimeout(() => abrirGaleriaApontamentos(), 300);
     }
 }
+
 // ============================================================
-// MÓDULO: CENTRAL DE LIMPEZA EM CASCATA (ANO > MÊS > SEMANA)
+// MÓDULO: MOTORISTAS (DIÁRIO DE BORDO)
 // ============================================================
 
-// Variável global temporária para manter os dados enquanto a janela está aberta
-let cacheDadosLimpeza = [];
 
-async function abrirCentralLimpezaMacro() {
-    fecharPopup(); // Fecha a galeria anterior
-    abrirPopupLoading("Organizando arquivos...");
+// Renderização Inicial da Seção
+function renderizarSecaoMotorista(container) {
+    const elData = document.getElementById('motoristaData');
+    const elDataTurno = document.getElementById('dataTurno');
+    
+    // Sincroniza a data com o turno principal se estiver vazia
+    if (elData && (!elData.value || elData.value !== elDataTurno.value)) {
+        elData.value = elDataTurno.value || dataHojeInputLocal();
+    }
+    
+    // Carrega dados
+    carregarMotoristasDoDia(elData.value);
+}
+
+// Carrega registros do IndexedDB/Cloud baseado no contexto
+async function carregarMotoristasDoDia(data) {
+    if (!data) return;
+    
+    const container = document.getElementById('listaMotoristas');
+    if(container) container.innerHTML = '<div class="flex justify-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div></div>';
+
+    // --- FIX DE CONTEXTO ---
+    // Tenta pegar da tela. Se vazio, pega do LocalStorage (seguro)
+    let frente = document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL';
+    let turno = document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A';
+    
+    // Limpeza para garantir match com o banco
+    frente = frente.trim().toUpperCase();
+    turno = turno.trim().toUpperCase();
+
+    const idComposto = `${data}_${frente}_${turno}`;
+    console.log("🚙 Buscando Motoristas no ID:", idComposto); // Debug
+    
+    try {
+        // 1. Tenta ler do Local
+        let registro = await dbExec('motoristas', 'readonly', s => s.get(idComposto));
+        
+        // 2. Fallback Nuvem
+        if (!registro && navigator.onLine) {
+            try {
+                const doc = await firestore.collection('motoristas_cloud').doc(idComposto).get();
+                if (doc.exists) {
+                    registro = doc.data();
+                    await dbExec('motoristas', 'readwrite', s => s.put(registro));
+                }
+            } catch (e) { console.warn("Offline ou erro cloud"); }
+        }
+
+        // Atualiza variável global
+        registrosMotorista = (registro && registro.itens) ? registro.itens : [];
+        
+        renderizarListaMotoristas();
+        
+    } catch (e) {
+        console.error("Erro ao carregar motoristas:", e);
+        if(container) container.innerHTML = '<p class="text-red-500 text-center text-sm">Erro ao ler dados.</p>';
+    }
+}
+
+// Renderiza os Cards
+function renderizarListaMotoristas() {
+    const container = document.getElementById('listaMotoristas');
+    if (!container) {
+        console.error("❌ Container #listaMotoristas não encontrado no HTML!");
+        return;
+    }
+    
+    if (!registrosMotorista || registrosMotorista.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <span class="text-4xl block mb-2">🚙</span>
+                <p class="text-gray-500 font-bold text-sm">Nenhum registro hoje.</p>
+                <p class="text-xs text-gray-400 mt-1">Toque no + para adicionar.</p>
+            </div>`;
+        return;
+    }
+
+    // Ordena por horário
+    registrosMotorista.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+    container.innerHTML = registrosMotorista.map((item, index) => `
+        <div class="bg-white border-l-4 border-yellow-500 rounded-r-lg shadow-sm p-3 relative hover:bg-yellow-50 transition-colors mb-3">
+            <div class="flex justify-between items-start mb-1">
+                <div>
+                    <h3 class="font-black text-gray-800 text-lg uppercase">${safeText(item.placa)}</h3>
+                    <p class="text-sm font-semibold text-gray-600 flex items-center gap-1">
+                        👤 ${safeText(item.colaborador)}
+                    </p>
+                </div>
+                <div class="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded border border-gray-200 h-fit">
+                    ${safeText(item.inicio)} ${item.fim ? '- ' + safeText(item.fim) : ''}
+                </div>
+            </div>
+            
+            ${item.observacao ? `<p class="text-xs text-gray-500 italic mt-1 border-t border-gray-100 pt-1">"${safeText(item.observacao)}"</p>` : ''}
+            
+            <button onclick="removerRegistroMotorista(${index})" class="absolute bottom-2 right-2 text-gray-300 hover:text-red-500 p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Popup de Adição
+function adicionarRegistroMotorista() {
+    // Cria datalist dinâmico com a equipe atual
+    const opcoesEquipe = equipe.map(m => `<option value="${safeText(m.nome)}"></option>`).join('');
+    const datalistHtml = `<datalist id="listaColaboradoresMotorista">${opcoesEquipe}</datalist>`;
+    
+    // Pega hora atual arredondada
+    const agora = new Date();
+    const horaAtual = agora.toTimeString().substring(0, 5);
+
+    const conteudo = `
+        ${datalistHtml}
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Placa / Veículo *</label>
+                <input type="text" id="motPlaca" class="w-full p-3 border border-gray-300 rounded-lg font-bold uppercase focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="ABC-1234">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Condutor *</label>
+                <input type="text" id="motColaborador" list="listaColaboradoresMotorista" 
+                       class="w-full p-3 border border-gray-300 rounded-lg font-semibold focus:ring-2 focus:ring-yellow-500 outline-none" 
+                       placeholder="Selecione ou digite o nome...">
+                <p class="text-[10px] text-gray-400 mt-1">Selecione da lista ou digite nome externo.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Início *</label>
+                    <input type="time" id="motInicio" value="${horaAtual}" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Fim</label>
+                    <input type="time" id="motFim" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Observação</label>
+                <input type="text" id="motObs" class="w-full p-3 border border-gray-300 rounded-lg text-sm" placeholder="Opcional (Ex: Ida à oficina)">
+            </div>
+        </div>
+    `;
+
+    abrirPopup('🚙 Novo Registro', conteudo, [
+        { texto: 'Cancelar', classe: 'bg-gray-200 text-gray-700 py-3 rounded-lg font-bold', acao: fecharPopup },
+        { texto: 'Salvar', classe: 'bg-yellow-500 text-white py-3 rounded-lg font-bold shadow-lg', acao: salvarNovoMotorista }
+    ]);
+    
+    setTimeout(() => document.getElementById('motPlaca').focus(), 100);
+}
+
+// Salva o novo registro
+async function salvarNovoMotorista() {
+    const placa = document.getElementById('motPlaca').value.trim().toUpperCase();
+    const colaborador = document.getElementById('motColaborador').value.trim().toUpperCase();
+    const inicio = document.getElementById('motInicio').value;
+    const fim = document.getElementById('motFim').value;
+    const obs = document.getElementById('motObs').value.trim();
+
+    if (!placa || !colaborador || !inicio) {
+        showToast("Preencha Placa, Condutor e Início.", "error");
+        return false;
+    }
+
+    const novoItem = {
+        id: Date.now(),
+        placa,
+        colaborador,
+        inicio,
+        fim: fim || 'Em andamento',
+        observacao: obs
+    };
+
+    registrosMotorista.push(novoItem);
+    await persistirMotoristas();
+    
+    renderizarListaMotoristas();
+    fecharPopup();
+    showToast("Registro salvo!", "success");
+}
+
+// Remove registro
+async function removerRegistroMotorista(index) {
+    const confirmado = await new Promise(r => abrirPopupConfirmar('Excluir', 'Deseja remover este registro?', r));
+    if (confirmado) {
+        registrosMotorista.splice(index, 1);
+        await persistirMotoristas();
+        renderizarListaMotoristas();
+        showToast("Removido.", "success");
+    }
+}
+
+// Persiste no IDB e Cloud
+async function persistirMotoristas() {
+    const data = document.getElementById('motoristaData').value;
+    
+    // --- FIX DE CONTEXTO ---
+    let frente = document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL';
+    let turno = document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A';
+    
+    frente = frente.trim().toUpperCase();
+    turno = turno.trim().toUpperCase();
+
+    const idComposto = `${data}_${frente}_${turno}`;
+    
+    const objetoSalvar = {
+        id_composto: idComposto,
+        data: data,
+        frente: frente,
+        turno: turno,
+        itens: registrosMotorista, // Array global atualizado
+        atualizadoEm: new Date().toISOString()
+    };
+
+    console.log("💾 Salvando Motoristas em:", idComposto);
+
+    // Salva Local
+    await dbExec('motoristas', 'readwrite', s => s.put(objetoSalvar));
+    
+    // Salva Nuvem
+    if (typeof firestore !== 'undefined') {
+        firestore.collection('motoristas_cloud').doc(idComposto)
+            .set(objetoSalvar, { merge: true })
+            .catch(e => console.warn("Fila offline", e));
+    }
+}
+
+
+// Compartilha no WhatsApp
+async function compartilharMotoristasWhatsApp() {
+    if (registrosMotorista.length === 0) {
+        showToast("Nada para compartilhar.", "info");
+        return;
+    }
+
+    const data = document.getElementById('motoristaData').value;
+    const frente = document.getElementById('frente')?.value || 'ND';
+    const turno = document.getElementById('turnoLetra')?.value || 'ND';
+    const dataFmt = formatarDataParaExibicao(data);
+
+    let texto = `🚙 *DIÁRIO DE BORDO - FROTAS LEVES*\n`;
+    texto += `📅 ${dataFmt} - ${frente} [TURNO ${turno}]\n`;
+    texto += `--------------------------------\n\n`;
+
+    registrosMotorista.forEach(item => {
+        texto += `🚘 *${item.placa}* | 👤 ${item.colaborador}\n`;
+        texto += `🕒 ${item.inicio} às ${item.fim}\n`;
+        if(item.observacao) texto += `📝 ${item.observacao}\n`;
+        texto += `\n`;
+    });
+
+    if (navigator.share) {
+        try { await navigator.share({ text: texto }); } catch (e) {}
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+    }
+}
+
+// ============================================================
+// MÓDULO: GALERIA DE DIÁRIOS (MOTORISTA)
+// ============================================================
+
+async function abrirGaleriaDiarios() {
+    // Feedback visual no botão
+    const btn = event?.currentTarget;
+    const conteudoOriginal = btn ? btn.innerHTML : '📂';
+    if(btn) btn.innerHTML = '⏳';
 
     try {
-        // 1. Busca TUDO do banco local
-        cacheDadosLimpeza = await dbExec('apontamentos_diarios', 'readonly', s => s.getAll());
-        
-        if (!cacheDadosLimpeza || cacheDadosLimpeza.length === 0) {
-            fecharPopup();
-            showToast("O histórico está vazio.", "info");
+        // 1. Busca TUDO da tabela 'motoristas' no IndexedDB
+        const todos = await dbExec('motoristas', 'readonly', s => s.getAll());
+
+        if (!todos || todos.length === 0) {
+            showToast("Nenhum diário de bordo salvo neste aparelho.", "info");
+            if(btn) btn.innerHTML = conteudoOriginal;
             return;
         }
 
-        // 2. Identifica os Anos disponíveis para o filtro
+        // 2. Ordena por Data (Decrescente - Mais recente primeiro)
+        todos.sort((a, b) => b.data.localeCompare(a.data));
+
+        // 3. Monta o HTML da Lista (Estilo Card)
+        const listaHTML = todos.map(item => {
+            const linhas = item.itens || [];
+            const qtdViagens = linhas.length;
+            
+            // Tratamento visual da Frente/Turno
+            // Tenta pegar do objeto salvo, ou faz parse do ID se necessário
+            const frenteExibicao = item.frente || "GERAL";
+            const turnoExibicao = item.turno || "A";
+            const dataFormatada = formatarDataParaExibicao(item.data);
+
+            return `
+            <div onclick="carregarDiarioDaGaleria('${item.data}', '${frenteExibicao}', '${turnoExibicao}')" 
+                 class="bg-white border border-gray-200 p-3 rounded-xl mb-3 shadow-sm active:scale-95 transition-all cursor-pointer hover:border-yellow-400 hover:bg-orange-50 group relative">
+                
+                <div class="flex justify-between items-start mb-1">
+                    <h4 class="text-sm font-black text-gray-800 flex items-center gap-2">
+                        📅 ${dataFormatada}
+                    </h4>
+                </div>
+               
+                <div class="flex justify-start items-center text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide truncate">
+                    📍 ${frenteExibicao} 
+                    <span class="ml-2 text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">
+                        TURNO ${turnoExibicao}
+                    </span>
+                </div>
+
+                <div class="flex gap-2 text-[10px]">
+                    <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-bold border border-yellow-200 flex items-center gap-1">
+                        🚙 ${qtdViagens} Registros
+                    </span>
+                </div>
+
+                <button onclick="apagarDiarioLocal(event, '${item.id_composto}')" 
+                    class="absolute bottom-3 right-3 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors z-10" title="Apagar do Celular">
+                    🗑️
+                </button>
+            </div>
+            `;
+        }).join('');
+
+        // 4. Conteúdo do Popup
+        const conteudo = `
+            <div class="bg-gray-50 -m-5 p-4 h-full flex flex-col">
+                <div class="mb-4 px-1 border-b pb-3 border-gray-200 flex justify-between items-center">
+    <div>
+        <h3 class="font-bold text-gray-700 flex items-center gap-2">
+            <span>🚙</span> Meus Diários Salvos
+        </h3>
+        <p class="text-xs text-gray-400">Histórico local de motoristas.</p>
+    </div>
+    <button onclick="abrirCentralLimpezaMacro('motorista')" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 p-2 rounded-lg shadow-sm transition-colors text-xs font-bold flex items-center gap-1">
+        <span>🧹</span> Faxina
+    </button>
+</div>
+                <div class="overflow-y-auto pr-1 custom-scrollbar space-y-1" style="max-height: 60vh;">
+                    ${listaHTML}
+                </div>
+            </div>
+        `;
+
+        abrirPopup('Histórico Motorista', conteudo, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: fecharPopup }]);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao ler banco de dados.", "error");
+    } finally {
+        if(btn) btn.innerHTML = conteudoOriginal;
+    }
+}
+
+// Função para carregar ao clicar no card (Context Switcher)
+function carregarDiarioDaGaleria(data, frente, turno) {
+    // 1. Atualiza visualmente os campos globais para manter consistência
+    const elFrente = document.getElementById('frente');
+    const elTurno = document.getElementById('turnoLetra');
+    const elDataMot = document.getElementById('motoristaData');
+
+    if(elFrente) elFrente.value = frente;
+    if(elTurno) elTurno.value = turno;
+    if(elDataMot) elDataMot.value = data;
+
+    // 2. Salva o contexto no LocalStorage (Memória rápida)
+    localStorage.setItem('ctx_frente', frente);
+    localStorage.setItem('ctx_turno', turno);
+
+    // 3. Carrega os dados
+    carregarMotoristasDoDia(data);
+    
+    // 4. Feedback e Fecha
+    fecharPopup();
+    showToast(`Carregando diário de: ${formatarDataParaExibicao(data)}`, "success");
+}
+
+// Função para apagar apenas do aparelho
+async function apagarDiarioLocal(event, idComposto) {
+    event.stopPropagation(); // Impede o clique de abrir o card
+    
+    const confirmado = await new Promise(r => abrirPopupConfirmar(
+        'Apagar Diário?', 
+        'Isso remove este registro apenas do seu celular.<br>Se estiver salvo na nuvem, ele pode reaparecer ao sincronizar.', 
+        r
+    ));
+    
+    if(confirmado) {
+        try {
+            await dbExec('motoristas', 'readwrite', s => s.delete(idComposto));
+            showToast("Registro removido.", "success");
+            
+            // Reabre a galeria para atualizar a lista visualmente
+            setTimeout(() => abrirGaleriaDiarios(), 300);
+        } catch (e) {
+            showToast("Erro ao apagar.", "error");
+        }
+    }
+}
+
+
+// ============================================================
+// 🧹 MÓDULO: CENTRAL DE LIMPEZA UNIVERSAL (ATUALIZADO)
+// ============================================================
+
+// Variáveis globais para controlar o contexto da faxina
+let cacheDadosLimpeza = [];
+let contextoLimpezaAtual = {
+    store: '',       // Nome no IndexedDB
+    collection: '',  // Nome no Firebase
+    label: '',       // Nome visual (Apontamento/Diário)
+    voltarPara: null // Função para reabrir a galeria correta ao fechar
+};
+
+// 1. Abre a Central configurando o contexto correto
+async function abrirCentralLimpezaMacro(modo = 'apontamento') {
+    fecharPopup();
+    abrirPopupLoading("Analisando arquivos...");
+
+    // Configura o Contexto com base no parâmetro
+    if (modo === 'motorista') {
+        contextoLimpezaAtual = {
+            store: 'motoristas',
+            collection: 'motoristas_cloud',
+            label: 'Diários de Bordo',
+            voltarPara: abrirGaleriaDiarios
+        };
+    } else {
+        contextoLimpezaAtual = {
+            store: 'apontamentos_diarios',
+            collection: 'apontamentos_diarios_cloud',
+            label: 'Apontamentos de Manutenção',
+            voltarPara: abrirGaleriaApontamentos
+        };
+    }
+
+    try {
+        // Busca TUDO da tabela correta no banco local
+        cacheDadosLimpeza = await dbExec(contextoLimpezaAtual.store, 'readonly', s => s.getAll());
+        
+        if (!cacheDadosLimpeza || cacheDadosLimpeza.length === 0) {
+            fecharPopup();
+            showToast(`Nenhum registro de ${contextoLimpezaAtual.label} encontrado.`, "info");
+            // Volta para a galeria anterior se possível
+            if(contextoLimpezaAtual.voltarPara) contextoLimpezaAtual.voltarPara();
+            return;
+        }
+
+        // Extrai os Anos disponíveis para o filtro
         const anosDisponiveis = [...new Set(cacheDadosLimpeza.map(i => i.data.split('-')[0]))].sort().reverse();
         const anoAtual = new Date().getFullYear().toString();
         const anoSelecionado = anosDisponiveis.includes(anoAtual) ? anoAtual : anosDisponiveis[0];
 
-        // 3. Prepara o HTML do Cabeçalho (Seletor de Ano)
+        // Monta o HTML do Cabeçalho
         let htmlBase = `
             <div class="bg-gray-50 -m-5 p-4 h-full flex flex-col">
                 <div class="mb-2 px-1 border-b pb-3 border-gray-200 flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
                     <div>
-                        <h3 class="font-bold text-gray-700 text-sm">📅 Gestão de Arquivos</h3>
+                        <h3 class="font-bold text-gray-700 text-sm">🗑️ Faxina: ${contextoLimpezaAtual.label}</h3>
                         <p class="text-[10px] text-gray-400">Selecione para expandir e apagar</p>
                     </div>
                     
@@ -6993,14 +7504,20 @@ async function abrirCentralLimpezaMacro() {
                 </div>
 
                 <div id="conteudoCascata" class="overflow-y-auto pr-1 custom-scrollbar space-y-2 flex-1" style="max-height: 60vh;">
-                    </div>
+                </div>
             </div>
         `;
 
-        // 4. Abre o Popup Vazio primeiro
-        abrirPopup('🧹 Central de Faxina', htmlBase, [{ texto: 'Fechar', classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', acao: () => { fecharPopup(); abrirGaleriaApontamentos(); } }]);
+        abrirPopup('Gerenciador de Arquivos', htmlBase, [{ 
+            texto: 'Voltar', 
+            classe: 'w-full bg-gray-200 text-gray-700 py-3 font-bold rounded-lg', 
+            acao: () => { 
+                fecharPopup(); 
+                if(contextoLimpezaAtual.voltarPara) contextoLimpezaAtual.voltarPara(); 
+            } 
+        }]);
 
-        // 5. Renderiza o conteúdo do ano inicial
+        // Renderiza o conteúdo inicial
         renderizarCascataPorAno(anoSelecionado);
 
     } catch (e) {
@@ -7010,12 +7527,11 @@ async function abrirCentralLimpezaMacro() {
     }
 }
 
-// Função que desenha a árvore (Mês -> Semana -> Dia)
+// 2. Renderiza a árvore (Ano -> Meses)
 function renderizarCascataPorAno(ano) {
     const container = document.getElementById('conteudoCascata');
     if (!container) return;
 
-    // Filtra dados do ano
     const dadosAno = cacheDadosLimpeza.filter(i => i.data.startsWith(ano));
     
     if (dadosAno.length === 0) {
@@ -7023,17 +7539,14 @@ function renderizarCascataPorAno(ano) {
         return;
     }
 
-    // Agrupa por Mês
     const porMes = {};
     dadosAno.forEach(item => {
-        const mes = item.data.split('-')[1]; // '01', '02'...
+        const mes = item.data.split('-')[1];
         if (!porMes[mes]) porMes[mes] = [];
         porMes[mes].push(item);
     });
 
-    // Ordena Meses (Dezembro -> Janeiro)
     const mesesOrdenados = Object.keys(porMes).sort().reverse();
-
     let html = '';
 
     mesesOrdenados.forEach(mes => {
@@ -7041,7 +7554,6 @@ function renderizarCascataPorAno(ano) {
         const nomeMes = obterNomeMes(mes);
         const idFnMes = criarIdFuncaoDeletar(itensMes, `o Mês de ${nomeMes}`);
 
-        // --- NÍVEL 1: MÊS (DETAILS) ---
         html += `
         <details class="group bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-2">
             <summary class="flex justify-between items-center p-3 cursor-pointer list-none hover:bg-gray-50 transition-colors select-none">
@@ -7064,7 +7576,7 @@ function renderizarCascataPorAno(ano) {
     container.innerHTML = html;
 }
 
-// Sub-função para agrupar e gerar HTML das Semanas
+// 3. Renderiza Semanas
 function gerarHtmlSemanas(itensDoMes) {
     const porSemana = {};
     
@@ -7074,7 +7586,6 @@ function gerarHtmlSemanas(itensDoMes) {
         porSemana[semana].push(item);
     });
 
-    // Ordena Semanas (Maior -> Menor)
     const semanasOrdenadas = Object.keys(porSemana).sort((a, b) => b - a);
     let htmlSemana = '';
 
@@ -7082,7 +7593,6 @@ function gerarHtmlSemanas(itensDoMes) {
         const itensSemana = porSemana[sem];
         const idFnSem = criarIdFuncaoDeletar(itensSemana, `a Semana ${sem}`);
 
-        // --- NÍVEL 2: SEMANA (BLOCK) ---
         htmlSemana += `
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div class="flex justify-between items-center p-2 bg-blue-50/50 border-b border-gray-100">
@@ -7103,27 +7613,19 @@ function gerarHtmlSemanas(itensDoMes) {
     return htmlSemana;
 }
 
-// Sub-função para gerar a lista de dias (CORRIGIDA COM TURNO)
+// 4. Renderiza Dias
 function gerarHtmlDias(itensDaSemana) {
-    // Ordena Dias (Recente -> Antigo)
     itensDaSemana.sort((a, b) => b.data.localeCompare(a.data));
 
     return itensDaSemana.map(item => {
         const dataFmt = formatarDataParaExibicao(item.data);
         const idFnDia = criarIdFuncaoDeletar([item], `o dia ${dataFmt}`);
         
-        // --- LÓGICA DE EXIBIÇÃO CORRIGIDA ---
         const frente = item.frente || "Geral";
-        
-        // Pega o turno e remove a palavra "TURNO " se existir, deixando só a letra/número
         const turnoRaw = item.turno || "?";
         const turnoLimpo = turnoRaw.replace("TURNO ", "").trim();
-        
-        // Monta o texto final: "PLANTIO 2 [B]"
         const textoExibicao = `${frente} [${turnoLimpo}]`;
-        // -------------------------------------
         
-        // Aumentei um pouco o max-w para caber o texto maior
         return `
         <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors border-b border-gray-100 last:border-0">
             <div class="flex items-center gap-3">
@@ -7139,24 +7641,19 @@ function gerarHtmlDias(itensDaSemana) {
     }).join('');
 }
 
-// ============================================================
-// AUXILIARES DE LÓGICA E SEGURANÇA
-// ============================================================
+// --- LÓGICA DE SEGURANÇA E EXECUÇÃO ---
 
-// Cria um "link" global temporário para a função de deletar
-// Isso evita problemas de passar objetos complexos via string no onclick HTML
+// Cria referência segura para função de deletar
 function criarIdFuncaoDeletar(itens, nomeLote) {
     const idUnico = 'del_fn_' + Math.random().toString(36).substr(2, 9);
     window[idUnico] = () => confirmarTipoExclusao(itens, nomeLote);
     return `window['${idUnico}'](event)`;
 }
 
-// Passo 1: O Popup de Escolha
-// --- PASSO 2: ESCOLHA DO TIPO DE EXCLUSÃO (LAYOUT CORRIGIDO) ---
+// Popup de Escolha (Local vs Nuvem)
 function confirmarTipoExclusao(itensParaApagar, nomeLote) {
     if (event) event.stopPropagation();
 
-    // Globais temporárias
     window.tempDadosExclusao = itensParaApagar;
     window.tempNomeLote = nomeLote;
 
@@ -7190,7 +7687,7 @@ function confirmarTipoExclusao(itensParaApagar, nomeLote) {
 
                 <div class="py-2"></div>
 
-                <button onclick="fecharPopup();abrirCentralLimpezaMacro()" 
+                <button onclick="fecharPopup();abrirCentralLimpezaMacro(contextoLimpezaAtual.store === 'motoristas' ? 'motorista' : 'apontamento')" 
                     class="w-full py-4 rounded-xl bg-gray-100 text-gray-500 font-extrabold uppercase tracking-wider text-xs hover:bg-gray-200 hover:text-gray-700 transition-colors">
                     Cancelar e Voltar
                 </button>
@@ -7200,65 +7697,58 @@ function confirmarTipoExclusao(itensParaApagar, nomeLote) {
 
     abrirPopup('', conteudo, []);
     
-    // Limpa rodapé padrão
     const rodape = document.getElementById('popupBotoes');
-    if (rodape) {
-        rodape.innerHTML = ''; 
-        rodape.style.display = 'none'; 
-    }
+    if (rodape) { rodape.innerHTML = ''; rodape.style.display = 'none'; }
 }
-// --- NOVO: CONFIRMAÇÃO INTERMEDIÁRIA PARA APAGAR LOCAL ---
-function confirmarAntesDeApagarLocal() {
-    fecharPopup(); // Fecha o menu de escolha
 
-    // Pequeno delay para transição suave de popups
+// Confirmação para Local
+function confirmarAntesDeApagarLocal() {
+    fecharPopup();
     setTimeout(() => {
         const nome = window.tempNomeLote || "Item Selecionado";
-        
         abrirPopupConfirmar(
-            `Apagar Registro (${nome})`, // Título dinâmico
-            'Isso remove apenas do seu celular.<br>Deseja continuar?', // Mensagem solicitada
+            `Apagar Registro (${nome})`, 
+            'Isso remove apenas do seu celular.<br>Deseja continuar?', 
             (confirmado) => {
                 if (confirmado) {
-                    // Se confirmou, aí sim executa a exclusão
                     executarExclusaoLocal(window.tempDadosExclusao);
-                }else{
-                abrirCentralLimpezaMacro();
+                } else {
+                    abrirCentralLimpezaMacro(contextoLimpezaAtual.store === 'motoristas' ? 'motorista' : 'apontamento');
                 }
-                // Se cancelar, apenas fecha (padrão do abrirPopupConfirmar)
             },
             'Sim, Apagar'
         );
     }, 200);
 }
 
-
-// Passo 2A: Exclusão Local
+// Executa Exclusão Local (Dinâmico)
 async function executarExclusaoLocal(itens) {
-    const tx = db.transaction('apontamentos_diarios', 'readwrite');
-    const store = tx.objectStore('apontamentos_diarios');
+    const tx = db.transaction(contextoLimpezaAtual.store, 'readwrite');
+    const store = tx.objectStore(contextoLimpezaAtual.store);
     
     itens.forEach(item => store.delete(item.id_composto));
     
     tx.oncomplete = () => {
-        // Atualiza o cache global para refletir na tela sem recarregar tudo
         const idsApagados = new Set(itens.map(i => i.id_composto));
         cacheDadosLimpeza = cacheDadosLimpeza.filter(i => !idsApagados.has(i.id_composto));
         
-        // Re-renderiza a tela atual
-        const anoAtual = document.getElementById('filtroAnoLimpeza').value;
-        renderizarCascataPorAno(anoAtual);
+        const anoAtual = document.getElementById('filtroAnoLimpeza')?.value;
+        if(anoAtual) renderizarCascataPorAno(anoAtual);
         
-        fecharPopup(); // Fecha o menu de escolha
+        fecharPopup(); 
         showToast(`Sucesso! ${itens.length} itens removidos do celular.`, "success");
+        
+        setTimeout(() => {
+             abrirCentralLimpezaMacro(contextoLimpezaAtual.store === 'motoristas' ? 'motorista' : 'apontamento');
+        }, 500);
     };
 }
 
-// Passo 2B: Protocolo de Segurança (Código)
+// Protocolo de Segurança (Código) para Nuvem
 function iniciarProtocoloSegurancaNuvem(itens, nomeLote) {
     const codigoSeguranca = Math.floor(100000 + Math.random() * 900000);
     
-    fecharPopup(); // Fecha o anterior
+    fecharPopup();
 
     setTimeout(() => {
         abrirPopupInput(
@@ -7279,20 +7769,18 @@ function iniciarProtocoloSegurancaNuvem(itens, nomeLote) {
     }, 200);
 }
 
-// Passo 3: Exclusão Total (Local + Nuvem)
+// Executa Exclusão Total (Dinâmico: Local + Nuvem)
 async function executarExclusaoTotal(itens) {
     abrirPopupLoading("Apagando da Nuvem e Local...");
     
     try {
-        // 1. Apaga Local
-        const tx = db.transaction('apontamentos_diarios', 'readwrite');
-        const store = tx.objectStore('apontamentos_diarios');
+        const tx = db.transaction(contextoLimpezaAtual.store, 'readwrite');
+        const store = tx.objectStore(contextoLimpezaAtual.store);
         itens.forEach(item => store.delete(item.id_composto));
 
-        // 2. Apaga Nuvem (Lote / Batch de 500 em 500)
         const batch = firestore.batch();
         itens.forEach(item => {
-            const ref = firestore.collection('apontamentos_diarios_cloud').doc(item.id_composto);
+            const ref = firestore.collection(contextoLimpezaAtual.collection).doc(item.id_composto);
             batch.delete(ref);
         });
 
@@ -7301,14 +7789,15 @@ async function executarExclusaoTotal(itens) {
             batch.commit()
         ]);
 
-        // Atualiza cache e interface
         const idsApagados = new Set(itens.map(i => i.id_composto));
         cacheDadosLimpeza = cacheDadosLimpeza.filter(i => !idsApagados.has(i.id_composto));
-        const anoAtual = document.getElementById('filtroAnoLimpeza')?.value;
-        if(anoAtual) renderizarCascataPorAno(anoAtual);
 
         fecharPopup();
         showToast("✅ Limpeza completa realizada com sucesso!", "success");
+        
+        setTimeout(() => {
+             abrirCentralLimpezaMacro(contextoLimpezaAtual.store === 'motoristas' ? 'motorista' : 'apontamento');
+        }, 500);
 
     } catch (e) {
         console.error(e);
@@ -7317,7 +7806,7 @@ async function executarExclusaoTotal(itens) {
     }
 }
 
-// Helper para nome do mês
+// Helpers
 function obterNomeMes(mesNumerico) {
     const meses = {
         '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
@@ -7326,16 +7815,11 @@ function obterNomeMes(mesNumerico) {
     };
     return meses[mesNumerico] || mesNumerico;
 }
-// --- HELPER: Calcular Número da Semana (Padrão ISO) ---
+
 function obterNumeroSemana(d) {
-    // Copia a data para não alterar a original
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    // Define para a quinta-feira mais próxima: dia atual + 4 - dia da semana atual
-    // Domingo é 0, torna-se 7
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
-    // Início do ano
     var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    // Calcula número da semana
     var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
     return weekNo;
 }
