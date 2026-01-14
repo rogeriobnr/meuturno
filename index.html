@@ -7137,6 +7137,7 @@ function renderizarListaMotoristas() {
 }
 
 // Popup de Adição
+
 function adicionarRegistroMotorista() {
     // Cria datalist dinâmico com a equipe atual
     const opcoesEquipe = equipe.map(m => `<option value="${safeText(m.nome)}"></option>`).join('');
@@ -7165,28 +7166,41 @@ function adicionarRegistroMotorista() {
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Início *</label>
-                    <input type="time" id="motInicio" value="${horaAtual}" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold">
+                    <input type="time" id="motInicio" value="${horaAtual}" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold focus:ring-2 focus:ring-yellow-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Fim</label>
-                    <input type="time" id="motFim" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold">
+                    <input type="time" id="motFim" class="w-full p-3 border border-gray-300 rounded-lg text-center font-bold focus:ring-2 focus:ring-yellow-500">
                 </div>
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Observação</label>
-                <input type="text" id="motObs" class="w-full p-3 border border-gray-300 rounded-lg text-sm" placeholder="Opcional (Ex: Ida à oficina)">
+                <input type="text" id="motObs" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500" placeholder="Opcional (Ex: Ida à oficina)">
             </div>
         </div>
     `;
 
     abrirPopup('🚙 Novo Registro', conteudo, [
-        { texto: 'Cancelar', classe: 'bg-gray-200 text-gray-700 py-3 rounded-lg font-bold', acao: fecharPopup },
-        { texto: 'Salvar', classe: 'bg-yellow-500 text-white py-3 rounded-lg font-bold shadow-lg', acao: salvarNovoMotorista }
+        { 
+            texto: 'Cancelar', 
+            classe: 'bg-gray-200 text-gray-700 py-3 rounded-lg font-bold', 
+            acao: fecharPopup 
+        },
+        { 
+            texto: 'Salvar', 
+            classe: 'bg-yellow-500 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-yellow-600', 
+            // AQUI ESTÁ A CORREÇÃO MÁGICA:
+            acao: () => {
+                salvarNovoMotorista(); // Chama a função
+                return false; // Retorna false para IMPEDIR o popup de fechar automaticamente
+            }
+        }
     ]);
     
     setTimeout(() => document.getElementById('motPlaca').focus(), 100);
 }
+
 
 // Salva o novo registro
 async function salvarNovoMotorista() {
