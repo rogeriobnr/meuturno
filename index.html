@@ -5445,36 +5445,18 @@ async function recriarServicoDoHistorico(id) {
 
         if (!confirmado) return;
 
-        // ============================================================
-        // [NOVO] VERIFICAÇÃO E ADIÇÃO AUTOMÁTICA DE FROTA
-        // ============================================================
+        // --- VERIFICAÇÃO DE FROTA (Mantida) ---
         const nomeFrota = itemOriginal.frota;
-        
-        // Verifica se a frota JÁ existe na lista do turno atual
         const frotaJaExiste = frotasTurno.some(f => f.nome === nomeFrota);
 
         if (nomeFrota && !frotaJaExiste) {
-            console.log(`🚜 Frota ${nomeFrota} não encontrada no turno. Adicionando...`);
-            
-            // Tenta descobrir o tipo da frota olhando no catálogo geral
-            // Se não achar, define como 'maquina' por padrão
             const itemCatalogo = catalogoFrotas.find(c => c.nome === nomeFrota);
             const tipoFrota = itemCatalogo ? itemCatalogo.tipo : 'maquina';
-
-            frotasTurno.push({
-                nome: nomeFrota,
-                tipo: tipoFrota,
-                horas: 0 // Adiciona zerada para não afetar métricas sem permissão
-            });
-
-            // Se a lista de frotas estiver visível na tela (aba Turno), atualiza ela
-            if (document.getElementById('listaFrotas')) {
-                renderizarFrotasDoTurno();
-            }
-            
+            frotasTurno.push({ nome: nomeFrota, tipo: tipoFrota, horas: 0 });
+            if (document.getElementById('listaFrotas')) renderizarFrotasDoTurno();
             showToast(`Frota ${nomeFrota} adicionada ao turno.`, "info");
         }
-        // ============================================================
+        // -------------------------------------
 
         // 3. Define a data de HOJE
         const dataHoje = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
@@ -5495,27 +5477,28 @@ async function recriarServicoDoHistorico(id) {
             parada: itemOriginal.parada || "sim",
             falha: itemOriginal.falha || "não",
 
-            // --- TEMPO (Datas de Hoje / Horas Originais) ---
+            // --- TEMPO ---
             data: dataHoje,       
             dataFinal: dataHoje,  
             inicio: itemOriginal.inicio, 
             fim: itemOriginal.fim,       
 
-            // --- ESTADO: JÁ GERADO (Verde) ---
+            // --- ESTADO ---
             texto: itemOriginal.texto, 
-            
             osNumero: "", 
-            isExpanded: true, 
+            
+            // [MUDANÇA AQUI] Define como false para nascer fechado
+            isExpanded: false, 
+            
             foiCompartilhado: false
         };
 
         // 4. Adiciona à lista de Serviços
         servicos.push(novoServico);
         
-        // 5. Salva TUDO (Isso salva tanto o serviço quanto a nova frota se foi adicionada)
+        // 5. Salva
         await salvarTudo(true);
         
-        // Sincroniza
         if(typeof salvarAlteracaoIndividual === 'function') {
             salvarAlteracaoIndividual(novoId);
         } else if(typeof salvarServicosNaNuvem === 'function') {
@@ -5528,7 +5511,7 @@ async function recriarServicoDoHistorico(id) {
         if(document.getElementById('historico')) document.getElementById('historico').classList.add('hidden');
         abrir('servicos');
 
-        // Rola até o novo card
+        // Rola até o novo card (destaca apenas a barra do card)
         setTimeout(() => {
             const el = document.getElementById(`servico_${novoId}`);
             if(el) {
