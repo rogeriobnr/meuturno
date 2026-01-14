@@ -1227,8 +1227,7 @@ async function limparHistoricoAntigoLocal() {
 const UPDATE_CONFIG = {
     critico: false, // TRUE = Abre Modal / FALSE = Mostra Badge
     novidades: [
-        "✨  Correção de erros realizadas!",
-        "🚀 Melhorias prontas para serem instaladas! ",
+        " 🚀 - Serviços abertos seram exibidos a todos da mesma frente e turno!",
 
         
         
@@ -1634,28 +1633,59 @@ async function carregarDadosIniciais() {
                 );
                 
                 if (confirmado) {
-                    // --- OPÇÃO 1: INICIAR NOVO DIA (MANTÉM EQUIPE/FROTA) ---
-                    console.log("📅 Iniciando novo turno. Migrando equipe/frota e limpando serviços.");
+    // --- OPÇÃO 1: INICIAR NOVO DIA (MANTÉM EQUIPE/FROTA) ---
+    console.log("📅 Iniciando novo turno...");
+    
+    // [LÓGICA DE SEGURANÇA ANTI-APAGAMENTO ACIDENTAL]
+    const frenteAntiga = dados.frente || "";
+    const turnoAntigo = dados.turno || "";
+    const dataHoje = dataHojeInputLocal(); // A data que estamos iniciando (Hoje)
+    
+    if (frenteAntiga && turnoAntigo && navigator.onLine) {
+        const docIdCloud = `${frenteAntiga.trim().toUpperCase()}_${turnoAntigo.trim().toUpperCase()}`;
+        
+        // 1. Antes de apagar, LÊ o que tem lá
+        firestore.collection('servicos_em_andamento').doc(docIdCloud).get()
+            .then((doc) => {
+                if (doc.exists) {
+                    const dadosNuvem = doc.data();
+                    const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
                     
-                    equipe = Array.isArray(dados.equipe) ? dados.equipe : [];
-                    frotasTurno = Array.isArray(dados.frotas) ? dados.frotas : [];
-                    
-                    // ZERA a produção do dia
-                    servicos = []; 
-                    linhasApontamento = []; 
-                    
-                    // Atualiza o input de data visualmente para hoje
-                    const elData = document.getElementById("dataTurno");
-                    if(elData) elData.value = dataHoje;
-
-                    // IMPORTANTE: Libera a trava AGORA para poder salvar o novo estado
-                    appCarregadoComSucesso = true; 
-                    
-                    // Salva o novo estado limpo no banco
-                    await salvarTudo(true);
-                    
-                    showToast("Novo turno iniciado! Equipe e Frota mantidas.", 'success');
-                } else {
+                    // 2. A MÁGICA: Só apaga se a data da nuvem for DIFERENTE (velha) da data de hoje
+                    if (dataDaNuvem !== dataHoje) {
+                        console.log(`🧹 Faxina Segura: Dados da nuvem eram de ${dataDaNuvem}. Limpando para ${dataHoje}.`);
+                        doc.ref.delete();
+                    } else {
+                        console.warn(`🛡️ PROTEÇÃO ATIVA: A nuvem já contém dados de HOJE (${dataHoje}). Não apaguei para não prejudicar o outro mecânico.`);
+                        // Se já tem dados de hoje, o listener (iniciarSincronizacaoServicos) 
+                        // vai baixar e atualizar a tela deste usuário automaticamente em seguida.
+                    }
+                }
+            })
+            .catch(e => console.warn("Erro ao verificar nuvem (Offline ou Permissão)", e));
+    }
+    
+    // Reseta localmente (Sua tela começa limpa, mas se tiver dados na nuvem de hoje, eles baixarão em segundos)
+    equipe = Array.isArray(dados.equipe) ? dados.equipe : [];
+    frotasTurno = Array.isArray(dados.frotas) ? dados.frotas : [];
+    servicos = [];
+    linhasApontamento = [];
+    
+    // Atualiza o input de data visualmente para hoje
+    const elData = document.getElementById("dataTurno");
+    if (elData) elData.value = dataHoje;
+    
+    appCarregadoComSucesso = true;
+    await salvarTudo(true);
+    
+    showToast("Novo turno iniciado!", 'success');
+    
+    // Força a reconexão imediata para baixar os dados caso o colega já tenha começado
+    if (typeof iniciarSincronizacaoServicos === 'function') {
+        setTimeout(iniciarSincronizacaoServicos, 1000);
+    }
+}
+else {
                     // --- OPÇÃO 2: CARREGAR DADOS ANTIGOS (VISUALIZAÇÃO) ---
                     console.log("📂 Carregando dados do dia anterior conforme escolha.");
                     carregarEstado(dados);
@@ -1867,6 +1897,7 @@ async function main() {
             if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
             if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
             if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
+            if(typeof iniciarSincronizacaoServicos === 'function')   iniciarSincronizacaoServicos();
 
             // 6. Garante que a seção atual está renderizada com dados completos
             let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
@@ -1932,6 +1963,109 @@ function carregarEstado(dados) {
 
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         
+// ============================================================
+// MÓDULO: SINCRONIZAÇÃO DE SERVIÇOS (REAL-TIME)
+// ============================================================
+
+let unsubscribeServicos = null;
+
+// 1. Inicia a escuta da nuvem (Chamar ao carregar ou mudar filtros)
+// ============================================================
+// SINCRONIZAÇÃO BLINDADA (FILTRO DE DATA)
+// ============================================================
+// ============================================================
+// SINCRONIZAÇÃO BLINDADA (COM UPLOAD DE LEGADO)
+// ============================================================
+function iniciarSincronizacaoServicos() {
+    const frente = document.getElementById('frente')?.value;
+    const turno = document.getElementById('turnoLetra')?.value;
+    const dataApp = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
+
+    if (!frente || !turno) return;
+
+    if (unsubscribeServicos) {
+        unsubscribeServicos();
+        unsubscribeServicos = null;
+    }
+
+    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
+    console.log(`📡 Ouvindo serviços: ${docId} (Filtro Data: ${dataApp})`);
+
+    unsubscribeServicos = firestore.collection('servicos_em_andamento')
+        .doc(docId)
+        .onSnapshot((doc) => {
+            // Ignora eco local para evitar loops
+            if (doc.metadata.hasPendingWrites) return; 
+
+            if (doc.exists) {
+                // --- CENÁRIO A: A NUVEM JÁ TEM DADOS ---
+                const dadosNuvem = doc.data();
+                const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
+
+                // Só baixa se a data bater (proteção que fizemos antes)
+                if (dataDaNuvem === dataApp) {
+                    console.log("🔄 Sincronizando serviços da equipe...");
+                    servicos = dadosNuvem.itens || [];
+                    
+                    if (document.getElementById('servicosLista')) {
+                        renderizarServicos();
+                    }
+                    salvarTudo(false); // Salva no IDB local
+                } else {
+                    console.warn(`🛡️ Ignorando nuvem (Data diferente). Foco no local.`);
+                }
+
+            } else {
+                // --- CENÁRIO B: A NUVEM ESTÁ VAZIA (CRÍTICO!) ---
+                // Se a nuvem está vazia, mas eu tenho serviços locais DE HOJE,
+                // significa que eu criei eles antes da sincronização existir.
+                // NÃO APAGUE! SUBAS ELES!
+                
+                const tenhoServicosLocais = servicos.length > 0;
+                const saoServicosDeHoje = servicos.every(s => s.data === dataApp); // Garante que não é lixo velho
+
+                if (tenhoServicosLocais && saoServicosDeHoje && navigator.onLine) {
+                    console.log("🚀 Nuvem vazia, mas tenho dados locais! Inicializando a nuvem...");
+                    salvarServicosNaNuvem(); // Envia meus dados para virarem o padrão da equipe
+                } else {
+                    // Realmente não tem nada em lugar nenhum, ou não é de hoje
+                    if (servicos.length > 0 && !saoServicosDeHoje) {
+                        // Se tenho dados velhos e mudei de dia, aí sim limpa
+                        servicos = [];
+                        renderizarServicos();
+                    }
+                    // Se já estava vazio, continua vazio.
+                }
+            }
+        });
+}
+
+
+
+// 2. Envia alterações para a nuvem (COM CARIMBO DE DATA)
+function salvarServicosNaNuvem() {
+    const frente = document.getElementById('frente')?.value;
+    const turno = document.getElementById('turnoLetra')?.value;
+    // Pega a data que está sendo trabalhada
+    const dataRef = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
+    
+    if (!frente || !turno) return;
+
+    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
+    
+    const payload = {
+        dataReferencia: dataRef, // <--- CAMPO CRÍTICO DE SEGURANÇA
+        itens: servicos, 
+        atualizadoEm: new Date().toISOString(),
+        ultimaModificacaoPor: document.getElementById('apontamentoColaborador')?.value || 'Usuario'
+    };
+
+    // Fire and Forget
+    firestore.collection('servicos_em_andamento').doc(docId)
+        .set(payload, { merge: true })
+        .catch(e => console.warn("Fila offline serviços", e));
+}
+
 
 // ============================================================
 // FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
@@ -1981,6 +2115,9 @@ function salvarTudo(forcar = false) {
             localStorage.setItem('ctx_fazenda', dados.fazenda);
             localStorage.setItem('ctx_frente', dados.frente);
             localStorage.setItem('ctx_turno', dados.turno);
+            
+            
+            salvarServicosNaNuvem();
 
         } catch (err) {
             console.error("❌ Erro ao salvar dados:", err);
@@ -2042,7 +2179,8 @@ function backupEmergenciaSincrono() {
     if(turnoVal) localStorage.setItem('ctx_turno', turnoVal);
     // ------------------------------------------------------
 
-    salvarTudo(); 
+    salvarTudo();
+    iniciarSincronizacaoServicos();
 }
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
