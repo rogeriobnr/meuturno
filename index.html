@@ -220,33 +220,26 @@
 </script>
 
     <header class="bg-blue-800 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-20">
-   
-    <div class="flex items-center gap-3">
-        <button id="hamburger-btn" class="text-2xl p-1 rounded-full hover:bg-blue-700 transition-colors">&#9776;</button>
        
-        <div id="header-context-info" class="flex flex-col items-end mr-2">
-          <h1 id="header-titulo" class="shadow-lg bg-blue-900/30 rounded-lg text-sm px-2 py-0.5 font-bold tracking-tight">
-                <span id="ctx-frente-top" class="text-[10px] font-bold uppercase tracking-wide text-blue-100 max-w-[100px] truncate">
-                  ---
-                </span>
-                
-                <span id="ctx-turno-top" class="text-[9px] font-medium text-blue-300">
-                 TURNO -
-                </span>
-            </h1> 
-        </div>
-    </div> 
-    
-
-    <div class="flex items-center gap-2">
+        <button id="hamburger-btn"
+            class="text-2xl p-2 rounded-full hover:bg-blue-700 transition-colors">&#9776;</button>
+        <div class="flex:wrap text-center text-base gap-x-2">
+           <!-- <img src="logo.png" alt="Logo MeuTurno" class="h-8" onerror="this.style.display='none'">
+           -->
+            <h1 id="header-titulo" class="shadow-lg bg-blue rounded-lg text-xl p-1 font-bold">
+                MeuTurno
+            </h1>
+                  <!--   <p class="text-sm animate-pulse">Deus é fiel!
+                    </p>
+                 -->
+        </div> 
+        
         <div id="network-status" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400 text-green-100 text-[10px] font-bold shadow-sm transition-all duration-500">
-            <span id="network-dot" class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-            <span id="network-text">ONLINE</span>
+        <span id="network-dot" class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+        <span id="network-text">ONLINE</span>
         </div>
-    </div>
 
-</header>
-
+    </header>
 
 <div id="btnUpdateBadge" class="hidden bg-blue-700 text-center py-2 shadow-inner border-t border-blue-800 transition-all duration-500 relative z-20">
     <button onclick="abrirModalUpdate()" class="bg-white text-blue-800 hover:bg-blue-50 text-xs font-bold px-4 py-1.5 rounded-full animate-pulse shadow-sm flex items-center justify-center mx-auto gap-2 transition-transform active:scale-95">
@@ -734,8 +727,6 @@ function concluirOnboarding() {
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
         let registrosMotorista = [];
-        let servicosSincronizados = false;
-        let primeiraSincronizacaoFeita = false;
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
@@ -1236,7 +1227,8 @@ async function limparHistoricoAntigoLocal() {
 const UPDATE_CONFIG = {
     critico: false, // TRUE = Abre Modal / FALSE = Mostra Badge
     novidades: [
-        " 🚀 - Serviços abertos seram exibidos a todos da mesma frente e turno!",
+        "✨  Correção de erros realizadas!",
+        "🚀 Melhorias prontas para serem instaladas! ",
 
         
         
@@ -1451,7 +1443,7 @@ function iniciarMonitoramentoRedeUI() {
         if (navigator.onLine) {
             // --- MODO ONLINE ---
             // Fundo verde translúcido, texto claro
-            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400 text-green-100 text-sm font-bold shadow-sm transition-all duration-500";
+            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400 text-green-100 text-[10px] font-bold shadow-sm transition-all duration-500";
             
             // Bolinha verde brilhante
             elDot.className = "w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]";
@@ -1460,7 +1452,7 @@ function iniciarMonitoramentoRedeUI() {
         } else {
             // --- MODO OFFLINE ---
             // Fundo vermelho alerta, pulsando levemente
-            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-sm font-bold shadow-md transition-all duration-500 animate-pulse";
+            elContainer.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[10px] font-bold shadow-md transition-all duration-500 animate-pulse";
             
             // Bolinha branca (contraste)
             elDot.className = "w-2 h-2 rounded-full bg-white";
@@ -1642,59 +1634,28 @@ async function carregarDadosIniciais() {
                 );
                 
                 if (confirmado) {
-    // --- OPÇÃO 1: INICIAR NOVO DIA (MANTÉM EQUIPE/FROTA) ---
-    console.log("📅 Iniciando novo turno...");
-    
-    // [LÓGICA DE SEGURANÇA ANTI-APAGAMENTO ACIDENTAL]
-    const frenteAntiga = dados.frente || "";
-    const turnoAntigo = dados.turno || "";
-    const dataHoje = dataHojeInputLocal(); // A data que estamos iniciando (Hoje)
-    
-    if (frenteAntiga && turnoAntigo && navigator.onLine) {
-        const docIdCloud = `${frenteAntiga.trim().toUpperCase()}_${turnoAntigo.trim().toUpperCase()}`;
-        
-        // 1. Antes de apagar, LÊ o que tem lá
-        firestore.collection('servicos_em_andamento').doc(docIdCloud).get()
-            .then((doc) => {
-                if (doc.exists) {
-                    const dadosNuvem = doc.data();
-                    const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
+                    // --- OPÇÃO 1: INICIAR NOVO DIA (MANTÉM EQUIPE/FROTA) ---
+                    console.log("📅 Iniciando novo turno. Migrando equipe/frota e limpando serviços.");
                     
-                    // 2. A MÁGICA: Só apaga se a data da nuvem for DIFERENTE (velha) da data de hoje
-                    if (dataDaNuvem !== dataHoje) {
-                        console.log(`🧹 Faxina Segura: Dados da nuvem eram de ${dataDaNuvem}. Limpando para ${dataHoje}.`);
-                        doc.ref.delete();
-                    } else {
-                        console.warn(`🛡️ PROTEÇÃO ATIVA: A nuvem já contém dados de HOJE (${dataHoje}). Não apaguei para não prejudicar o outro mecânico.`);
-                        // Se já tem dados de hoje, o listener (iniciarSincronizacaoServicos) 
-                        // vai baixar e atualizar a tela deste usuário automaticamente em seguida.
-                    }
-                }
-            })
-            .catch(e => console.warn("Erro ao verificar nuvem (Offline ou Permissão)", e));
-    }
-    
-    // Reseta localmente (Sua tela começa limpa, mas se tiver dados na nuvem de hoje, eles baixarão em segundos)
-    equipe = Array.isArray(dados.equipe) ? dados.equipe : [];
-    frotasTurno = Array.isArray(dados.frotas) ? dados.frotas : [];
-    servicos = [];
-    linhasApontamento = [];
-    
-    // Atualiza o input de data visualmente para hoje
-    const elData = document.getElementById("dataTurno");
-    if (elData) elData.value = dataHoje;
-    
-    appCarregadoComSucesso = true;
-    await salvarTudo(true);
-    
-    showToast("Novo turno iniciado!", 'success');
-    
-    // Força a reconexão imediata para baixar os dados caso o colega já tenha começado
-    if (typeof iniciarSincronizacaoServicos === 'function') {
-        setTimeout(iniciarSincronizacaoServicos, 1000);
-    }
-}
-else {
+                    equipe = Array.isArray(dados.equipe) ? dados.equipe : [];
+                    frotasTurno = Array.isArray(dados.frotas) ? dados.frotas : [];
+                    
+                    // ZERA a produção do dia
+                    servicos = []; 
+                    linhasApontamento = []; 
+                    
+                    // Atualiza o input de data visualmente para hoje
+                    const elData = document.getElementById("dataTurno");
+                    if(elData) elData.value = dataHoje;
+
+                    // IMPORTANTE: Libera a trava AGORA para poder salvar o novo estado
+                    appCarregadoComSucesso = true; 
+                    
+                    // Salva o novo estado limpo no banco
+                    await salvarTudo(true);
+                    
+                    showToast("Novo turno iniciado! Equipe e Frota mantidas.", 'success');
+                } else {
                     // --- OPÇÃO 2: CARREGAR DADOS ANTIGOS (VISUALIZAÇÃO) ---
                     console.log("📂 Carregando dados do dia anterior conforme escolha.");
                     carregarEstado(dados);
@@ -1824,44 +1785,7 @@ function renderizarLayoutInicialVisual() {
     } catch (e) {
         console.warn("Erro ao renderizar visual inicial:", e);
     }
-    atualizarCabecalhoContexto();
 }
-
-// ============================================================
-// ATUALIZAÇÃO DO CABEÇALHO (CONTEXTO)
-// ============================================================
-function atualizarCabecalhoContexto() {
-    // 1. Tenta pegar dos inputs (Tempo Real)
-    let frente = document.getElementById('frente')?.value;
-    let turno = document.getElementById('turnoLetra')?.value;
-
-    // 2. Se inputs vazios, tenta pegar do Cache (Carregamento)
-    if (!frente) frente = localStorage.getItem('ctx_frente');
-    if (!turno) turno = localStorage.getItem('ctx_turno');
-
-    // 3. Elementos do Topo
-    const elFrente = document.getElementById('ctx-frente-top');
-    const elTurno = document.getElementById('ctx-turno-top');
-
-    if (elFrente && elTurno) {
-        // Atualiza Frente
-        if (frente && frente !== 'Carregando...') {
-            elFrente.innerText = frente;
-            elFrente.classList.remove('opacity-50');
-        } else {
-            elFrente.innerText = "SEM FRENTE";
-            elFrente.classList.add('opacity-50');
-        }
-
-        // Atualiza Turno
-        if (turno) {
-            elTurno.innerText = `(TURNO ${turno})`;
-        } else {
-            elTurno.innerText = "TURNO -";
-        }
-    }
-}
-
 
 // =================================================================================
 // 2. MAIN OTIMIZADA (PRPL PATTERN)
@@ -1943,7 +1867,6 @@ async function main() {
             if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
             if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
             if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
-            if(typeof iniciarSincronizacaoServicos === 'function')   iniciarSincronizacaoServicos();
 
             // 6. Garante que a seção atual está renderizada com dados completos
             let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
@@ -2005,141 +1928,10 @@ function carregarEstado(dados) {
         s.foiCompartilhado = s.foiCompartilhado || false; 
         s.pecasUtilizadas = s.pecasUtilizadas || []; 
     }); 
-       // [ADICIONE ISTO NO FINAL]
-    // Pequeno delay para garantir que os selects do HTML foram preenchidos
-    setTimeout(atualizarCabecalhoContexto, 100);
-
 }
 
         function inicializarEstadoVazio() { equipe = []; frotasTurno = []; servicos = []; }
         
-// ============================================================
-// MÓDULO: SINCRONIZAÇÃO DE SERVIÇOS (REAL-TIME)
-// ============================================================
-
-let unsubscribeServicos = null;
-
-// 1. Inicia a escuta da nuvem (Chamar ao carregar ou mudar filtros)
-// ============================================================
-// SINCRONIZAÇÃO BLINDADA (FILTRO DE DATA)
-// ============================================================
-// ============================================================
-// SINCRONIZAÇÃO BLINDADA (COM UPLOAD DE LEGADO)
-// ============================================================
-// ============================================================
-// SINCRONIZAÇÃO BLINDADA (CORREÇÃO LEGADO)
-// ============================================================
-// ============================================================
-// SINCRONIZAÇÃO BLINDADA (CORREÇÃO DO VAZIO)
-// ============================================================
-function iniciarSincronizacaoServicos() {
-    const frente = document.getElementById('frente')?.value;
-    const turno = document.getElementById('turnoLetra')?.value;
-    const dataApp = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
-
-    if (!frente || !turno) {
-        // Se não tem filtros, reseta o estado
-        primeiraSincronizacaoFeita = false; 
-        return;
-    }
-
-    // Resetamos a flag APENAS se mudarmos de contexto (trocar de frente/turno)
-    // Isso faz o spinner aparecer rapidinho na troca de tela, o que é bom.
-    if (unsubscribeServicos) {
-        unsubscribeServicos();
-        unsubscribeServicos = null;
-        primeiraSincronizacaoFeita = false; // Reseta para mostrar loading na nova sala
-        renderizarServicos(); // Mostra o spinner
-    }
-
-    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
-    console.log(`📡 Conectando: ${docId}`);
-
-    unsubscribeServicos = firestore.collection('servicos_em_andamento')
-        .doc(docId)
-        .onSnapshot((doc) => {
-            if (doc.metadata.hasPendingWrites) return; // Ignora o eco da minha própria escrita
-
-            if (doc.exists) {
-                // --- A NUVEM TEM DADOS ---
-                const dadosNuvem = doc.data();
-                const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
-
-                if (dataDaNuvem === dataApp) {
-                    console.log("🔄 Recebendo dados da nuvem...");
-                    servicos = dadosNuvem.itens || [];
-                } else {
-                    console.warn("🛡️ Ignorando nuvem (Data antiga).");
-                    // Não faz nada, mantém o local
-                }
-            } else {
-                // --- A NUVEM ESTÁ VAZIA ---
-                
-                // AQUI ESTÁ A PROTEÇÃO DO RASCUNHO:
-                // Se eu tenho serviços na memória, significa que eu acabei de clicar no "+"
-                // e o Firebase ainda não sabe. NÃO APAGUE MEUS DADOS!
-                if (servicos.length > 0) {
-                    console.log("🛡️ Nuvem vazia, mas tenho rascunhos locais. Mantendo meus dados e subindo...");
-                    salvarServicosNaNuvem(); // Força a nuvem a aceitar meu rascunho
-                } else {
-                    console.log("☁️ Nuvem vazia e local vazio. Tudo limpo.");
-                    servicos = [];
-                }
-            }
-
-            // FINALMENTE:
-            // Avisa a UI que o download acabou.
-            primeiraSincronizacaoFeita = true;
-            servicosSincronizados = true; // Libera o salvamento (da correção anterior)
-            
-            // Se a aba de serviços estiver aberta, desenha a lista (ou o vazio) e mata o spinner
-            if (document.getElementById('servicosLista')) {
-                renderizarServicos();
-            }
-            
-            // Salva backup local silencioso
-            salvarTudo(false); 
-
-        }, (error) => {
-            console.error("Erro na sincronização:", error);
-            // Em caso de erro, removemos o spinner para o usuário poder trabalhar offline
-            primeiraSincronizacaoFeita = true; 
-            servicosSincronizados = true;
-            if (document.getElementById('servicosLista')) renderizarServicos();
-        });
-}
-
-
-// 2. Envia alterações para a nuvem (COM CARIMBO DE DATA)
-// 2. Envia alterações para a nuvem (COM TRAVA DE SEGURANÇA)
-function salvarServicosNaNuvem() {
-    // [SEGURANÇA] Se ainda não baixamos os dados da nuvem, NÃO enviamos nada.
-    // Isso impede que um app recém-aberto (vazio) apague os dados da nuvem.
-    if (!servicosSincronizados) {
-        console.warn("⛔ Envio para nuvem bloqueado: Aguardando sincronização inicial.");
-        return;
-    }
-
-    const frente = document.getElementById('frente')?.value;
-    const turno = document.getElementById('turnoLetra')?.value;
-    const dataRef = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
-    
-    if (!frente || !turno) return;
-
-    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
-    
-    const payload = {
-        dataReferencia: dataRef,
-        itens: servicos, 
-        atualizadoEm: new Date().toISOString(),
-        ultimaModificacaoPor: document.getElementById('apontamentoColaborador')?.value || 'Usuario'
-    };
-
-    firestore.collection('servicos_em_andamento').doc(docId)
-        .set(payload, { merge: true })
-        .catch(e => console.warn("Fila offline serviços", e));
-}
-
 
 // ============================================================
 // FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
@@ -2189,9 +1981,6 @@ function salvarTudo(forcar = false) {
             localStorage.setItem('ctx_fazenda', dados.fazenda);
             localStorage.setItem('ctx_frente', dados.frente);
             localStorage.setItem('ctx_turno', dados.turno);
-            
-            
-            salvarServicosNaNuvem();
 
         } catch (err) {
             console.error("❌ Erro ao salvar dados:", err);
@@ -2209,77 +1998,6 @@ function salvarTudo(forcar = false) {
         debounceTimer = setTimeout(executar, 800); 
     }
 }
-
-// ============================================================
-// SALVAMENTO COLABORATIVO (TRANSAÇÃO)
-// ============================================================
-let debounceUpdate = null;
-
-function salvarAlteracaoIndividual(servicoId) {
-    // 1. Debounce: Espera o usuário parar de digitar por 1.5s para não sobrecarregar o banco
-    clearTimeout(debounceUpdate);
-    
-    debounceUpdate = setTimeout(() => {
-        executarTransacaoUnica(servicoId);
-    }, 1500);
-}
-
-async function executarTransacaoUnica(servicoId) {
-    const frente = document.getElementById('frente')?.value;
-    const turno = document.getElementById('turnoLetra')?.value;
-    
-    if (!frente || !turno) return;
-
-    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
-    const ref = firestore.collection('servicos_em_andamento').doc(docId);
-    
-    // Pega a versão mais recente deste serviço na memória local
-    const servicoLocal = servicos.find(s => s.id === servicoId);
-    if (!servicoLocal) return;
-
-    console.log(`📡 Sincronizando item ${servicoId} com a equipe...`);
-
-    try {
-        await firestore.runTransaction(async (transaction) => {
-            const doc = await transaction.get(ref);
-            
-            if (!doc.exists) {
-                // Se não existe doc, cria com este item
-                transaction.set(ref, { 
-                    itens: [servicoLocal],
-                    dataReferencia: servicoLocal.data 
-                });
-                return;
-            }
-
-            const dadosNuvem = doc.data();
-            let listaNuvem = dadosNuvem.itens || [];
-
-            // Encontra o índice deste serviço na nuvem
-            const index = listaNuvem.findIndex(s => s.id === servicoId);
-
-            if (index > -1) {
-                // Se já existe, ATUALIZA apenas este item, mantendo os outros intactos
-                listaNuvem[index] = servicoLocal;
-            } else {
-                // Se não existe na nuvem (foi criado agora), adiciona
-                listaNuvem.push(servicoLocal);
-            }
-
-            // Grava a lista mesclada de volta
-            transaction.update(ref, { 
-                itens: listaNuvem,
-                atualizadoEm: new Date().toISOString(),
-                ultimaModificacaoPor: document.getElementById('apontamentoColaborador')?.value || 'Mecânico'
-            });
-        });
-        console.log("✅ Item sincronizado com sucesso!");
-        
-    } catch (e) {
-        console.error("Erro na transação:", e);
-    }
-}
-
 
 // ============================================================
 // SISTEMA DE SEGURANÇA: BACKUP SÍNCRONO (ANTI-CRASH)
@@ -2324,9 +2042,7 @@ function backupEmergenciaSincrono() {
     if(turnoVal) localStorage.setItem('ctx_turno', turnoVal);
     // ------------------------------------------------------
 
-    salvarTudo();
-    iniciarSincronizacaoServicos();
-    atualizarCabecalhoContexto();
+    salvarTudo(); 
 }
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
@@ -3426,81 +3142,41 @@ function renderizarSecaoServicos(container) {
             </div>
         </div>
 
-        <div id="servicosLista" class="space-y-4 min-h-[100px]">
-            <div class="flex flex-col items-center justify-center py-8 opacity-60">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
-                <p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p>
-            </div>
-        </div>
+        <div id="servicosLista" class="space-y-4"></div>
     </div>`; 
     
-    // Tenta renderizar o que já tem na memória imediatamente
-    if (servicos && servicos.length > 0) {
-        renderizarServicos();
-    }
-    
-    // Força a atualização da conexão
-    iniciarSincronizacaoServicos();
+    renderizarServicos(); 
 }
-
 
 function renderizarServicos() { 
     const lista = document.getElementById("servicosLista"); 
     if (!lista) return; 
     
-    // 1. Loading Inicial
-    if (!primeiraSincronizacaoFeita && servicos.length === 0) {
-        lista.innerHTML = `<div class="flex flex-col items-center justify-center py-10 opacity-60"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div><p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p></div>`;
-        return;
-    }
-
-    // 2. Vazio
-    if (servicos.length === 0) { 
-        lista.innerHTML = `<div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100"><p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p><p class='text-xs text-gray-300 mt-1'>Use o botão "+" para começar.</p></div>`; 
-        return;
-    } 
-
-    // 3. PRESERVAÇÃO DE FOCO (Smart Re-render)
-    // Antes de apagar tudo, vemos onde o usuário está digitando
-    const elementoFocado = document.activeElement;
-    let idFocado = null;
-    let campoFocado = null;
-    
-    // Verifica se o foco está dentro da nossa lista
-    if (elementoFocado && elementoFocado.tagName !== 'BODY' && lista.contains(elementoFocado)) {
-        idFocado = elementoFocado.id; // Ex: descricao-173849...
-        // Tenta pegar cursor position se for input/textarea
-        var selectionStart = elementoFocado.selectionStart;
-        var selectionEnd = elementoFocado.selectionEnd;
-    }
-
-    // Ordenação e Renderização
+    // Ordena por data/hora
     const servicosOrdenados = [...servicos]; 
     servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
     
     lista.innerHTML = ''; 
     
-    servicosOrdenados.forEach(s => { 
-        const template = document.getElementById('servico-template').content.cloneNode(true); 
-        const article = template.querySelector('article'); 
-        article.id = `servico_${s.id}`; 
-        lista.appendChild(article); 
-        preencherDetalhesServico(s); 
-    });
-
-    // 4. RESTAURAÇÃO DE FOCO
-    if (idFocado) {
-        const elParaFocar = document.getElementById(idFocado);
-        if (elParaFocar) {
-            elParaFocar.focus();
-            // Restaura posição do cursor se possível
-            if (typeof selectionStart === 'number') {
-                elParaFocar.setSelectionRange(selectionStart, selectionEnd);
-            }
-        }
-    }
+    if (servicosOrdenados.length === 0) { 
+        lista.innerHTML = `
+        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
+            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
+            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
+        </div>`; 
+    } else { 
+        servicosOrdenados.forEach(s => { 
+            const template = document.getElementById('servico-template').content.cloneNode(true); 
+            const article = template.querySelector('article'); 
+            
+            // SEGURANÇA: IDs devem ser seguros, mas s.id é numérico (timestamp), então é seguro.
+            article.id = `servico_${s.id}`; 
+            
+            lista.appendChild(article); 
+            preencherDetalhesServico(s); 
+        }); 
+    } 
 }
-
 
 function preencherDetalhesServico(s) {
     const article = document.getElementById(`servico_${s.id}`);
@@ -3670,77 +3346,47 @@ function preencherDetalhesServico(s) {
         
         // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
         function handleServicoInputChange(event) { 
-    const el = event.target; 
-    const id = parseInt(el.dataset.id); 
-    const field = el.dataset.field; 
-    const servico = servicos.find(s => s.id === id); 
-    
-    if (!servico) return; 
-    
-    // 1. Atualiza na Memória RAM (Instantâneo)
-    servico[field] = el.value; 
-    el.classList.remove('campo-invalido'); 
-    
-    // Lógica específica de sistema
-    if (field === 'sistema') { 
-        servico.subsistema = ""; 
-        // Nota: Aqui forçamos renderização apenas se mudar estrutura, senão evitamos para não perder foco
-        renderizarServicos(); 
-    } 
-
-    // Validação de Tempo
-    if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
-        const isValid = validarTempoServico(servico);
-        const inputFim = document.getElementById(`fim-${servico.id}`);
-        const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
-        if (inputFim && inputDataFinal) {
-            if (!isValid) {
-                inputFim.classList.add('campo-invalido');
-                inputDataFinal.classList.add('campo-invalido');
-            } else {
-                inputFim.classList.remove('campo-invalido');
-                inputDataFinal.classList.remove('campo-invalido');
+            const el = event.target; 
+            const id = parseInt(el.dataset.id); 
+            const field = el.dataset.field; 
+            const servico = servicos.find(s => s.id === id); 
+            if (!servico) return; 
+            
+            servico[field] = el.value; 
+            el.classList.remove('campo-invalido'); 
+            
+            if (field === 'sistema') { 
+                servico.subsistema = ""; 
+                renderizarServicos(); 
+            } 
+            
+            // NOVO BLOCO: Validação Imediata do Tempo
+            if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
+                const isValid = validarTempoServico(servico);
+                const inputFim = document.getElementById(`fim-${servico.id}`);
+                const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
+                
+                if (inputFim && inputDataFinal) {
+                    if (!isValid) {
+                        inputFim.classList.add('campo-invalido');
+                        inputDataFinal.classList.add('campo-invalido');
+                    } else {
+                        inputFim.classList.remove('campo-invalido');
+                        inputDataFinal.classList.remove('campo-invalido');
+                    }
+                }
             }
+            
+            const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
+            if (camposQueAtualizamCabecalho.includes(field)) { 
+                const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
+                if (cabecalhoInfo) { 
+                    cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
+                } 
+            } 
+            
+            salvarTudo(); 
         }
-    }
-    
-    // Atualiza Cabeçalho Visualmente
-    const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
-    if (camposQueAtualizamCabecalho.includes(field)) { 
-        const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
-        if (cabecalhoInfo) { 
-            cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
-        } 
-    } 
-    
-    // 2. Salva Backup Local (Sem subir pra nuvem ainda)
-    // Passamos 'false' e criamos uma função modificada de salvarTudo que aceita ignorar cloud
-    salvarTudoLocalmente(); 
-    
-    // 3. Agenda a Sincronização Inteligente com a Nuvem
-    salvarAlteracaoIndividual(id);
-}
-
-// Pequeno helper para salvar só local (Evita sobrescrever a nuvem inteira)
-async function salvarTudoLocalmente() {
-     if (!db) await initDB();
-     const dados = {
-        id: TURNO_ATUAL_ID,
-        data: document.getElementById("dataTurno")?.value || dataHojeInputLocal(),
-        fazenda: document.getElementById("fazenda")?.value || '',
-        frente: document.getElementById("frente")?.value || '',
-        turno: document.getElementById("turnoLetra")?.value || '',
-        equipe: equipe,
-        frotas: frotasTurno,
-        servicos: servicos, // Salva o estado atual local
-        linhasApontamento: linhasApontamento,
-        relatorio: document.getElementById("relatorio_bruto")?.value || '',
-        relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
-        timestamp: Date.now()
-    };
-    await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
-}
-
         function adicionarServico(dadosPreenchidos = null) { 
             if (!validarCamposTurnoBasicos()) return; 
             const id = Date.now(); 
@@ -5555,12 +5201,12 @@ async function verificarContextoHistorico(preSelectFazenda = null, preSelectFren
 
 
 
-// ============================================================
-// EXIBIR HISTÓRICO (DATAS: RECENTE->ANTIGO | HORAS: 00:00->23:59)
-// ============================================================
 async function mostrarHistorico() {
-    // Verifica contexto
+        // --- MUDANÇA AQUI: Adicionado 'await' ---
+    // Agora esperamos a função verificar se tem dados e carregar as listas se precisar
     if (!(await verificarContextoHistorico())) return; 
+    // ----------------------------------------
+
 
     const div = document.getElementById("historico_lista");
     if (!div) return;
@@ -5570,12 +5216,14 @@ async function mostrarHistorico() {
     try {
         const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
 
-        // Filtros
+        // 1. Filtros (Contexto Atual)
         const frenteInput = document.getElementById('frente');
         const turnoInput = document.getElementById('turnoLetra');
+        
         const frenteSelecionada = frenteInput ? frenteInput.value.trim() : "";
         const turnoSelecionado = turnoInput ? turnoInput.value : "";
         
+        // 2. Filtragem RÍGIDA
         const itensFiltrados = todosItens.filter(item => {
             const itemFrente = item.frente ? item.frente.trim() : "";
             const itemTurno = item.turno || "";
@@ -5585,12 +5233,12 @@ async function mostrarHistorico() {
         if (itensFiltrados.length === 0) {
             div.innerHTML = `
                 <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                    <p class="text-gray-400 font-bold">Nenhum registo encontrado.</p>
+                    <p class="text-gray-400 font-bold">Nenhum registro encontrado.</p>
                 </div>`;
             return;
         }
 
-        // Agrupamento
+        // 3. Agrupamento
         const agrupado = itensFiltrados.reduce((acc, item) => {
             const dataKey = item.dataOS || "Sem Data";
             if (!acc[dataKey]) acc[dataKey] = [];
@@ -5598,15 +5246,11 @@ async function mostrarHistorico() {
             return acc;
         }, {});
 
-        // --- CORREÇÃO 1: DATAS DECRESCENTES (Hoje primeiro) ---
-        // b.localeCompare(a) -> Mais recente no topo
-        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
+        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b
+        .localeCompare(a));
 
-        // Renderização
+        // 4. Renderização (SEU DESIGN)
         div.innerHTML = datasOrdenadas.map(dataKey => {
-            
-            // --- CORREÇÃO 2: CARDS CRESCENTES (Manhã -> Noite) ---
-            // a.inicio.localeCompare(b.inicio) -> 07:00 antes de 08:00
             const itensDoDia = agrupado[dataKey].sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
             
             return `
@@ -5622,103 +5266,103 @@ async function mostrarHistorico() {
                 
                 <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
                   ${itensDoDia.map(s => {
-                    const isFinalizada = s.status === 'finalizada';
-                    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
-                    const safeId = s.uniqueId || s.id;
-                    
-                    const iconSync = s._syncStatus === 'pendente' 
-                        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse">🛜 Enviando</span>` 
-                        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">☁️ Salvo</span>`;
+    const isFinalizada = s.status === 'finalizada';
+    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
+    const safeId = s.uniqueId || s.id;
 
-                    const infoTecnica = [
-                        (s.atividade || "N/A").split(' - ')[0],
-                        s.sistema || "?",
-                        (s.subsistema || "?").split(' - ')[0]
-                    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
+    // --- 1. AQUI ENTRA A LÓGICA DO ÍCONE ---
+    // Se o status for pendente OU indefinido (mas novo), mostra pendente.
+    // Se for undefined em item antigo, assume OK.
+    const iconSync = s._syncStatus === 'pendente' 
+        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse" title="Aguardando envio">🛜 Enviando</span>` 
+        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded" title="Salvo na nuvem">☁️ Salvo</span>`;
+    // ---------------------------------------
 
-                    return `
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
-                        
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
-                                    ${safeText(s.frota)}
-                                </span>
-                                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
-                                    ${infoTecnica}
-                                </div>
-                            </div>
-                            
-                            <div class="text-right flex flex-col items-end gap-1">
-                                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
-                                </span>
-                                ${iconSync}
-                            </div>
-                        </div>
+    const infoTecnica = [
+        (s.atividade || "N/A").split(' - ')[0],
+        s.sistema || "?",
+        (s.subsistema || "?").split(' - ')[0]
+    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
 
-                        <div class="mb-3">
-                            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
-                                "${safeText(s.descricao)}"
-                            </p>
-                        </div>
-
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
-                            <div class="flex items-center gap-2 flex-grow">
-                                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
-                                <div class="relative flex items-center">
-                                    <input type="number" 
-                                        id="os_input_${safeId}" 
-                                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
-                                        placeholder="PENDENTE" 
-                                        value="${safeText(s.osNumero || "")}" 
-                                        oninput="validarOSInput(${safeId})" 
-                                        ${isFinalizada ? "disabled" : ""}>
-                                    
-                                    ${!isFinalizada 
-                                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
-                                        : `` 
-                                    }
-                                </div>
-                                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
-                            </div>
-
-                            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
-                                <span>⚙️ Ações</span>
-                            </button>
-                        </div>
-
-                        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-4 gap-2 animate-fade-in">
-                            <button onclick="recriarServicoDoHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-indigo-50 hover:bg-white border border-indigo-200 rounded text-indigo-700 hover:text-indigo-800 transition-colors">
-                                <span class="text-lg mb-1">♻️</span>
-                                <span class="text-[9px] font-bold uppercase">Recriar</span>
-                            </button>
-
-                            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
-                                <span class="text-lg mb-1">📋</span>
-                                <span class="text-[9px] font-bold uppercase">Copiar</span>
-                            </button>
-                            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
-                                <span class="text-lg mb-1">📱</span>
-                                <span class="text-[9px] font-bold uppercase">Wtzp</span>
-                            </button>
-                            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
-                                <span class="text-lg mb-1">🗑️</span>
-                                <span class="text-[9px] font-bold uppercase">Excluir</span>
-                            </button>
-                            
-                            ${isFinalizada ? `
-                            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-4 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
-                                ✏️ Editar Número da O.S.
-                            </button>` : ''}
-                        </div>
-                        
-                        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
-                    </div>
-                    `;
-                }).join('')}
+    return `
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
+        
+        <div class="flex justify-between items-start mb-2">
+            <div>
+                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
+                    ${safeText(s.frota)}
+                </span>
+                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                    ${infoTecnica}
                 </div>
-            </div>`;
+            </div>
+            
+            <div class="text-right flex flex-col items-end gap-1">
+                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
+                </span>
+                ${iconSync}
+            </div>
+            </div>
+
+        <div class="mb-3">
+            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
+                "${safeText(s.descricao)}"
+            </p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
+            <div class="flex items-center gap-2 flex-grow">
+                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
+                <div class="relative flex items-center">
+                    <input type="number" 
+                        id="os_input_${safeId}" 
+                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
+                        placeholder="PENDENTE" 
+                        value="${safeText(s.osNumero || "")}" 
+                        oninput="validarOSInput(${safeId})" 
+                        ${isFinalizada ? "disabled" : ""}>
+                    
+                    ${!isFinalizada 
+                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
+                        : `` 
+                    }
+                </div>
+                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+            </div>
+
+            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
+                <span>⚙️ Ações</span>
+            </button>
+        </div>
+
+        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-3 gap-2 animate-fade-in">
+            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
+                <span class="text-lg mb-1">📋</span>
+                <span class="text-[9px] font-bold uppercase">Copiar</span>
+            </button>
+            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
+                <span class="text-lg mb-1">📱</span>
+                <span class="text-[9px] font-bold uppercase">Enviar Wtzp</span>
+            </button>
+            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
+                <span class="text-lg mb-1">🗑️</span>
+                <span class="text-[9px] font-bold uppercase">Excluir</span>
+            </button>
+            ${isFinalizada ? `
+            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
+                ✏️ Editar Número da O.S.
+            </button>` : ''}
+        </div>
+        
+        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
+    </div>
+    `;
+}).join('')}
+
+                </div>
+            </div>
+            `;
         }).join('');
 
     } catch (e) {
@@ -5726,8 +5370,6 @@ async function mostrarHistorico() {
         div.innerHTML = `<p class="text-red-500 text-center p-4 border border-red-200 bg-red-50 rounded-lg">Erro ao ler dados: ${e.message}</p>`;
     }
 }
-
-
 
 // ============================================================
 // LÓGICA DE LIMPEZA DE HISTÓRICO (MÊS/DIA)
@@ -5920,93 +5562,6 @@ async function executarExclusaoEmMassa(criterioData, frente, turno) {
 // ============================================================
 // AÇÕES DO HISTÓRICO (SINGLETONS)
 // ============================================================
-// ============================================================
-
-// FUNCIONALIDADE: RECRIAR SERVIÇO (DO HISTÓRICO)
-// ============================================================
-async function recriarServicoDoHistorico(id) {
-    try {
-        const idNumerico = parseInt(id);
-        
-        // 1. Busca o item original no IndexedDB
-        const itemOriginal = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
-        
-        if (!itemOriginal) {
-            showToast("Erro: Item original não encontrado.", "error");
-            return;
-        }
-
-        // 2. Confirmação do Usuário
-        const confirmado = await new Promise(r => abrirPopupConfirmar(
-            'Recriar Serviço', 
-            `Deseja criar um novo serviço para a frota <b>${safeText(itemOriginal.frota)}</b> baseado nesta O.S.?<br><br><span class="text-xs text-gray-500">Isso criará uma cópia na aba Serviços com a data de hoje.</span>`, 
-            r,
-            'Sim, Recriar'
-        ));
-
-        if (!confirmado) return;
-
-        // 3. Cria o Objeto Novo (Clonagem Limpa)
-        const novoId = Date.now();
-        const dataHoje = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
-        
-        const novoServico = {
-            id: novoId,
-            
-            // Dados copiados
-            frota: itemOriginal.frota,
-            atividade: itemOriginal.atividade,
-            sistema: itemOriginal.sistema,
-            subsistema: itemOriginal.subsistema,
-            descricao: itemOriginal.descricao, // Adiciona sufixo opcional
-            tipo: itemOriginal.tipo || 'CORRETIVA',
-            pecasUtilizadas: itemOriginal.pecasUtilizadas || [], // Copia peças (opcional, pode zerar se preferir)
-            
-            // Dados resetados para "Agora"
-            data: dataHoje,
-            inicio: new Date().toTimeString().substring(0, 5), // Hora atual
-            dataFinal: dataHoje,
-            fim: "", // Fim em aberto
-            
-            // Metadados de controle
-            parada: "sim",
-            falha: "não",
-            texto: "", // Reseta o texto da O.S. para forçar nova geração
-            oportunidade: "",
-            isExpanded: true, // Abre expandido para editar
-            foiCompartilhado: false
-        };
-
-        // 4. Adiciona à lista ativa
-        servicos.push(novoServico);
-        
-        // 5. Salva e Sincroniza
-        await salvarTudo(true);
-        salvarServicosNaNuvem(); // Garante que a equipe veja
-
-        // 6. Redireciona
-        showToast("Serviço recriado com sucesso!", "success");
-        
-        // Fecha o histórico e vai para serviços
-        if(document.getElementById('historico')) document.getElementById('historico').classList.add('hidden');
-        abrir('servicos');
-
-        // Rola até o novo serviço
-        setTimeout(() => {
-            const el = document.getElementById(`servico_${novoId}`);
-            if(el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('ring-4', 'ring-green-400'); // Destaque visual
-                setTimeout(() => el.classList.remove('ring-4', 'ring-green-400'), 2000);
-            }
-        }, 500);
-
-    } catch (e) {
-        console.error(e);
-        showToast("Erro ao recriar serviço.", "error");
-    }
-}
-
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
@@ -6218,7 +5773,6 @@ async function propagarAtualizacaoOSParaTimeline(itemHistorico, novoNumeroOS) {
         console.error("Erro na propagação retroativa:", e);
     }
 }
-
 // ============================================================
 // SINCRONIZAÇÃO E MIGRAÇÃO (SINGLETONS)
 // ============================================================
