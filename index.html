@@ -735,7 +735,7 @@ function concluirOnboarding() {
         // =================================================================================
         let registrosMotorista = [];
         let servicosSincronizados = false;
-
+        let primeiraSincronizacaoFeita = false;
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
@@ -2037,14 +2037,19 @@ function iniciarSincronizacaoServicos() {
     const turno = document.getElementById('turnoLetra')?.value;
     const dataApp = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
 
-    if (!frente || !turno) return;
+    if (!frente || !turno) {
+        // Se não tem filtros, reseta o estado
+        primeiraSincronizacaoFeita = false; 
+        return;
+    }
 
-    // Reseta a trava ao mudar de contexto
-    servicosSincronizados = false; 
-
+    // Resetamos a flag APENAS se mudarmos de contexto (trocar de frente/turno)
+    // Isso faz o spinner aparecer rapidinho na troca de tela, o que é bom.
     if (unsubscribeServicos) {
         unsubscribeServicos();
         unsubscribeServicos = null;
+        primeiraSincronizacaoFeita = false; // Reseta para mostrar loading na nova sala
+        renderizarServicos(); // Mostra o spinner
     }
 
     const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
@@ -2053,52 +2058,54 @@ function iniciarSincronizacaoServicos() {
     unsubscribeServicos = firestore.collection('servicos_em_andamento')
         .doc(docId)
         .onSnapshot((doc) => {
-            if (doc.metadata.hasPendingWrites) return;
+            if (doc.metadata.hasPendingWrites) return; // Ignora o eco da minha própria escrita
 
             if (doc.exists) {
-                // --- CENÁRIO A: Nuvem tem dados ---
+                // --- A NUVEM TEM DADOS ---
                 const dadosNuvem = doc.data();
                 const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
 
                 if (dataDaNuvem === dataApp) {
-                    console.log("🔄 Baixando dados da nuvem...");
+                    console.log("🔄 Recebendo dados da nuvem...");
                     servicos = dadosNuvem.itens || [];
-                    
-                    if (document.getElementById('servicosLista')) renderizarServicos();
-                    
-                    // IMPORTANTE: Só libera o salvamento DEPOIS de carregar a nuvem na memória
-                    servicosSincronizados = true; 
-                    
-                    // Salva no IDB local (sem subir pra nuvem de novo, pois acabou de vir de lá)
-                    salvarTudo(false); 
                 } else {
-                    console.warn("🛡️ Nuvem tem data diferente. Mantendo local.");
-                    // Mesmo com data diferente, consideramos que a conexão ocorreu
-                    servicosSincronizados = true;
+                    console.warn("🛡️ Ignorando nuvem (Data antiga).");
+                    // Não faz nada, mantém o local
                 }
-
             } else {
-                // --- CENÁRIO B: Nuvem Vazia ---
-                console.log("☁️ Nuvem está vazia.");
-
-                // Se eu tenho dados locais legítimos de hoje (Legado/Offline)
-                const tenhoServicosLocais = servicos.length > 0;
+                // --- A NUVEM ESTÁ VAZIA ---
                 
-                // Verifica se os serviços locais são DE HOJE (Evita subir lixo velho)
-                const saoServicosDeHoje = servicos.every(s => s.data === dataApp);
-
-                if (tenhoServicosLocais && saoServicosDeHoje) {
-                    console.log("🚀 Subindo dados locais para inicializar a nuvem...");
-                    
-                    // AQUI nós forçamos a trava manualmente APENAS para este upload inicial
-                    servicosSincronizados = true; 
-                    salvarServicosNaNuvem();
-                    
+                // AQUI ESTÁ A PROTEÇÃO DO RASCUNHO:
+                // Se eu tenho serviços na memória, significa que eu acabei de clicar no "+"
+                // e o Firebase ainda não sabe. NÃO APAGUE MEUS DADOS!
+                if (servicos.length > 0) {
+                    console.log("🛡️ Nuvem vazia, mas tenho rascunhos locais. Mantendo meus dados e subindo...");
+                    salvarServicosNaNuvem(); // Força a nuvem a aceitar meu rascunho
                 } else {
-                    // Realmente não tem nada. Atestamos que está sincronizado (vazio).
-                    servicosSincronizados = true;
+                    console.log("☁️ Nuvem vazia e local vazio. Tudo limpo.");
+                    servicos = [];
                 }
             }
+
+            // FINALMENTE:
+            // Avisa a UI que o download acabou.
+            primeiraSincronizacaoFeita = true;
+            servicosSincronizados = true; // Libera o salvamento (da correção anterior)
+            
+            // Se a aba de serviços estiver aberta, desenha a lista (ou o vazio) e mata o spinner
+            if (document.getElementById('servicosLista')) {
+                renderizarServicos();
+            }
+            
+            // Salva backup local silencioso
+            salvarTudo(false); 
+
+        }, (error) => {
+            console.error("Erro na sincronização:", error);
+            // Em caso de erro, removemos o spinner para o usuário poder trabalhar offline
+            primeiraSincronizacaoFeita = true; 
+            servicosSincronizados = true;
+            if (document.getElementById('servicosLista')) renderizarServicos();
         });
 }
 
@@ -3348,41 +3355,66 @@ function renderizarSecaoServicos(container) {
             </div>
         </div>
 
-        <div id="servicosLista" class="space-y-4"></div>
+        <div id="servicosLista" class="space-y-4 min-h-[100px]">
+            <div class="flex flex-col items-center justify-center py-8 opacity-60">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+                <p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p>
+            </div>
+        </div>
     </div>`; 
     
-    renderizarServicos(); 
+    // Tenta renderizar o que já tem na memória imediatamente
+    if (servicos && servicos.length > 0) {
+        renderizarServicos();
+    }
+    
+    // Força a atualização da conexão
+    iniciarSincronizacaoServicos();
 }
+
 
 function renderizarServicos() { 
     const lista = document.getElementById("servicosLista"); 
     if (!lista) return; 
     
+    // 1. Cenario: Ainda estamos conectando na nuvem (Primeira vez)
+    if (!primeiraSincronizacaoFeita && servicos.length === 0) {
+        lista.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-10 opacity-60">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+                <p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p>
+            </div>`;
+        return;
+    }
+
+    // 2. Cenario: Já conectou, mas realmente não tem nada (Lista Vazia)
+    if (servicos.length === 0) { 
+        lista.innerHTML = `
+        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
+            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
+            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" para começar.</p>
+        </div>`; 
+        return;
+    } 
+
+    // 3. Cenario: Temos serviços (Pendentes ou com O.S.)
     // Ordena por data/hora
     const servicosOrdenados = [...servicos]; 
     servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
     
     lista.innerHTML = ''; 
     
-    if (servicosOrdenados.length === 0) { 
-        lista.innerHTML = `
-        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
-            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
-            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" no canto inferior para começar.</p>
-        </div>`; 
-    } else { 
-        servicosOrdenados.forEach(s => { 
-            const template = document.getElementById('servico-template').content.cloneNode(true); 
-            const article = template.querySelector('article'); 
-            
-            // SEGURANÇA: IDs devem ser seguros, mas s.id é numérico (timestamp), então é seguro.
-            article.id = `servico_${s.id}`; 
-            
-            lista.appendChild(article); 
-            preencherDetalhesServico(s); 
-        }); 
-    } 
+    servicosOrdenados.forEach(s => { 
+        const template = document.getElementById('servico-template').content.cloneNode(true); 
+        const article = template.querySelector('article'); 
+        
+        article.id = `servico_${s.id}`; 
+        
+        lista.appendChild(article); 
+        preencherDetalhesServico(s); 
+    }); 
 }
+
 
 function preencherDetalhesServico(s) {
     const article = document.getElementById(`servico_${s.id}`);
@@ -5407,12 +5439,12 @@ async function verificarContextoHistorico(preSelectFazenda = null, preSelectFren
 
 
 
+// ============================================================
+// EXIBIR HISTÓRICO (DATAS: RECENTE->ANTIGO | HORAS: 00:00->23:59)
+// ============================================================
 async function mostrarHistorico() {
-        // --- MUDANÇA AQUI: Adicionado 'await' ---
-    // Agora esperamos a função verificar se tem dados e carregar as listas se precisar
+    // Verifica contexto
     if (!(await verificarContextoHistorico())) return; 
-    // ----------------------------------------
-
 
     const div = document.getElementById("historico_lista");
     if (!div) return;
@@ -5422,14 +5454,12 @@ async function mostrarHistorico() {
     try {
         const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
 
-        // 1. Filtros (Contexto Atual)
+        // Filtros
         const frenteInput = document.getElementById('frente');
         const turnoInput = document.getElementById('turnoLetra');
-        
         const frenteSelecionada = frenteInput ? frenteInput.value.trim() : "";
         const turnoSelecionado = turnoInput ? turnoInput.value : "";
         
-        // 2. Filtragem RÍGIDA
         const itensFiltrados = todosItens.filter(item => {
             const itemFrente = item.frente ? item.frente.trim() : "";
             const itemTurno = item.turno || "";
@@ -5439,12 +5469,12 @@ async function mostrarHistorico() {
         if (itensFiltrados.length === 0) {
             div.innerHTML = `
                 <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                    <p class="text-gray-400 font-bold">Nenhum registro encontrado.</p>
+                    <p class="text-gray-400 font-bold">Nenhum registo encontrado.</p>
                 </div>`;
             return;
         }
 
-        // 3. Agrupamento
+        // Agrupamento
         const agrupado = itensFiltrados.reduce((acc, item) => {
             const dataKey = item.dataOS || "Sem Data";
             if (!acc[dataKey]) acc[dataKey] = [];
@@ -5452,11 +5482,15 @@ async function mostrarHistorico() {
             return acc;
         }, {});
 
-        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b
-        .localeCompare(a));
+        // --- CORREÇÃO 1: DATAS DECRESCENTES (Hoje primeiro) ---
+        // b.localeCompare(a) -> Mais recente no topo
+        const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
 
-        // 4. Renderização (SEU DESIGN)
+        // Renderização
         div.innerHTML = datasOrdenadas.map(dataKey => {
+            
+            // --- CORREÇÃO 2: CARDS CRESCENTES (Manhã -> Noite) ---
+            // a.inicio.localeCompare(b.inicio) -> 07:00 antes de 08:00
             const itensDoDia = agrupado[dataKey].sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
             
             return `
@@ -5472,103 +5506,103 @@ async function mostrarHistorico() {
                 
                 <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
                   ${itensDoDia.map(s => {
-    const isFinalizada = s.status === 'finalizada';
-    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
-    const safeId = s.uniqueId || s.id;
-
-    // --- 1. AQUI ENTRA A LÓGICA DO ÍCONE ---
-    // Se o status for pendente OU indefinido (mas novo), mostra pendente.
-    // Se for undefined em item antigo, assume OK.
-    const iconSync = s._syncStatus === 'pendente' 
-        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse" title="Aguardando envio">🛜 Enviando</span>` 
-        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded" title="Salvo na nuvem">☁️ Salvo</span>`;
-    // ---------------------------------------
-
-    const infoTecnica = [
-        (s.atividade || "N/A").split(' - ')[0],
-        s.sistema || "?",
-        (s.subsistema || "?").split(' - ')[0]
-    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
-
-    return `
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
-        
-        <div class="flex justify-between items-start mb-2">
-            <div>
-                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
-                    ${safeText(s.frota)}
-                </span>
-                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
-                    ${infoTecnica}
-                </div>
-            </div>
-            
-            <div class="text-right flex flex-col items-end gap-1">
-                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
-                </span>
-                ${iconSync}
-            </div>
-            </div>
-
-        <div class="mb-3">
-            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
-                "${safeText(s.descricao)}"
-            </p>
-        </div>
-
-        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
-            <div class="flex items-center gap-2 flex-grow">
-                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
-                <div class="relative flex items-center">
-                    <input type="number" 
-                        id="os_input_${safeId}" 
-                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
-                        placeholder="PENDENTE" 
-                        value="${safeText(s.osNumero || "")}" 
-                        oninput="validarOSInput(${safeId})" 
-                        ${isFinalizada ? "disabled" : ""}>
+                    const isFinalizada = s.status === 'finalizada';
+                    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
+                    const safeId = s.uniqueId || s.id;
                     
-                    ${!isFinalizada 
-                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
-                        : `` 
-                    }
+                    const iconSync = s._syncStatus === 'pendente' 
+                        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse">🛜 Enviando</span>` 
+                        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">☁️ Salvo</span>`;
+
+                    const infoTecnica = [
+                        (s.atividade || "N/A").split(' - ')[0],
+                        s.sistema || "?",
+                        (s.subsistema || "?").split(' - ')[0]
+                    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
+
+                    return `
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
+                        
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
+                                    ${safeText(s.frota)}
+                                </span>
+                                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                                    ${infoTecnica}
+                                </div>
+                            </div>
+                            
+                            <div class="text-right flex flex-col items-end gap-1">
+                                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
+                                </span>
+                                ${iconSync}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
+                                "${safeText(s.descricao)}"
+                            </p>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
+                            <div class="flex items-center gap-2 flex-grow">
+                                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
+                                <div class="relative flex items-center">
+                                    <input type="number" 
+                                        id="os_input_${safeId}" 
+                                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
+                                        placeholder="PENDENTE" 
+                                        value="${safeText(s.osNumero || "")}" 
+                                        oninput="validarOSInput(${safeId})" 
+                                        ${isFinalizada ? "disabled" : ""}>
+                                    
+                                    ${!isFinalizada 
+                                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
+                                        : `` 
+                                    }
+                                </div>
+                                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+                            </div>
+
+                            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
+                                <span>⚙️ Ações</span>
+                            </button>
+                        </div>
+
+                        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-4 gap-2 animate-fade-in">
+                            <button onclick="recriarServicoDoHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-indigo-50 hover:bg-white border border-indigo-200 rounded text-indigo-700 hover:text-indigo-800 transition-colors">
+                                <span class="text-lg mb-1">♻️</span>
+                                <span class="text-[9px] font-bold uppercase">Recriar</span>
+                            </button>
+
+                            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
+                                <span class="text-lg mb-1">📋</span>
+                                <span class="text-[9px] font-bold uppercase">Copiar</span>
+                            </button>
+                            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
+                                <span class="text-lg mb-1">📱</span>
+                                <span class="text-[9px] font-bold uppercase">Wtzp</span>
+                            </button>
+                            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
+                                <span class="text-lg mb-1">🗑️</span>
+                                <span class="text-[9px] font-bold uppercase">Excluir</span>
+                            </button>
+                            
+                            ${isFinalizada ? `
+                            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-4 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
+                                ✏️ Editar Número da O.S.
+                            </button>` : ''}
+                        </div>
+                        
+                        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
+                    </div>
+                    `;
+                }).join('')}
                 </div>
-                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
-            </div>
-
-            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
-                <span>⚙️ Ações</span>
-            </button>
-        </div>
-
-        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-3 gap-2 animate-fade-in">
-            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
-                <span class="text-lg mb-1">📋</span>
-                <span class="text-[9px] font-bold uppercase">Copiar</span>
-            </button>
-            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
-                <span class="text-lg mb-1">📱</span>
-                <span class="text-[9px] font-bold uppercase">Enviar Wtzp</span>
-            </button>
-            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
-                <span class="text-lg mb-1">🗑️</span>
-                <span class="text-[9px] font-bold uppercase">Excluir</span>
-            </button>
-            ${isFinalizada ? `
-            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-3 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
-                ✏️ Editar Número da O.S.
-            </button>` : ''}
-        </div>
-        
-        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
-    </div>
-    `;
-}).join('')}
-
-                </div>
-            </div>
-            `;
+            </div>`;
         }).join('');
 
     } catch (e) {
@@ -5576,6 +5610,8 @@ async function mostrarHistorico() {
         div.innerHTML = `<p class="text-red-500 text-center p-4 border border-red-200 bg-red-50 rounded-lg">Erro ao ler dados: ${e.message}</p>`;
     }
 }
+
+
 
 // ============================================================
 // LÓGICA DE LIMPEZA DE HISTÓRICO (MÊS/DIA)
@@ -5768,6 +5804,93 @@ async function executarExclusaoEmMassa(criterioData, frente, turno) {
 // ============================================================
 // AÇÕES DO HISTÓRICO (SINGLETONS)
 // ============================================================
+// ============================================================
+
+// FUNCIONALIDADE: RECRIAR SERVIÇO (DO HISTÓRICO)
+// ============================================================
+async function recriarServicoDoHistorico(id) {
+    try {
+        const idNumerico = parseInt(id);
+        
+        // 1. Busca o item original no IndexedDB
+        const itemOriginal = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        
+        if (!itemOriginal) {
+            showToast("Erro: Item original não encontrado.", "error");
+            return;
+        }
+
+        // 2. Confirmação do Usuário
+        const confirmado = await new Promise(r => abrirPopupConfirmar(
+            'Recriar Serviço', 
+            `Deseja criar um novo serviço para a frota <b>${safeText(itemOriginal.frota)}</b> baseado nesta O.S.?<br><br><span class="text-xs text-gray-500">Isso criará uma cópia na aba Serviços com a data de hoje.</span>`, 
+            r,
+            'Sim, Recriar'
+        ));
+
+        if (!confirmado) return;
+
+        // 3. Cria o Objeto Novo (Clonagem Limpa)
+        const novoId = Date.now();
+        const dataHoje = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
+        
+        const novoServico = {
+            id: novoId,
+            
+            // Dados copiados
+            frota: itemOriginal.frota,
+            atividade: itemOriginal.atividade,
+            sistema: itemOriginal.sistema,
+            subsistema: itemOriginal.subsistema,
+            descricao: itemOriginal.descricao, // Adiciona sufixo opcional
+            tipo: itemOriginal.tipo || 'CORRETIVA',
+            pecasUtilizadas: itemOriginal.pecasUtilizadas || [], // Copia peças (opcional, pode zerar se preferir)
+            
+            // Dados resetados para "Agora"
+            data: dataHoje,
+            inicio: new Date().toTimeString().substring(0, 5), // Hora atual
+            dataFinal: dataHoje,
+            fim: "", // Fim em aberto
+            
+            // Metadados de controle
+            parada: "sim",
+            falha: "não",
+            texto: "", // Reseta o texto da O.S. para forçar nova geração
+            oportunidade: "",
+            isExpanded: true, // Abre expandido para editar
+            foiCompartilhado: false
+        };
+
+        // 4. Adiciona à lista ativa
+        servicos.push(novoServico);
+        
+        // 5. Salva e Sincroniza
+        await salvarTudo(true);
+        salvarServicosNaNuvem(); // Garante que a equipe veja
+
+        // 6. Redireciona
+        showToast("Serviço recriado com sucesso!", "success");
+        
+        // Fecha o histórico e vai para serviços
+        if(document.getElementById('historico')) document.getElementById('historico').classList.add('hidden');
+        abrir('servicos');
+
+        // Rola até o novo serviço
+        setTimeout(() => {
+            const el = document.getElementById(`servico_${novoId}`);
+            if(el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-4', 'ring-green-400'); // Destaque visual
+                setTimeout(() => el.classList.remove('ring-4', 'ring-green-400'), 2000);
+            }
+        }, 500);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao recriar serviço.", "error");
+    }
+}
+
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
@@ -5979,6 +6102,7 @@ async function propagarAtualizacaoOSParaTimeline(itemHistorico, novoNumeroOS) {
         console.error("Erro na propagação retroativa:", e);
     }
 }
+
 // ============================================================
 // SINCRONIZAÇÃO E MIGRAÇÃO (SINGLETONS)
 // ============================================================
