@@ -734,6 +734,8 @@ function concluirOnboarding() {
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
         let registrosMotorista = [];
+        let servicosSincronizados = false;
+
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
@@ -2027,12 +2029,18 @@ let unsubscribeServicos = null;
 // ============================================================
 // SINCRONIZAÇÃO BLINDADA (CORREÇÃO LEGADO)
 // ============================================================
+// ============================================================
+// SINCRONIZAÇÃO BLINDADA (CORREÇÃO DO VAZIO)
+// ============================================================
 function iniciarSincronizacaoServicos() {
     const frente = document.getElementById('frente')?.value;
     const turno = document.getElementById('turnoLetra')?.value;
     const dataApp = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
 
     if (!frente || !turno) return;
+
+    // Reseta a trava ao mudar de contexto
+    servicosSincronizados = false; 
 
     if (unsubscribeServicos) {
         unsubscribeServicos();
@@ -2048,50 +2056,65 @@ function iniciarSincronizacaoServicos() {
             if (doc.metadata.hasPendingWrites) return;
 
             if (doc.exists) {
-                // CENÁRIO A: Nuvem já tem dados
+                // --- CENÁRIO A: Nuvem tem dados ---
                 const dadosNuvem = doc.data();
                 const dataDaNuvem = dadosNuvem.dataReferencia || "0000-00-00";
 
                 if (dataDaNuvem === dataApp) {
                     console.log("🔄 Baixando dados da nuvem...");
                     servicos = dadosNuvem.itens || [];
+                    
                     if (document.getElementById('servicosLista')) renderizarServicos();
-                    salvarTudo(false);
+                    
+                    // IMPORTANTE: Só libera o salvamento DEPOIS de carregar a nuvem na memória
+                    servicosSincronizados = true; 
+                    
+                    // Salva no IDB local (sem subir pra nuvem de novo, pois acabou de vir de lá)
+                    salvarTudo(false); 
                 } else {
-                    // Se a data da nuvem é diferente, mas eu tenho dados locais...
-                    // Cuidado para não sobrescrever o trabalho de hoje com lixo de ontem da nuvem.
-                    // Mantemos o local.
                     console.warn("🛡️ Nuvem tem data diferente. Mantendo local.");
+                    // Mesmo com data diferente, consideramos que a conexão ocorreu
+                    servicosSincronizados = true;
                 }
+
             } else {
-                // CENÁRIO B: Nuvem Vazia (Aqui estava o problema)
+                // --- CENÁRIO B: Nuvem Vazia ---
+                console.log("☁️ Nuvem está vazia.");
+
+                // Se eu tenho dados locais legítimos de hoje (Legado/Offline)
+                const tenhoServicosLocais = servicos.length > 0;
                 
-                // Se eu tenho qualquer serviço na memória, independente da data...
-                if (servicos.length > 0 && navigator.onLine) {
-                    console.log("🚀 Nuvem vazia, mas tenho dados locais (Legado). Subindo TUDO para salvar!");
+                // Verifica se os serviços locais são DE HOJE (Evita subir lixo velho)
+                const saoServicosDeHoje = servicos.every(s => s.data === dataApp);
+
+                if (tenhoServicosLocais && saoServicosDeHoje) {
+                    console.log("🚀 Subindo dados locais para inicializar a nuvem...");
                     
-                    // Atualiza a data dos serviços antigos para hoje para não dar conflito depois
-                    servicos.forEach(s => {
-                        if (!s.data || s.data !== dataApp) {
-                            s.data = dataApp; // Traz o serviço pro dia atual
-                            s.dataFinal = dataApp;
-                        }
-                    });
+                    // AQUI nós forçamos a trava manualmente APENAS para este upload inicial
+                    servicosSincronizados = true; 
+                    salvarServicosNaNuvem();
                     
-                    renderizarServicos(); // Atualiza tela com datas novas
-                    salvarServicosNaNuvem(); // Envia
-                } 
-                // Se eu não tenho nada, continua vazio.
+                } else {
+                    // Realmente não tem nada. Atestamos que está sincronizado (vazio).
+                    servicosSincronizados = true;
+                }
             }
         });
 }
 
 
 // 2. Envia alterações para a nuvem (COM CARIMBO DE DATA)
+// 2. Envia alterações para a nuvem (COM TRAVA DE SEGURANÇA)
 function salvarServicosNaNuvem() {
+    // [SEGURANÇA] Se ainda não baixamos os dados da nuvem, NÃO enviamos nada.
+    // Isso impede que um app recém-aberto (vazio) apague os dados da nuvem.
+    if (!servicosSincronizados) {
+        console.warn("⛔ Envio para nuvem bloqueado: Aguardando sincronização inicial.");
+        return;
+    }
+
     const frente = document.getElementById('frente')?.value;
     const turno = document.getElementById('turnoLetra')?.value;
-    // Pega a data que está sendo trabalhada
     const dataRef = document.getElementById('dataTurno')?.value || dataHojeInputLocal();
     
     if (!frente || !turno) return;
@@ -2099,13 +2122,12 @@ function salvarServicosNaNuvem() {
     const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
     
     const payload = {
-        dataReferencia: dataRef, // <--- CAMPO CRÍTICO DE SEGURANÇA
+        dataReferencia: dataRef,
         itens: servicos, 
         atualizadoEm: new Date().toISOString(),
         ultimaModificacaoPor: document.getElementById('apontamentoColaborador')?.value || 'Usuario'
     };
 
-    // Fire and Forget
     firestore.collection('servicos_em_andamento').doc(docId)
         .set(payload, { merge: true })
         .catch(e => console.warn("Fila offline serviços", e));
