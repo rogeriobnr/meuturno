@@ -2,7 +2,7 @@
 
 // 1. VERSÃO E CONFIGURAÇÃO
 // INCREMENTEI PARA FORÇAR A ATUALIZAÇÃO NOS CELULARES
-const CACHE_NAME = 'meuturno-app-v3.1.6';
+const CACHE_NAME = 'meuturno-app-v3.1.7';
 
 // Tempo limite (3s) para tentar rede antes de desistir e mostrar o cache
 const NETWORK_TIMEOUT_MS = 3000;
