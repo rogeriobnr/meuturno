@@ -742,7 +742,7 @@ function concluirOnboarding() {
         let catalogoLocal = [];
         let catalogoLoaderPromise = null; 
         let dataMemoriaApontamento = ''; 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 30;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 31;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -2211,6 +2211,77 @@ function salvarTudo(forcar = false) {
 }
 
 // ============================================================
+// SALVAMENTO COLABORATIVO (TRANSAÇÃO)
+// ============================================================
+let debounceUpdate = null;
+
+function salvarAlteracaoIndividual(servicoId) {
+    // 1. Debounce: Espera o usuário parar de digitar por 1.5s para não sobrecarregar o banco
+    clearTimeout(debounceUpdate);
+    
+    debounceUpdate = setTimeout(() => {
+        executarTransacaoUnica(servicoId);
+    }, 1500);
+}
+
+async function executarTransacaoUnica(servicoId) {
+    const frente = document.getElementById('frente')?.value;
+    const turno = document.getElementById('turnoLetra')?.value;
+    
+    if (!frente || !turno) return;
+
+    const docId = `${frente.trim().toUpperCase()}_${turno.trim().toUpperCase()}`;
+    const ref = firestore.collection('servicos_em_andamento').doc(docId);
+    
+    // Pega a versão mais recente deste serviço na memória local
+    const servicoLocal = servicos.find(s => s.id === servicoId);
+    if (!servicoLocal) return;
+
+    console.log(`📡 Sincronizando item ${servicoId} com a equipe...`);
+
+    try {
+        await firestore.runTransaction(async (transaction) => {
+            const doc = await transaction.get(ref);
+            
+            if (!doc.exists) {
+                // Se não existe doc, cria com este item
+                transaction.set(ref, { 
+                    itens: [servicoLocal],
+                    dataReferencia: servicoLocal.data 
+                });
+                return;
+            }
+
+            const dadosNuvem = doc.data();
+            let listaNuvem = dadosNuvem.itens || [];
+
+            // Encontra o índice deste serviço na nuvem
+            const index = listaNuvem.findIndex(s => s.id === servicoId);
+
+            if (index > -1) {
+                // Se já existe, ATUALIZA apenas este item, mantendo os outros intactos
+                listaNuvem[index] = servicoLocal;
+            } else {
+                // Se não existe na nuvem (foi criado agora), adiciona
+                listaNuvem.push(servicoLocal);
+            }
+
+            // Grava a lista mesclada de volta
+            transaction.update(ref, { 
+                itens: listaNuvem,
+                atualizadoEm: new Date().toISOString(),
+                ultimaModificacaoPor: document.getElementById('apontamentoColaborador')?.value || 'Mecânico'
+            });
+        });
+        console.log("✅ Item sincronizado com sucesso!");
+        
+    } catch (e) {
+        console.error("Erro na transação:", e);
+    }
+}
+
+
+// ============================================================
 // SISTEMA DE SEGURANÇA: BACKUP SÍNCRONO (ANTI-CRASH)
 // ============================================================
 function backupEmergenciaSincrono() {
@@ -3377,28 +3448,33 @@ function renderizarServicos() {
     const lista = document.getElementById("servicosLista"); 
     if (!lista) return; 
     
-    // 1. Cenario: Ainda estamos conectando na nuvem (Primeira vez)
+    // 1. Loading Inicial
     if (!primeiraSincronizacaoFeita && servicos.length === 0) {
-        lista.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-10 opacity-60">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
-                <p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p>
-            </div>`;
+        lista.innerHTML = `<div class="flex flex-col items-center justify-center py-10 opacity-60"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div><p class="text-xs font-bold text-indigo-600">Sincronizando equipe...</p></div>`;
         return;
     }
 
-    // 2. Cenario: Já conectou, mas realmente não tem nada (Lista Vazia)
+    // 2. Vazio
     if (servicos.length === 0) { 
-        lista.innerHTML = `
-        <div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100">
-            <p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p>
-            <p class='text-xs text-gray-300 mt-1'>Use o botão "+" para começar.</p>
-        </div>`; 
+        lista.innerHTML = `<div class="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-100"><p class='text-sm font-medium text-gray-400'>Nenhum serviço iniciado.</p><p class='text-xs text-gray-300 mt-1'>Use o botão "+" para começar.</p></div>`; 
         return;
     } 
 
-    // 3. Cenario: Temos serviços (Pendentes ou com O.S.)
-    // Ordena por data/hora
+    // 3. PRESERVAÇÃO DE FOCO (Smart Re-render)
+    // Antes de apagar tudo, vemos onde o usuário está digitando
+    const elementoFocado = document.activeElement;
+    let idFocado = null;
+    let campoFocado = null;
+    
+    // Verifica se o foco está dentro da nossa lista
+    if (elementoFocado && elementoFocado.tagName !== 'BODY' && lista.contains(elementoFocado)) {
+        idFocado = elementoFocado.id; // Ex: descricao-173849...
+        // Tenta pegar cursor position se for input/textarea
+        var selectionStart = elementoFocado.selectionStart;
+        var selectionEnd = elementoFocado.selectionEnd;
+    }
+
+    // Ordenação e Renderização
     const servicosOrdenados = [...servicos]; 
     servicosOrdenados.sort((a, b) => (a.data + a.inicio).localeCompare(b.data + b.inicio)); 
     
@@ -3407,12 +3483,22 @@ function renderizarServicos() {
     servicosOrdenados.forEach(s => { 
         const template = document.getElementById('servico-template').content.cloneNode(true); 
         const article = template.querySelector('article'); 
-        
         article.id = `servico_${s.id}`; 
-        
         lista.appendChild(article); 
         preencherDetalhesServico(s); 
-    }); 
+    });
+
+    // 4. RESTAURAÇÃO DE FOCO
+    if (idFocado) {
+        const elParaFocar = document.getElementById(idFocado);
+        if (elParaFocar) {
+            elParaFocar.focus();
+            // Restaura posição do cursor se possível
+            if (typeof selectionStart === 'number') {
+                elParaFocar.setSelectionRange(selectionStart, selectionEnd);
+            }
+        }
+    }
 }
 
 
@@ -3584,47 +3670,77 @@ function preencherDetalhesServico(s) {
         
         // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
         function handleServicoInputChange(event) { 
-            const el = event.target; 
-            const id = parseInt(el.dataset.id); 
-            const field = el.dataset.field; 
-            const servico = servicos.find(s => s.id === id); 
-            if (!servico) return; 
-            
-            servico[field] = el.value; 
-            el.classList.remove('campo-invalido'); 
-            
-            if (field === 'sistema') { 
-                servico.subsistema = ""; 
-                renderizarServicos(); 
-            } 
-            
-            // NOVO BLOCO: Validação Imediata do Tempo
-            if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
-                const isValid = validarTempoServico(servico);
-                const inputFim = document.getElementById(`fim-${servico.id}`);
-                const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
-                
-                if (inputFim && inputDataFinal) {
-                    if (!isValid) {
-                        inputFim.classList.add('campo-invalido');
-                        inputDataFinal.classList.add('campo-invalido');
-                    } else {
-                        inputFim.classList.remove('campo-invalido');
-                        inputDataFinal.classList.remove('campo-invalido');
-                    }
-                }
+    const el = event.target; 
+    const id = parseInt(el.dataset.id); 
+    const field = el.dataset.field; 
+    const servico = servicos.find(s => s.id === id); 
+    
+    if (!servico) return; 
+    
+    // 1. Atualiza na Memória RAM (Instantâneo)
+    servico[field] = el.value; 
+    el.classList.remove('campo-invalido'); 
+    
+    // Lógica específica de sistema
+    if (field === 'sistema') { 
+        servico.subsistema = ""; 
+        // Nota: Aqui forçamos renderização apenas se mudar estrutura, senão evitamos para não perder foco
+        renderizarServicos(); 
+    } 
+
+    // Validação de Tempo
+    if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
+        const isValid = validarTempoServico(servico);
+        const inputFim = document.getElementById(`fim-${servico.id}`);
+        const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
+        if (inputFim && inputDataFinal) {
+            if (!isValid) {
+                inputFim.classList.add('campo-invalido');
+                inputDataFinal.classList.add('campo-invalido');
+            } else {
+                inputFim.classList.remove('campo-invalido');
+                inputDataFinal.classList.remove('campo-invalido');
             }
-            
-            const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
-            if (camposQueAtualizamCabecalho.includes(field)) { 
-                const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
-                if (cabecalhoInfo) { 
-                    cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
-                } 
-            } 
-            
-            salvarTudo(); 
         }
+    }
+    
+    // Atualiza Cabeçalho Visualmente
+    const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
+    if (camposQueAtualizamCabecalho.includes(field)) { 
+        const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
+        if (cabecalhoInfo) { 
+            cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
+        } 
+    } 
+    
+    // 2. Salva Backup Local (Sem subir pra nuvem ainda)
+    // Passamos 'false' e criamos uma função modificada de salvarTudo que aceita ignorar cloud
+    salvarTudoLocalmente(); 
+    
+    // 3. Agenda a Sincronização Inteligente com a Nuvem
+    salvarAlteracaoIndividual(id);
+}
+
+// Pequeno helper para salvar só local (Evita sobrescrever a nuvem inteira)
+async function salvarTudoLocalmente() {
+     if (!db) await initDB();
+     const dados = {
+        id: TURNO_ATUAL_ID,
+        data: document.getElementById("dataTurno")?.value || dataHojeInputLocal(),
+        fazenda: document.getElementById("fazenda")?.value || '',
+        frente: document.getElementById("frente")?.value || '',
+        turno: document.getElementById("turnoLetra")?.value || '',
+        equipe: equipe,
+        frotas: frotasTurno,
+        servicos: servicos, // Salva o estado atual local
+        linhasApontamento: linhasApontamento,
+        relatorio: document.getElementById("relatorio_bruto")?.value || '',
+        relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
+        timestamp: Date.now()
+    };
+    await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
+}
+
         function adicionarServico(dadosPreenchidos = null) { 
             if (!validarCamposTurnoBasicos()) return; 
             const id = Date.now(); 
