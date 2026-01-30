@@ -5392,7 +5392,7 @@ async function mostrarHistorico() {
                 const infoTecnica = `${(s.atividade || "N/A").split(' - ')[0]} | ${s.sistema || "?"} | ${(s.subsistema || "?").split(' - ')[0]}`;
 
                 return `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 p-3 border-l-4 ${bordaLateral} relative">
+                <div class="js-card-historico bg-white rounded-xl shadow-sm border border-gray-200 mb-4 p-3 border-l-4 ${bordaLateral} relative">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -5904,32 +5904,67 @@ async function executarExclusaoEmMassa(criterioData, frente, turno) {
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
-    const osNumero = input ? input.value.trim() : "";
-    if (!osNumero) { showToast('Digite o número da O.S.', 'error'); if(input) input.focus(); return; }
-
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
+    const osNumero = input ? input.value.trim() : "";
+
+    if (!osNumero) { 
+        showToast('Digite o número da O.S.', 'error'); 
+        if(input) input.focus(); 
+        return; 
+    }
+
     if(btn) { btn.innerText = "⏳"; btn.disabled = true; }
+    if(input) input.disabled = true;
 
     try {
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        
         if (item) {
             item.status = 'finalizada';
             item.osNumero = osNumero;
             item.atualizadoEm = new Date().toISOString();
+            item._syncStatus = 'pendente'; // Força sync na próxima rodada
+
             await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-            // [NOVO] CHAMA A PROPAGAÇÃO RETROATIVA
-            propagarAtualizacaoOSParaTimeline(item, osNumero);
+            
+            if (typeof propagarAtualizacaoOSParaTimeline === 'function') {
+                propagarAtualizacaoOSParaTimeline(item, osNumero);
+            }
+
+            if (typeof firestore !== 'undefined') {
+                firestore.collection('historico_os').doc(String(id)).update({ 
+                    status: 'finalizada', 
+                    osNumero: osNumero,
+                    atualizadoEm: item.atualizadoEm 
+                }).catch(console.warn);
+            }
+
+            // ATUALIZAÇÃO VISUAL SEGURA
+            input.classList.remove('border-gray-300');
+            input.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+            if(btn) btn.remove();
+
+            // Busca pela classe segura que adicionamos, não mais pelo estilo da borda
+            const card = input.closest('.js-card-historico'); 
+            if(card) {
+                // Remove todas as cores de borda possíveis para garantir
+                card.classList.remove('border-l-blue-600', 'border-l-red-500', 'border-l-green-500');
+                card.classList.add('border-l-green-500');
+                
+                // Opcional: Adiciona badge "Finalizada" visualmente se quiser
+            }
+
+            showToast('O.S. Finalizada com sucesso!', 'success');
         }
-        showToast('O.S. Finalizada!', 'success');
-        await mostrarHistorico();
-        firestore.collection('historico_os').doc(String(id)).update({ status: 'finalizada', osNumero }).catch(console.warn);
     } catch (e) {
         console.error(e);
         showToast("Erro ao salvar.", "error");
         if(btn) { btn.innerText = "OK"; btn.disabled = false; }
+        if(input) input.disabled = false;
     }
 }
+
 
 function habilitarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
