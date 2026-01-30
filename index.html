@@ -733,6 +733,7 @@ function concluirOnboarding() {
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
         let registrosMotorista = [];
+        let virtualScrollFrame = null;
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
@@ -6616,119 +6617,107 @@ async function renderizarSecaoCatalogo(container) {
 }
 
 function renderizarCatalogo() {
-const listaDiv = document.getElementById('listaCatalogo');
-const inputBusca = document.getElementById('buscaCatalogo');
+    const listaDiv = document.getElementById('listaCatalogo');
+    const inputBusca = document.getElementById('buscaCatalogo');
 
-if (!listaDiv) return;
+    if (!listaDiv) return;
 
-// Atualiza contador visual
-const badge = document.getElementById('totalItensBadge');
-if(badge) badge.innerText = catalogoLocal.length;
+    // Atualiza contador visual
+    const badge = document.getElementById('totalItensBadge');
+    if(badge) badge.innerText = catalogoLocal.length;
 
-// 1. Filtragem Rápida
-const termoBusca = inputBusca ? removerAcentos(inputBusca.value.toLowerCase()) : '';
+    // Filtragem Rápida
+    const termoBusca = inputBusca ? removerAcentos(inputBusca.value.toLowerCase()) : '';
 
-virtualDadosFiltrados = catalogoLocal.filter(item => {
-const codigoSap = String(item.codigoSap || '').toLowerCase();
-const partNumber = String(item.partNumber || '').toLowerCase();
-const descricao = removerAcentos(String(item.descricao || '').toLowerCase());
-return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricao.includes(termoBusca));
-});
+    virtualDadosFiltrados = catalogoLocal.filter(item => {
+        const codigoSap = String(item.codigoSap || '').toLowerCase();
+        const partNumber = String(item.partNumber || '').toLowerCase();
+        const descricao = removerAcentos(String(item.descricao || '').toLowerCase());
+        return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricao.includes(termoBusca));
+    });
 
-virtualDadosFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+    virtualDadosFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
 
-// 2. Feedback Visual se Vazio
-if (virtualDadosFiltrados.length === 0) {
-let msg = "Nenhum item encontrado com este filtro.";
-let action = "";
-
-if (catalogoLocal.length === 0) {
-msg = "O catálogo parece estar vazio na memória.";
-action = `<button onclick="window.location.reload()" class="mt-2 text-blue-600 underline text-sm">Recarregar App</button>`;
-}
-
-listaDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400">
-    <span class="text-3xl mb-2">📦</span>
-    <p class="text-sm font-medium">${msg}</p>
-    ${action}
-</div>`;
-return;
-}
-
-// 3. Configura o "Spacer" (Altura total falsa)
-const totalHeight = virtualDadosFiltrados.length * ROW_HEIGHT;
-
-if (!document.getElementById('virtualSpacer')) {
-listaDiv.innerHTML = `<div id="virtualSpacer" style="height: ${totalHeight}px; position: relative; width: 100%;"></div>`;
-
-// Listener de Scroll
-if (!virtualScrollIniciado) {
-listaDiv.removeEventListener('scroll', onVirtualScroll); // Garante limpeza
-listaDiv.addEventListener('scroll', onVirtualScroll);
-virtualScrollIniciado = true;
-}
-} else {
-document.getElementById('virtualSpacer').style.height = `${totalHeight}px`;
-}
-
-// 4. Desenha
-onVirtualScroll();
-}
-// --- O MOTOR GRÁFICO (RESPONSIVO E ANTI-QUEBRA) ---
-function onVirtualScroll() {
-    const container = document.getElementById('listaCatalogo');
-    const spacer = document.getElementById('virtualSpacer');
-    if (!container || !spacer) return;
-
-    const scrollTop = container.scrollTop;
-    // Fallback de segurança para altura
-    const containerHeight = container.clientHeight || 600;
-
-    const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2); 
-    const endIndex = Math.min(
-        virtualDadosFiltrados.length, 
-        Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 4
-    );
-
-    let html = '';
-    
-    for (let i = startIndex; i < endIndex; i++) {
-        const item = virtualDadosFiltrados[i];
-        if (!item) continue; 
-
-        const topPos = i * ROW_HEIGHT;
-        
-        html += `
-        <div class="virtual-item" style="transform: translateY(${topPos}px);">
-            <div class="virtual-inner-content hover:bg-blue-50 transition-colors cursor-pointer pr-1">
-                
-                <div class="flex-1 min-w-0 mr-2">
-                    
-                    <p class="font-bold text-gray-800 text-sm truncate leading-tight" title="${safeText(item.descricao)}">
-                        ${safeText(item.descricao)}
-                    </p>
-                    
-                    <div class="flex flex-wrap gap-2 mt-1.5 w-full">
-                        
-                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
-                            SAP: <span class="text-blue-700 font-bold">${safeText(item.codigoSap || '-')}</span>
-                        </p>
-                        
-                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
-                            PN: <span class="text-gray-700 font-bold">${safeText(item.partNumber || '-')}</span>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-1 shrink-0">
-                    <button onclick="editarItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 rounded-full transition-colors">✏️</button>
-                    <button onclick="excluirItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-full transition-colors">🗑️</button>
-                </div>
-            </div>
-        </div>`;
+    // Feedback Visual se Vazio
+    if (virtualDadosFiltrados.length === 0) {
+        listaDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><p class="text-sm font-medium">Nenhum item encontrado.</p></div>`;
+        return;
     }
 
-    spacer.innerHTML = html;
+    // Configura o "Spacer" (Altura total falsa)
+    const totalHeight = virtualDadosFiltrados.length * ROW_HEIGHT;
+
+    if (!document.getElementById('virtualSpacer')) {
+        listaDiv.innerHTML = `<div id="virtualSpacer" style="height: ${totalHeight}px; position: relative; width: 100%;"></div>`;
+    } else {
+        document.getElementById('virtualSpacer').style.height = `${totalHeight}px`;
+    }
+
+    // --- CORREÇÃO CRÍTICA DE MEMÓRIA ---
+    // Remove qualquer ouvinte anterior antes de adicionar um novo
+    listaDiv.removeEventListener('scroll', onVirtualScroll);
+    listaDiv.addEventListener('scroll', onVirtualScroll);
+
+    // Desenha a primeira vez
+    onVirtualScroll();
+}
+
+// 3. SUBSTITUA A FUNÇÃO 'onVirtualScroll' POR ESTA:
+function onVirtualScroll() {
+    // Debounce visual usando requestAnimationFrame (Performance)
+    if (virtualScrollFrame) {
+        cancelAnimationFrame(virtualScrollFrame);
+    }
+
+    virtualScrollFrame = requestAnimationFrame(() => {
+        const container = document.getElementById('listaCatalogo');
+        const spacer = document.getElementById('virtualSpacer');
+        if (!container || !spacer) return;
+
+        const scrollTop = container.scrollTop;
+        const containerHeight = container.clientHeight || 600;
+
+        // Renderiza apenas o visível + um pequeno buffer para cima e baixo
+        const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2); 
+        const endIndex = Math.min(
+            virtualDadosFiltrados.length, 
+            Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 4
+        );
+
+        let html = '';
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const item = virtualDadosFiltrados[i];
+            if (!item) continue; 
+
+            const topPos = i * ROW_HEIGHT;
+            
+            // Mantém seu layout de card intacto
+            html += `
+            <div class="virtual-item" style="transform: translateY(${topPos}px);">
+                <div class="virtual-inner-content hover:bg-blue-50 transition-colors cursor-pointer pr-1">
+                    <div class="flex-1 min-w-0 mr-2">
+                        <p class="font-bold text-gray-800 text-sm truncate leading-tight" title="${safeText(item.descricao)}">
+                            ${safeText(item.descricao)}
+                        </p>
+                        <div class="flex flex-wrap gap-2 mt-1.5 w-full">
+                            <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                                SAP: <span class="text-blue-700 font-bold">${safeText(item.codigoSap || '-')}</span>
+                            </p>
+                            <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                                PN: <span class="text-gray-700 font-bold">${safeText(item.partNumber || '-')}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="editarItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 rounded-full">✏️</button>
+                        <button onclick="excluirItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-full">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+        spacer.innerHTML = html;
+    });
 }
 function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
 async function salvarItemCatalogo() {
