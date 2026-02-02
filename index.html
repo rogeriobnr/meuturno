@@ -733,13 +733,14 @@ function concluirOnboarding() {
         // 1. ESTADO GLOBAL E CONSTANTES
         // =================================================================================
         let registrosMotorista = [];
+        let virtualScrollFrame = null;
         let equipe = [], frotasTurno = [], servicos = [], db, graficoOS = null, callbackPopup = null, debounceTimer;
         let appCarregadoComSucesso = false;
         let catalogoFrotas = [];
         let catalogoLocal = [];
         let catalogoLoaderPromise = null; 
         let dataMemoriaApontamento = ''; 
-        const DB_NAME = 'meuturnoDB', DB_VERSION = 31;
+        const DB_NAME = 'meuturnoDB', DB_VERSION = 32;
         const STORE_TURNO = 'turno', STORE_HISTORICO = 'historicoOS', STORE_FROTAS = 'catalogoFrotas';
         const TURNO_ATUAL_ID = 'currentTurno';
         const atividades = ["P001 - AFERIDO", "P002 - AJUSTADO", "P003 - ALINHADO", "P004 - APERTADO", "P005 - BALANCEADO", "P006 - CALIBRADO", "P007 - COMPLETADO", "P008 - CONSERTADO COMPONENTE", "P009 - DESAMASSADO", "P010 - DESOBSTRUIDO", "P011 - EMBUCHADO", "P012 - FIXADO", "P013 - FURADO", "P014 - HIGIENIZADO", "P015 - INSPECIONADO", "P016 - INSTALADO", "P017 - ISOLADO", "P018 - LIMPO", "P019 - LUBRIFICADO", "P020 - MODIFICADO", "P021 - REAPERTADO", "P022 - RECARREGADO", "P023 - RECUPERADO", "P024 - REFORMADO", "P025 - REGULADO", "P026 - REMONTADO", "P027 - REPROGRAMADO", "P028 - RETIFICADO", "P029 - SOLDADO", "P030 - SUBSTITUIDO - TROCADO", "P031 - USINADO", "P032 - VEDADO", "H01 - Atraso de transporte", "H02 - DDS", "H03 - Refeição", "H04 - Organização/Limpeza", "H05 - Aguardando peça", "H06 - Aguardando Ferramenta", "H07 - Aguardando Serviço", "H08 - Falta do colaborador", "H09 - Reunião", "H10 - Ambulatorio", "H11 - Treinamento", "H12 - Outros", "H13 - Deslocamento a terceiros", "H14 - Carregamento de pneus pra conserto", "H15 - Inventario", "H16 - Apoio a Operação"];
@@ -1245,41 +1246,31 @@ const UPDATE_CONFIG = {
 
 let newWorker = null; // Variável global para segurar o SW novo
 
-// Variável de controle para evitar Loop de Reload
+// Garante que esta variável esteja no escopo global, fora de qualquer função
 let refreshing = false;
 
 function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js').then(reg => {
-            
-            // 1. Monitora atualizações enquanto o app está aberto
             reg.addEventListener('updatefound', () => {
                 const newWorker = reg.installing;
                 newWorker.addEventListener('statechange', () => {
-                    // Só avisa se o SW estiver INSTALADO e esperando
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                         tratarNovaVersaoEncontrada(newWorker);
                     }
                 });
             });
+        });
 
-            // 2. Verifica se JÁ existe um SW esperando (acontece se o usuário fechou e abriu o app)
-            if (reg.waiting) {
-                tratarNovaVersaoEncontrada(reg.waiting);
-            }
-
-        }).catch(err => console.error("Erro SW:", err));
-
-        // 3. O EVENTO DE RECARGA SEGURO
-        // Só recarrega se a variável 'refreshing' for false
+        // CORREÇÃO CRÍTICA: Prevenção de Loop
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!refreshing) {
-                refreshing = true;
-                window.location.reload();
-            }
+            if (refreshing) return; // Se já estiver recarregando, PARE.
+            refreshing = true;
+            window.location.reload();
         });
     }
 }
+
 
 function tratarNovaVersaoEncontrada(worker) {
     // Salva o worker globalmente para usar no botão do modal
@@ -1543,7 +1534,54 @@ function initDB() {
     });
 }
 
-async function dbExec(storeName, mode, operation) { try { await initDB(); return new Promise((resolve, reject) => { const t = db.transaction([storeName], mode); const s = t.objectStore(storeName); const r = operation(s); r.onsuccess = e => resolve(e.target.result); r.onerror = e => { reject(e.target.error); }; }); } catch (err) { showToast(`Erro no banco de dados.`, 'error'); throw err; } }
+async function dbExec(storeName, mode, operation) {
+    try {
+        // Garante conexão aberta
+        if (!db) await initDB();
+
+        return new Promise((resolve, reject) => {
+            // Cria a transação
+            const tx = db.transaction([storeName], mode);
+            const store = tx.objectStore(storeName);
+
+            // Executa a operação (get, put, delete, etc)
+            let request = operation(store);
+
+            // Variável para capturar o resultado (ex: dados do 'get')
+            let result = null;
+
+            // Se for uma requisição que retorna algo, captura o sucesso dela
+            if (request && request instanceof IDBRequest) {
+                request.onsuccess = (e) => {
+                    result = e.target.result;
+                };
+            }
+
+            // --- A MÁGICA DA SEGURANÇA AQUI ---
+            
+            // 1. Só resolve a Promessa quando a transação inteira for COMITADA no disco
+            tx.oncomplete = () => {
+                resolve(result); // Retorna o resultado capturado ou undefined (para put/delete)
+            };
+
+            // 2. Erro genérico na transação
+            tx.onerror = (event) => {
+                console.error(`❌ Erro DB [${storeName}]:`, event.target.error);
+                reject(event.target.error);
+            };
+
+            // 3. Transação abortada (ex: cota de disco excedida)
+            tx.onabort = (event) => {
+                console.warn(`⚠️ Transação abortada [${storeName}]`);
+                reject(new Error("Transação abortada pelo navegador."));
+            };
+        });
+    } catch (err) {
+        showToast(`Erro crítico no banco de dados.`, 'error');
+        throw err;
+    }
+}
+
 
 // =================================================================================
 // OTIMIZAÇÃO DE INICIALIZAÇÃO (FIX TRAVAMENTO)
@@ -2238,7 +2276,7 @@ function backupEmergenciaSincrono() {
         function interpretarMarkdown(texto) { if (!texto) return ""; return texto.replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
         function minimizarServico(id) { const servico = servicos.find(s => s.id === id); if (servico && servico.isExpanded) { toggleDetalhesServico(id); } }
         function gerarTextoCabecalhoServico(servico) {
-    // SEGURANÇA: Todos os campos visuais passam por safeText
+    // Tratamento de segurança dos textos
     const frota = safeText(servico.frota || "N/D");
     const codAtividade = safeText((servico.atividade || "P000").split(" - ")[0]);
     const codSistema = safeText(servico.sistema || "0");
@@ -2246,19 +2284,47 @@ function backupEmergenciaSincrono() {
     const horaInicio = safeText(servico.inicio || "--:--");
     const horaFim = safeText(servico.fim || "--:--");
     
-    const infoServico = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`;
+    const infoTecnica = `${codAtividade} - ${codSistema} - ${codSubsistema} [${horaInicio} - ${horaFim}]`;
 
+    // 1. Configuração da Tag de TIPO
     let tipoSpan = '';
-    if (servico.tipo === 'CORRETIVA') {
-        tipoSpan = ` <span class="font-bold italic text-red-700">Corretiva</span>`;
-    } else if (servico.tipo === 'CONDICIONAL') {
-        tipoSpan = ` <span class="font-bold italic text-blue-600">Condicional</span>`;
-    } else if (servico.tipo === 'MELHORIA') {
-        tipoSpan = ` <span class="font-bold italic text-yellow-600">Melhoria</span>`;
+    const tipo = servico.tipo || 'CORRETIVA';
+
+    if (tipo === 'CORRETIVA') {
+        tipoSpan = `<span class="font-bold text-[9px] text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded uppercase tracking-wide">Corretiva</span>`;
+    } else if (tipo === 'CONDICIONAL') {
+        tipoSpan = `<span class="font-bold text-[9px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase tracking-wide">Condicional</span>`;
+    } else if (tipo === 'MELHORIA') {
+        tipoSpan = `<span class="font-bold text-[9px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded uppercase tracking-wide">Melhoria</span>`;
     }
 
-    return `<strong>Frota:</strong> <span class="frota-destaque">${frota}</span> <span class="atividade-info">| ${infoServico}</span>${tipoSpan}`;
+    // 2. Configuração da Tag de F.O (Falha Operacional)
+    const falhaValor = String(servico.falha || "").trim().toLowerCase();
+    const isFO = (falhaValor === 'sim' || falhaValor === 'true' || falhaValor === 's');
+    
+    let foSpan = '';
+    if (isFO) {
+        foSpan = `<span class="ml-1 font-bold text-[9px] bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-sm whitespace-nowrap">⚠️ F.O</span>`;
+    }
+
+    // 3. Montagem do HTML (Estrutura Vertical Fixa)
+    return `
+    <div class="flex flex-col w-full py-0.5">
+        <div class="flex justify-between items-center mb-1">
+            <span class="text-gray-900 font-black text-sm uppercase tracking-tight">${frota}</span>
+            <div class="flex items-center gap-1 shrink-0">
+                ${tipoSpan}
+                ${foSpan}
+            </div>
+        </div>
+        
+        <div class="text-xs text-gray-500 font-medium leading-tight border-t border-gray-100 pt-1 mt-0.5">
+            ${infoTecnica}
+        </div>
+    </div>`;
 }
+
+
 
         
         // NOVO: Função auxiliar para validar o tempo de um serviço
@@ -4308,20 +4374,19 @@ function adicionarLinhaManual() {
     const inicioSugerido = ultima ? ultima.fim : '07:00';
 
     linhasApontamento.push({
-        id: gerarIdUnico(), 
-        id: Date.now(),
+        id: gerarIdUnico(), // CORRIGIDO: Única definição de ID
         tipo: 'manual',
-        atividade: 'H04 - Organização/Limpeza', // Padrão, usuário muda
+        atividade: 'H04 - Organização/Limpeza', 
         inicio: inicioSugerido,
         fim: '',
         os: '', frota: '', sistema: '', subsistema: ''
     });
+    
     renderizarListaLinhas();
-    // ADICIONE ESTA LINHA:
     rolarParaUltimoItemApontamento(); 
     marcarComoDesatualizado(); 
-    salvarTudo(); // Salva estado geral
-    salvarLinhaDoTempoDoDia(); // ✅ Salva a timeline específica
+    salvarTudo(); 
+    salvarLinhaDoTempoDoDia(); 
 }
 
 function removerLinhaApontamento(index) {
@@ -5039,7 +5104,6 @@ async function salvarOSnoHistorico(serviceId) {
     const turnoValor = turnoInput && turnoInput.value ? turnoInput.value : "A";
 
     try {
-        // Recupera dados antigos para manter consistência
         let dadosAntigos = {};
         try {
             const itemExistente = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(servico.id));
@@ -5064,34 +5128,31 @@ async function salvarOSnoHistorico(serviceId) {
             dataOS: servico.data,
             dataKey: formatarDataParaExibicao(servico.data).replace(/\//g, '-'),
             
+            // 👇 AQUI ESTÁ A CORREÇÃO NECESSÁRIA 👇
+            falha: servico.falha || "não", 
+            // 👆 SEM ISSO, A TAG F.O NÃO APARECE NO HISTÓRICO 👆
+
             // Mantém dados existentes
-            status: dadosAntigos.status || "pendente", // Status da O.S. (Negócio)
+            status: dadosAntigos.status || "pendente", 
             osNumero: dadosAntigos.osNumero || "",
             datahoraRegistro: dadosAntigos.datahoraRegistro || new Date().toLocaleString('pt-BR'),
             atualizadoEm: new Date().toISOString(),
 
-            // --- NOVO: CONTROLE DE SINCRONIZAÇÃO ---
-            // Marca como pendente. O Sincronizador vai pegar isso depois.
             _syncStatus: 'pendente', 
             _dataSincronizacao: null
         };
 
-        // 1. SALVA LOCALMENTE (GARANTIA IMEDIATA)
         await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(itemHistorico));
-        console.log(`💾 O.S. salva localmente. Status: Pendente de Envio.`);
+        console.log(`💾 O.S. salva localmente. Falha: ${itemHistorico.falha}`);
 
-        // 2. ATUALIZA A TELA (FEEDBACK INSTANTÂNEO)
         if (document.getElementById('historico') && !document.getElementById('historico').classList.contains('hidden')) {
             mostrarHistorico();
         }
 
-        // 3. ACIONA O SINCRONIZADOR (TENTATIVA OTIMISTA)
-        // Não esperamos (await) isso terminar. É "Fire and Forget" local.
         if (navigator.onLine) {
-            // Pequeno delay para garantir que o IndexedDB liberou a transação
             setTimeout(() => Sincronizador.processarFila(), 100);
         } else {
-            console.log("📴 Offline. Dado salvo na fila e será enviado quando a rede voltar.");
+            console.log("📴 Offline. Dado salvo na fila.");
         }
 
     } catch (err) {
@@ -5099,6 +5160,7 @@ async function salvarOSnoHistorico(serviceId) {
         showToast("Erro ao salvar O.S. no aparelho.", "error");
     }
 }
+
 
 
 // Funções auxiliares para preservar o estado do Popup
@@ -5245,19 +5307,22 @@ async function verificarContextoHistorico(preSelectFazenda = null, preSelectFren
     return false; 
 }
 
-
-
 // ============================================================
-// EXIBIR HISTÓRICO (DATAS: RECENTE->ANTIGO | HORAS: 00:00->23:59)
+// EXIBIR HISTÓRICO (FINAL: TIPO ABAIXO DO SISTEMA + F.O + EDITAR)
+// ============================================================
+// ============================================================
+// EXIBIR HISTÓRICO (CORRIGIDO: VARIÁVEL falhaValor)
 // ============================================================
 async function mostrarHistorico() {
-    // Verifica contexto
+    // 1. Verifica contexto
     if (!(await verificarContextoHistorico())) return; 
 
     const div = document.getElementById("historico_lista");
     if (!div) return;
 
-    div.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
+    if (div.innerHTML === '') {
+        div.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
+    }
 
     try {
         const todosItens = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
@@ -5277,12 +5342,11 @@ async function mostrarHistorico() {
         if (itensFiltrados.length === 0) {
             div.innerHTML = `
                 <div class="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                    <p class="text-gray-400 font-bold">Nenhum registo encontrado.</p>
+                    <p class="text-gray-400 font-bold">Nenhum registro encontrado.</p>
                 </div>`;
             return;
         }
 
-        // Agrupamento
         const agrupado = itensFiltrados.reduce((acc, item) => {
             const dataKey = item.dataOS || "Sem Data";
             if (!acc[dataKey]) acc[dataKey] = [];
@@ -5290,134 +5354,252 @@ async function mostrarHistorico() {
             return acc;
         }, {});
 
-        // --- CORREÇÃO 1: DATAS DECRESCENTES (Hoje primeiro) ---
-        // b.localeCompare(a) -> Mais recente no topo
         const datasOrdenadas = Object.keys(agrupado).sort((a, b) => b.localeCompare(a));
 
-        // Renderização
         div.innerHTML = datasOrdenadas.map(dataKey => {
-            
-            // --- CORREÇÃO 2: CARDS CRESCENTES (Manhã -> Noite) ---
-            // a.inicio.localeCompare(b.inicio) -> 07:00 antes de 08:00
             const itensDoDia = agrupado[dataKey].sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
             
-            return `
-            <div class="bg-white rounded-lg shadow-sm mb-5 overflow-hidden border border-gray-200">
-                <div class="bg-blue-50 p-3 border-b border-blue-100 flex justify-between items-center cursor-pointer select-none" 
-                     onclick="toggleHistoricoDia('${dataKey}')">
-                    <h3 class="text-sm font-bold text-blue-800 flex items-center gap-2">
-                        📅 ${formatarDataParaExibicao(dataKey)}
-                        <span class="bg-white text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm border border-blue-100">${itensDoDia.length}</span>
-                    </h3>
-                    <span id="toggler-dia-${dataKey}" class="text-blue-400 font-bold text-lg transition-transform">&#9660;</span>
-                </div>
+            const itensHtml = itensDoDia.map(s => {
+                const isFinalizada = s.status === 'finalizada';
+                const safeId = s.uniqueId || s.id;
+                const tipoManutencao = s.tipo || "CORRETIVA";
                 
-                <div id="historico-dia-${dataKey}" class="p-2 bg-gray-50 space-y-3">
-                  ${itensDoDia.map(s => {
-                    const isFinalizada = s.status === 'finalizada';
-                    const bordaLateral = isFinalizada ? 'border-green-500' : 'border-yellow-500';
-                    const safeId = s.uniqueId || s.id;
+                // --- VERIFICAÇÃO F.O (CORRIGIDA) ---
+                const falhaValor = String(s.falha || "").toLowerCase().trim();
+                // Agora usa 'falhaValor' em todas as checagens
+                const isFO = (falhaValor === "sim" || falhaValor === "true" || falhaValor === "s");
+
+                // --- CORES DO TIPO DE MANUTENÇÃO ---
+                let corTextoTipo = "text-gray-500";
+                let bordaLateral = "border-l-blue-600";
+
+                if (isFinalizada) {
+                    bordaLateral = "border-l-green-500";
+                } else if (tipoManutencao === 'CORRETIVA') {
+                    bordaLateral = "border-l-red-500";
+                    corTextoTipo = "text-red-600"; 
+                } else if (tipoManutencao === 'CONDICIONAL') {
+                    corTextoTipo = "text-blue-600"; 
+                } else if (tipoManutencao === 'MELHORIA') {
+                    corTextoTipo = "text-purple-600"; 
+                }
+
+                // Tag F.O
+                const badgeFO = isFO 
+                    ? `<span class="ml-2 bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded border border-orange-200 shadow-sm whitespace-nowrap flex items-center gap-1">⚠️ F.O</span>` 
+                    : '';
+
+                const infoTecnica = `${(s.atividade || "N/A").split(' - ')[0]} | ${s.sistema || "?"} | ${(s.subsistema || "?").split(' - ')[0]}`;
+
+                return `
+                <div class="js-card-historico bg-white rounded-xl shadow-sm border border-gray-200 mb-4 p-3 border-l-4 ${bordaLateral} relative">
                     
-                    const iconSync = s._syncStatus === 'pendente' 
-                        ? `<span class="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded animate-pulse">🛜 Enviando</span>` 
-                        : `<span class="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">☁️ Salvo</span>`;
-
-                    const infoTecnica = [
-                        (s.atividade || "N/A").split(' - ')[0],
-                        s.sistema || "?",
-                        (s.subsistema || "?").split(' - ')[0]
-                    ].join(' <span class="text-gray-300 font-light mx-1">|</span> ');
-
-                    return `
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-[6px] ${bordaLateral} p-3 relative">
-                        
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="text-lg font-black text-blue-700 tracking-tight block leading-none">
-                                    ${safeText(s.frota)}
-                                </span>
-                                <div class="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
-                                    ${infoTecnica}
-                                </div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-blue-800 font-black text-lg block leading-none">${safeText(s.frota)}</span>
                             </div>
                             
-                            <div class="text-right flex flex-col items-end gap-1">
-                                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                    🕑 ${safeText(s.inicio)} - ${safeText(s.fim)}
-                                </span>
-                                ${iconSync}
+                            <div class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                                ${infoTecnica}
+                            </div>
+
+                            <div class="text-xs font-black ${corTextoTipo} mt-0.5 uppercase tracking-wide">
+                                ${tipoManutencao}
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 line-clamp-3">
-                                "${safeText(s.descricao)}"
-                            </p>
-                        </div>
-
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
-                            <div class="flex items-center gap-2 flex-grow">
-                                <span class="text-[10px] font-bold text-gray-500 uppercase">Nº O.S:</span>
-                                <div class="relative flex items-center">
-                                    <input type="number" 
-                                        id="os_input_${safeId}" 
-                                        class="w-24 p-1.5 pl-2 text-sm font-bold text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" 
-                                        placeholder="PENDENTE" 
-                                        value="${safeText(s.osNumero || "")}" 
-                                        oninput="validarOSInput(${safeId})" 
-                                        ${isFinalizada ? "disabled" : ""}>
-                                    
-                                    ${!isFinalizada 
-                                        ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>OK</button>` 
-                                        : `` 
-                                    }
-                                </div>
-                                ${isFinalizada ? `<span class="text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded flex items-center gap-1">✔ OK</span>` : ''}
+                        <div class="text-right">
+                            <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded border border-gray-200">
+                                🕒 ${safeText(s.inicio)} - ${safeText(s.fim)}
+                            </span>
+                            <div class="text-[9px] text-gray-400 mt-1 text-right">
+                                ${s._syncStatus === 'pendente' ? '⏳ Pendente' : '☁️ Salvo'}
                             </div>
-
-                            <button onclick="toggleBotoesHistorico(${safeId})" class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95">
-                                <span>⚙️ Ações</span>
-                            </button>
                         </div>
-
-                        <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-3 border-t border-dashed border-gray-300 grid grid-cols-4 gap-2 animate-fade-in">
-                            <button onclick="recriarServicoDoHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-indigo-50 hover:bg-white border border-indigo-200 rounded text-indigo-700 hover:text-indigo-800 transition-colors">
-                                <span class="text-lg mb-1">♻️</span>
-                                <span class="text-[9px] font-bold uppercase">Recriar</span>
-                            </button>
-
-                            <button onclick="copiarHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-gray-50 hover:bg-white border border-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors">
-                                <span class="text-lg mb-1">📋</span>
-                                <span class="text-[9px] font-bold uppercase">Copiar</span>
-                            </button>
-                            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-green-50 hover:bg-white border border-green-200 rounded text-green-700 hover:text-green-800 transition-colors">
-                                <span class="text-lg mb-1">📱</span>
-                                <span class="text-[9px] font-bold uppercase">Wtzp</span>
-                            </button>
-                            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-red-50 hover:bg-white border border-red-200 rounded text-red-700 hover:text-red-800 transition-colors">
-                                <span class="text-lg mb-1">🗑️</span>
-                                <span class="text-[9px] font-bold uppercase">Excluir</span>
-                            </button>
-                            
-                            ${isFinalizada ? `
-                            <button onclick="habilitarEdicaoOS(${safeId}, this)" class="col-span-4 mt-1 flex items-center justify-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 font-bold text-xs hover:bg-yellow-100">
-                                ✏️ Editar Número da O.S.
-                            </button>` : ''}
-                        </div>
-                        
-                        <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
                     </div>
-                    `;
-                }).join('')}
+
+                    <div class="bg-gray-50 p-2 rounded border border-gray-100 mb-3">
+                        <p class="text-xs text-gray-600 italic line-clamp-3">"${safeText(s.descricao)}"</p>
+                    </div>
+
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-100 border-dashed gap-2">
+                        <div class="flex items-center flex-wrap gap-y-2">
+                            <span class="text-xs font-bold text-gray-500 mr-2 whitespace-nowrap">Nº O.S:</span>
+                            
+                            <div class="relative flex items-center w-36">
+                                <input type="number" id="os_input_${safeId}" 
+                                    class="w-full p-2 pl-2 pr-12 text-sm font-bold border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none ${isFinalizada ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white'}" 
+                                    value="${safeText(s.osNumero || "")}" 
+                                    placeholder="00000"
+                                    ${isFinalizada ? "disabled" : ""}>
+                                
+                                ${!isFinalizada 
+                                    ? `<button id="btnFinalizarOS_${safeId}" onclick="finalizarOS(${safeId})" class="absolute right-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-700 text-white px-3 rounded text-xs font-bold shadow-sm transition-transform active:scale-95 z-10">OK</button>` 
+                                    : `<span class="absolute right-2 text-green-600 font-bold text-xs bg-green-50 px-1">✔ OK</span>`
+                                }
+                            </div>
+                            
+                            ${badgeFO}
+                        </div>
+
+                        <div class="ml-auto">
+                             <button onclick="toggleBotoesHistorico(${safeId})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-200 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95 flex items-center gap-1 shadow-sm">
+                                ⚙️ Ações
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="botoes-historico-${safeId}" class="hidden mt-3 pt-1 animate-fade-in bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <div class="grid grid-cols-4 gap-2 mb-2">
+                            <button onclick="recriarServicoDoHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-white hover:bg-indigo-50 border border-gray-200 rounded-lg transition-colors active:scale-95 shadow-sm">
+                                <span class="text-lg mb-1">♻️</span>
+                                <span class="text-[9px] font-bold text-indigo-700 uppercase">RECRIAR</span>
+                            </button>
+
+                            <button onclick="editarServicoDoHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-white hover:bg-blue-50 border border-gray-200 rounded-lg transition-colors active:scale-95 shadow-sm">
+                                <span class="text-lg mb-1">✏️</span>
+                                <span class="text-[9px] font-bold text-blue-700 uppercase">EDITAR</span>
+                            </button>
+
+                            <button onclick="compartilharHistorico(${safeId})" class="flex flex-col items-center justify-center p-2 bg-white hover:bg-green-50 border border-gray-200 rounded-lg transition-colors active:scale-95 shadow-sm">
+                                <span class="text-lg mb-1">📱</span>
+                                <span class="text-[9px] font-bold text-green-700 uppercase">WTZP</span>
+                            </button>
+
+                            <button onclick="excluirHistoricoItem(${safeId})" class="flex flex-col items-center justify-center p-2 bg-white hover:bg-red-50 border border-gray-200 rounded-lg transition-colors active:scale-95 shadow-sm">
+                                <span class="text-lg mb-1">🗑️</span>
+                                <span class="text-[9px] font-bold text-red-700 uppercase">EXCLUIR</span>
+                            </button>
+                        </div>
+
+                        ${isFinalizada ? `
+                        <button onclick="habilitarEdicaoOS(${safeId}, this)" class="w-full text-xs text-yellow-700 font-bold bg-white hover:bg-yellow-50 py-2 rounded border border-yellow-200 shadow-sm flex items-center justify-center gap-2 transition-colors">
+                            <span>✏️</span> Corrigir Número da O.S.
+                        </button>` : ''}
+                    </div>
+                    
+                    <textarea id="texto_os_hist_${safeId}" class="hidden">${safeText(s.texto)}</textarea>
+                </div>`;
+            }).join('');
+
+            return `
+            <div class="mb-5">
+                <div class="bg-blue-50 border-b border-blue-100 p-2 rounded-t-lg rounded-b-lg mb-2 flex justify-between items-center cursor-pointer select-none" onclick="toggleHistoricoDia('${dataKey}')">
+                    <h3 class="text-sm font-bold text-blue-800 flex items-center gap-2">
+                        📅 ${formatarDataParaExibicao(dataKey)} 
+                        <span class="bg-white text-blue-600 text-[10px] px-2 py-0.5 rounded-full border border-blue-100 shadow-sm">${itensDoDia.length}</span>
+                    </h3>
+                    <span id="toggler-dia-${dataKey}" class="text-blue-400 text-lg font-bold">▼</span>
+                </div>
+                <div id="historico-dia-${dataKey}" class="space-y-1">
+                    ${itensHtml}
                 </div>
             </div>`;
         }).join('');
 
     } catch (e) {
         console.error(e);
-        div.innerHTML = `<p class="text-red-500 text-center p-4 border border-red-200 bg-red-50 rounded-lg">Erro ao ler dados: ${e.message}</p>`;
+        div.innerHTML = `<p class="text-red-500 p-4 text-center">Erro: ${e.message}</p>`;
     }
 }
+
+
+
+async function editarServicoDoHistorico(id) {
+    try {
+        const idNumerico = parseInt(id);
+        
+        // 1. Busca o item no banco de dados local
+        const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        
+        if (!item) { 
+            showToast('Erro: Item não encontrado.', 'error'); 
+            return; 
+        }
+
+        // 2. Confirmação com alerta sobre a data
+        const confirmado = await new Promise(r => abrirPopupConfirmar(
+            'Editar Serviço', 
+            `Isto carregará o serviço da frota <b>${safeText(item.frota)}</b> para a aba de edição.<br>
+             <span class="text-xs text-red-500 font-bold">Nota: Você estará editando o registro original do dia ${formatarDataParaExibicao(item.dataOS)}.</span>`, 
+            r, 'Sim, Editar'
+        ));
+
+        if (!confirmado) return;
+
+        // --- LÓGICA DE FROTA (Adicionar se não existir) ---
+        const nomeFrota = item.frota;
+        // Verifica se a frota já está na lista "frotasTurno" (variável global do turno atual)
+        const frotaJaNoTurno = frotasTurno.some(f => f.nome === nomeFrota);
+
+        if (!frotaJaNoTurno) {
+            console.log(`Frota ${nomeFrota} não encontrada no turno. Adicionando...`);
+            
+            // Tenta achar o tipo correto no catálogo para adicionar (maquina, implemento, caminhao)
+            let tipoFrota = 'maquina'; // Tipo padrão
+            if (typeof catalogoFrotas !== 'undefined' && catalogoFrotas.length > 0) {
+                const itemCatalogo = catalogoFrotas.find(c => c.nome === nomeFrota);
+                if (itemCatalogo) tipoFrota = itemCatalogo.tipo;
+            }
+            
+            // Adiciona ao array global do turno
+            frotasTurno.push({ 
+                nome: nomeFrota, 
+                tipo: tipoFrota, 
+                horas: 0 // Horas zeradas pois é uma inserção forçada apenas para permitir a edição
+            });
+            
+            // Atualiza a visualização das frotas na tela e salva
+            if (document.getElementById('listaFrotas')) renderizarFrotasDoTurno();
+            await salvarTudo(true); 
+            
+            showToast(`Frota ${nomeFrota} adicionada ao turno para permitir edição.`, "info");
+        }
+
+        // --- PREPARAÇÃO DO OBJETO PARA EDIÇÃO ---
+        const indexExistente = servicos.findIndex(s => s.id === item.id);
+        
+        const servicoEditavel = {
+            ...item,
+            id: item.id, // Garante que o ID seja mantido para sobrescrever o correto depois
+            
+            // --- CORREÇÃO DE DATA ---
+            // Usa a data original do histórico (item.dataOS), ignorando a data de hoje
+            data: item.dataOS,      
+            dataFinal: item.dataOS, // Assume mesmo dia (padrão)
+            
+            isExpanded: true, // Abre o card automaticamente visualmente
+            pecasUtilizadas: item.pecasUtilizadas || [] // Garante que o array de peças exista
+        };
+
+        // Atualiza ou Insere na memória RAM da lista de serviços
+        if (indexExistente > -1) {
+            servicos[indexExistente] = servicoEditavel;
+        } else {
+            servicos.push(servicoEditavel);
+        }
+
+        // --- FINALIZAÇÃO ---
+        await salvarTudo(true); // Salva o estado dos serviços
+        abrir('servicos'); // Muda a tela para a aba de serviços
+
+        // Rola a tela até o card e aplica um destaque visual (piscar amarelo)
+        setTimeout(() => {
+            const el = document.getElementById(`servico_${item.id}`);
+            if(el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-4', 'ring-yellow-300', 'transition-all');
+                setTimeout(() => el.classList.remove('ring-4', 'ring-yellow-300'), 1500);
+            }
+        }, 400);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao carregar para edição.", "error");
+    }
+}
+
 
 // ============================================================
 // FUNCIONALIDADE: RECRIAR SERVIÇO (DO HISTÓRICO)
@@ -5722,32 +5904,67 @@ async function executarExclusaoEmMassa(criterioData, frente, turno) {
 
 async function finalizarOS(id) {
     const input = document.getElementById(`os_input_${id}`);
-    const osNumero = input ? input.value.trim() : "";
-    if (!osNumero) { showToast('Digite o número da O.S.', 'error'); if(input) input.focus(); return; }
-
     const btn = document.getElementById(`btnFinalizarOS_${id}`);
+    const osNumero = input ? input.value.trim() : "";
+
+    if (!osNumero) { 
+        showToast('Digite o número da O.S.', 'error'); 
+        if(input) input.focus(); 
+        return; 
+    }
+
     if(btn) { btn.innerText = "⏳"; btn.disabled = true; }
+    if(input) input.disabled = true;
 
     try {
         const idNumerico = parseInt(id);
         const item = await dbExec(STORE_HISTORICO, 'readonly', s => s.get(idNumerico));
+        
         if (item) {
             item.status = 'finalizada';
             item.osNumero = osNumero;
             item.atualizadoEm = new Date().toISOString();
+            item._syncStatus = 'pendente'; // Força sync na próxima rodada
+
             await dbExec(STORE_HISTORICO, 'readwrite', s => s.put(item));
-            // [NOVO] CHAMA A PROPAGAÇÃO RETROATIVA
-            propagarAtualizacaoOSParaTimeline(item, osNumero);
+            
+            if (typeof propagarAtualizacaoOSParaTimeline === 'function') {
+                propagarAtualizacaoOSParaTimeline(item, osNumero);
+            }
+
+            if (typeof firestore !== 'undefined') {
+                firestore.collection('historico_os').doc(String(id)).update({ 
+                    status: 'finalizada', 
+                    osNumero: osNumero,
+                    atualizadoEm: item.atualizadoEm 
+                }).catch(console.warn);
+            }
+
+            // ATUALIZAÇÃO VISUAL SEGURA
+            input.classList.remove('border-gray-300');
+            input.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+            if(btn) btn.remove();
+
+            // Busca pela classe segura que adicionamos, não mais pelo estilo da borda
+            const card = input.closest('.js-card-historico'); 
+            if(card) {
+                // Remove todas as cores de borda possíveis para garantir
+                card.classList.remove('border-l-blue-600', 'border-l-red-500', 'border-l-green-500');
+                card.classList.add('border-l-green-500');
+                
+                // Opcional: Adiciona badge "Finalizada" visualmente se quiser
+            }
+
+            showToast('O.S. Finalizada com sucesso!', 'success');
         }
-        showToast('O.S. Finalizada!', 'success');
-        await mostrarHistorico();
-        firestore.collection('historico_os').doc(String(id)).update({ status: 'finalizada', osNumero }).catch(console.warn);
     } catch (e) {
         console.error(e);
         showToast("Erro ao salvar.", "error");
         if(btn) { btn.innerText = "OK"; btn.disabled = false; }
+        if(input) input.disabled = false;
     }
 }
+
 
 function habilitarEdicaoOS(id, btn) {
     const input = document.getElementById(`os_input_${id}`);
@@ -6435,119 +6652,107 @@ async function renderizarSecaoCatalogo(container) {
 }
 
 function renderizarCatalogo() {
-const listaDiv = document.getElementById('listaCatalogo');
-const inputBusca = document.getElementById('buscaCatalogo');
+    const listaDiv = document.getElementById('listaCatalogo');
+    const inputBusca = document.getElementById('buscaCatalogo');
 
-if (!listaDiv) return;
+    if (!listaDiv) return;
 
-// Atualiza contador visual
-const badge = document.getElementById('totalItensBadge');
-if(badge) badge.innerText = catalogoLocal.length;
+    // Atualiza contador visual
+    const badge = document.getElementById('totalItensBadge');
+    if(badge) badge.innerText = catalogoLocal.length;
 
-// 1. Filtragem Rápida
-const termoBusca = inputBusca ? removerAcentos(inputBusca.value.toLowerCase()) : '';
+    // Filtragem Rápida
+    const termoBusca = inputBusca ? removerAcentos(inputBusca.value.toLowerCase()) : '';
 
-virtualDadosFiltrados = catalogoLocal.filter(item => {
-const codigoSap = String(item.codigoSap || '').toLowerCase();
-const partNumber = String(item.partNumber || '').toLowerCase();
-const descricao = removerAcentos(String(item.descricao || '').toLowerCase());
-return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricao.includes(termoBusca));
-});
+    virtualDadosFiltrados = catalogoLocal.filter(item => {
+        const codigoSap = String(item.codigoSap || '').toLowerCase();
+        const partNumber = String(item.partNumber || '').toLowerCase();
+        const descricao = removerAcentos(String(item.descricao || '').toLowerCase());
+        return (codigoSap.includes(termoBusca) || partNumber.includes(termoBusca) || descricao.includes(termoBusca));
+    });
 
-virtualDadosFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+    virtualDadosFiltrados.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
 
-// 2. Feedback Visual se Vazio
-if (virtualDadosFiltrados.length === 0) {
-let msg = "Nenhum item encontrado com este filtro.";
-let action = "";
-
-if (catalogoLocal.length === 0) {
-msg = "O catálogo parece estar vazio na memória.";
-action = `<button onclick="window.location.reload()" class="mt-2 text-blue-600 underline text-sm">Recarregar App</button>`;
-}
-
-listaDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400">
-    <span class="text-3xl mb-2">📦</span>
-    <p class="text-sm font-medium">${msg}</p>
-    ${action}
-</div>`;
-return;
-}
-
-// 3. Configura o "Spacer" (Altura total falsa)
-const totalHeight = virtualDadosFiltrados.length * ROW_HEIGHT;
-
-if (!document.getElementById('virtualSpacer')) {
-listaDiv.innerHTML = `<div id="virtualSpacer" style="height: ${totalHeight}px; position: relative; width: 100%;"></div>`;
-
-// Listener de Scroll
-if (!virtualScrollIniciado) {
-listaDiv.removeEventListener('scroll', onVirtualScroll); // Garante limpeza
-listaDiv.addEventListener('scroll', onVirtualScroll);
-virtualScrollIniciado = true;
-}
-} else {
-document.getElementById('virtualSpacer').style.height = `${totalHeight}px`;
-}
-
-// 4. Desenha
-onVirtualScroll();
-}
-// --- O MOTOR GRÁFICO (RESPONSIVO E ANTI-QUEBRA) ---
-function onVirtualScroll() {
-    const container = document.getElementById('listaCatalogo');
-    const spacer = document.getElementById('virtualSpacer');
-    if (!container || !spacer) return;
-
-    const scrollTop = container.scrollTop;
-    // Fallback de segurança para altura
-    const containerHeight = container.clientHeight || 600;
-
-    const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2); 
-    const endIndex = Math.min(
-        virtualDadosFiltrados.length, 
-        Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 4
-    );
-
-    let html = '';
-    
-    for (let i = startIndex; i < endIndex; i++) {
-        const item = virtualDadosFiltrados[i];
-        if (!item) continue; 
-
-        const topPos = i * ROW_HEIGHT;
-        
-        html += `
-        <div class="virtual-item" style="transform: translateY(${topPos}px);">
-            <div class="virtual-inner-content hover:bg-blue-50 transition-colors cursor-pointer pr-1">
-                
-                <div class="flex-1 min-w-0 mr-2">
-                    
-                    <p class="font-bold text-gray-800 text-sm truncate leading-tight" title="${safeText(item.descricao)}">
-                        ${safeText(item.descricao)}
-                    </p>
-                    
-                    <div class="flex flex-wrap gap-2 mt-1.5 w-full">
-                        
-                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
-                            SAP: <span class="text-blue-700 font-bold">${safeText(item.codigoSap || '-')}</span>
-                        </p>
-                        
-                        <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
-                            PN: <span class="text-gray-700 font-bold">${safeText(item.partNumber || '-')}</span>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-1 shrink-0">
-                    <button onclick="editarItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 rounded-full transition-colors">✏️</button>
-                    <button onclick="excluirItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-full transition-colors">🗑️</button>
-                </div>
-            </div>
-        </div>`;
+    // Feedback Visual se Vazio
+    if (virtualDadosFiltrados.length === 0) {
+        listaDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><p class="text-sm font-medium">Nenhum item encontrado.</p></div>`;
+        return;
     }
 
-    spacer.innerHTML = html;
+    // Configura o "Spacer" (Altura total falsa)
+    const totalHeight = virtualDadosFiltrados.length * ROW_HEIGHT;
+
+    if (!document.getElementById('virtualSpacer')) {
+        listaDiv.innerHTML = `<div id="virtualSpacer" style="height: ${totalHeight}px; position: relative; width: 100%;"></div>`;
+    } else {
+        document.getElementById('virtualSpacer').style.height = `${totalHeight}px`;
+    }
+
+    // --- CORREÇÃO CRÍTICA DE MEMÓRIA ---
+    // Remove qualquer ouvinte anterior antes de adicionar um novo
+    listaDiv.removeEventListener('scroll', onVirtualScroll);
+    listaDiv.addEventListener('scroll', onVirtualScroll);
+
+    // Desenha a primeira vez
+    onVirtualScroll();
+}
+
+// 3. SUBSTITUA A FUNÇÃO 'onVirtualScroll' POR ESTA:
+function onVirtualScroll() {
+    // Debounce visual usando requestAnimationFrame (Performance)
+    if (virtualScrollFrame) {
+        cancelAnimationFrame(virtualScrollFrame);
+    }
+
+    virtualScrollFrame = requestAnimationFrame(() => {
+        const container = document.getElementById('listaCatalogo');
+        const spacer = document.getElementById('virtualSpacer');
+        if (!container || !spacer) return;
+
+        const scrollTop = container.scrollTop;
+        const containerHeight = container.clientHeight || 600;
+
+        // Renderiza apenas o visível + um pequeno buffer para cima e baixo
+        const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2); 
+        const endIndex = Math.min(
+            virtualDadosFiltrados.length, 
+            Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 4
+        );
+
+        let html = '';
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const item = virtualDadosFiltrados[i];
+            if (!item) continue; 
+
+            const topPos = i * ROW_HEIGHT;
+            
+            // Mantém seu layout de card intacto
+            html += `
+            <div class="virtual-item" style="transform: translateY(${topPos}px);">
+                <div class="virtual-inner-content hover:bg-blue-50 transition-colors cursor-pointer pr-1">
+                    <div class="flex-1 min-w-0 mr-2">
+                        <p class="font-bold text-gray-800 text-sm truncate leading-tight" title="${safeText(item.descricao)}">
+                            ${safeText(item.descricao)}
+                        </p>
+                        <div class="flex flex-wrap gap-2 mt-1.5 w-full">
+                            <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                                SAP: <span class="text-blue-700 font-bold">${safeText(item.codigoSap || '-')}</span>
+                            </p>
+                            <p class="text-[10px] text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[48%]">
+                                PN: <span class="text-gray-700 font-bold">${safeText(item.partNumber || '-')}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="editarItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-yellow-600 hover:bg-yellow-100 rounded-full">✏️</button>
+                        <button onclick="excluirItemCatalogo('${item.docId}')" class="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-100 rounded-full">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+        spacer.innerHTML = html;
+    });
 }
 function abrirPopupFormularioItemCatalogo(item = null) { const isEditing = item !== null; const titulo = isEditing ? 'Editar Item do Catálogo' : 'Adicionar Novo Item'; const docId = item?.docId || ''; const codigoSap = item?.codigoSap || ''; const partNumber = item?.partNumber || ''; const descricao = item?.descricao || ''; const conteudoPopup = `<input type="hidden" id="popup-docId" value="${docId}"><div class="space-y-3 text-left"><div><label for="popup-sap" class="block text-sm font-medium text-gray-700">Código SAP</label><input type="text" id="popup-sap" class="mt-1 w-full p-2 border rounded-md" value="${codigoSap}" placeholder="Código SAP (opcional)"></div><div><label for="popup-partnumber" class="block text-sm font-medium text-gray-700">Part Number</label><input type="text" id="popup-partnumber" class="mt-1 w-full p-2 border rounded-md" value="${partNumber}" placeholder="Part number (opcional)"></div><div><label for="popup-descricao" class="block text-sm font-medium text-gray-700">Descrição</label><textarea id="popup-descricao" class="mt-1 w-full p-2 border rounded-md h-24" placeholder="Descrição da peça (opcional)">${descricao}</textarea></div></div>`; const botoes = [{ texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => salvarItemCatalogo() }, { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: fecharPopup }]; abrirPopup(titulo, `<div>${conteudoPopup}</div>`, botoes); }
 async function salvarItemCatalogo() {
