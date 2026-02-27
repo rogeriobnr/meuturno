@@ -1948,6 +1948,10 @@ async function main() {
             if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
             if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
             if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
+            
+            // [NOVO] Ativa escuta da Equipe/Frotas do Turno do dia atual
+            if (typeof iniciarSincronizacaoTurnoAtivo === 'function') iniciarSincronizacaoTurnoAtivo();
+
 
             // 6. Garante que a seção atual está renderizada com dados completos
             let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
