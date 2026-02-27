@@ -3319,43 +3319,56 @@ function adicionarFrotasSelecionadasAoTurno() {
          * 4. Atualiza a interface.
          */
         async function salvarEAdicionarFrotaAoTurno(nome, tipo) {
-            // 1. Verifica se a frota já existe no catálogo online
-            if (catalogoFrotas.some(f => f.nome === nome)) {
-                // Se já existe, apenas a adiciona ao turno atual
-                if (!frotasTurno.some(ft => ft.nome === nome)) {
-                    frotasTurno.push({ nome, tipo, horas: 7.2 });
-                    salvarTudo(true);
-                    showToast(`Frota ${nome} adicionada ao turno!`, 'success');
-                    // Se a tela de serviços estiver aberta, atualiza as listas de frotas nos cartões
-                    if (document.getElementById('servicosLista')) {
-                        renderizarServicos();
-                    }
-                } else {
-                    showToast(`Frota ${nome} já está no turno atual.`, 'info');
-                }
-                return; // Termina a execução aqui
-            }
+    // Padroniza o nome para evitar falsos negativos por espaços
+    const nomeFormatado = nome.trim().toUpperCase();
 
-            // 2. Se a frota é nova, salva primeiro no catálogo do Firebase
-            const novaFrota = { nome, tipo };
-            try {
-                await firestore.collection('catalogoFrotas').add(novaFrota);
-                // A sincronização automática do Firebase irá adicionar ao `catalogoFrotas` local.
-
-                // 3. Em seguida, adiciona ao turno atual
-                if (!frotasTurno.some(ft => ft.nome === nome)) {
-                    frotasTurno.push({ nome, tipo, horas: 8.0 });
-                    salvarTudo(true);
-                    showToast(`Frota ${nome} cadastrada e adicionada ao turno!`, 'success');
-                    if (document.getElementById('servicosLista')) {
-                        renderizarServicos();
-                    }
-                }
-            } catch (error) {
-                showToast('Erro ao salvar a nova frota.', 'error');
-                console.error("Erro ao salvar frota rápida:", error);
+    // 1. Verifica se a frota já existe no catálogo online (RAM)
+    if (catalogoFrotas.some(f => f.nome === nomeFormatado)) {
+        // Se já existe, apenas a adiciona ao turno atual
+        if (!frotasTurno.some(ft => ft.nome === nomeFormatado)) {
+            frotasTurno.push({ nome: nomeFormatado, tipo, horas: 7.2 });
+            salvarTudo(true);
+            showToast(`Frota ${nomeFormatado} adicionada ao turno!`, 'success');
+            // Se a tela de serviços estiver aberta, atualiza as listas
+            if (document.getElementById('servicosLista')) {
+                renderizarServicos();
             }
+        } else {
+            showToast(`Frota ${nomeFormatado} já está no turno atual.`, 'info');
         }
+        return; // Termina a execução aqui
+    }
+
+    // 2. MODO OTIMISTA: Se a frota é nova, salva na Memória imediatamente
+    const novaFrota = { nome: nomeFormatado, tipo };
+    const itemLocal = { ...novaFrota, docId: 'temp_' + Date.now() };
+
+    // A. Atualiza a RAM imediatamente (Isso impede a duplicidade de cliques rápidos)
+    catalogoFrotas.push(itemLocal);
+
+    // B. Salva no IndexedDB imediatamente (Garante que não some se der F5)
+    dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal));
+
+    // C. Envia para a nuvem em segundo plano (Fire and Forget)
+    if (typeof firestore !== 'undefined') {
+        firestore.collection('catalogoFrotas').add(novaFrota)
+            .then(() => console.log("☁️ Frota rápida enviada para nuvem"))
+            .catch(err => console.warn("💤 Frota rápida na fila offline"));
+    }
+
+    // 3. Em seguida, adiciona ao turno atual
+    if (!frotasTurno.some(ft => ft.nome === nomeFormatado)) {
+        frotasTurno.push({ nome: nomeFormatado, tipo, horas: 8.0 });
+        salvarTudo(true); // Persiste no turno
+        
+        showToast(`Frota ${nomeFormatado} cadastrada e adicionada!`, 'success');
+        
+        if (document.getElementById('servicosLista')) {
+            renderizarServicos();
+        }
+    }
+}
+
 
         // ---------------------------------
         // MÓDULO: SERVIÇOS
