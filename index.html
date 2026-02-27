@@ -2128,7 +2128,6 @@ function backupEmergenciaSincrono() {
  function salvarDadosParciaisTurno() { 
     validarCamposTurnoBasicos(); 
     
-    // --- CORREÇÃO GENIUSES FIXER: Persistência Imediata ---
     const fazendaVal = document.getElementById("fazenda").value;
     const frenteVal = document.getElementById("frente").value;
     const turnoVal = document.getElementById("turnoLetra").value;
@@ -2136,10 +2135,14 @@ function backupEmergenciaSincrono() {
     if(fazendaVal) localStorage.setItem('ctx_fazenda', fazendaVal);
     if(frenteVal) localStorage.setItem('ctx_frente', frenteVal);
     if(turnoVal) localStorage.setItem('ctx_turno', turnoVal);
-    // ------------------------------------------------------
 
-    salvarTudo(); 
+    salvarTudo(true); 
     atualizarCabecalhoContexto();
+    
+    // [NOVO] Dispara a mudança de sala (listener) na nuvem se a frente/turno mudarem
+    if (typeof iniciarSincronizacaoTurnoAtivo === 'function') {
+        iniciarSincronizacaoTurnoAtivo();
+    }
 }
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
