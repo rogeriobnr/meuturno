@@ -3430,13 +3430,11 @@ function preencherDetalhesServico(s) {
     if (!article) return;
     
     // 1. ESTILIZAÇÃO DINÂMICA DO CARTÃO
-    // Define a cor da borda lateral e do cabeçalho baseado no status
     article.className = "bg-white rounded-xl shadow-sm mb-4 border-t border-r border-b border-gray-200 transition-all hover:shadow-md border-l-4";
     
     const cabecalho = article.querySelector('.servico-cabecalho');
-    const osNaoGerada = !s.texto; // Se não tem texto gerado, é rascunho
+    const osNaoGerada = !s.texto; 
     
-    // Remove cores antigas
     cabecalho.classList.remove('bg-gray-50', 'bg-yellow-50', 'bg-green-50');
     article.classList.remove('border-blue-500', 'border-yellow-400', 'border-green-500');
     
@@ -3456,18 +3454,15 @@ function preencherDetalhesServico(s) {
     const toggler = article.querySelector('.servico-cabecalho-toggler');
     const detalhes = article.querySelector('.servico-detalhes');
     
-    // Gera o texto seguro do cabeçalho
     const cabecalhoHTML = gerarTextoCabecalhoServico(s);
     if (cabecalhoInfo.innerHTML !== cabecalhoHTML) { 
         cabecalhoInfo.innerHTML = cabecalhoHTML; 
     }
     
-    // Controle do Accordion (Expandir/Recolher)
     toggler.innerHTML = s.isExpanded ? '&#9650;' : '&#9660;';
     article.querySelector('.servico-cabecalho').onclick = () => toggleDetalhesServico(s.id);
     detalhes.style.display = s.isExpanded ? 'block' : 'none';
     
-    // Se estiver fechado, não precisa renderizar o formulário pesado
     if (!s.isExpanded) return;
     
     // 3. RENDERIZAÇÃO DA LISTA DE PEÇAS (SEGURA)
@@ -3488,20 +3483,15 @@ function preencherDetalhesServico(s) {
         listaPecasHTML = '<p class="text-xs text-gray-400 italic p-2 text-center border border-dashed border-gray-200 rounded-lg">Nenhuma peça adicionada.</p>';
     }
     
-    // 4. PREPARAÇÃO DOS SELECTS
+    // 4. PREPARAÇÃO DOS SELECTS (Otimizado)
     const subsistemasAtuais = subsistemas[s.sistema] || [];
     
-    // Helpers para gerar options
-    const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}" ${s.frota === f.nome ? 'selected' : ''}>${f.nome}</option>`).join('');
-    const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}" ${s.atividade === a ? 'selected' : ''}>${a}</option>`).join('');
-    
+    const frotaOptions = '<option value="">Selecione</option>' + frotasTurno.map(f => `<option value="${f.nome}">${f.nome}</option>`).join('');
+    const atividadeOptions = '<option value="">Selecione</option>' + atividades.map(a => `<option value="${a}">${a}</option>`).join('');
     const sistemaOptions = '<option value="">Selecione</option>' + Object.entries(sistemas).map(([g, lst]) => 
-        `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}" ${s.sistema === sys.cod ? 'selected' : ''}>${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`
+        `<optgroup label="${g}">${lst.map(sys => `<option value="${sys.cod}">${sys.cod} - ${sys.nome}</option>`).join('')}</optgroup>`
     ).join('');
-    
-    const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => 
-        `<option value="${sub}" ${s.subsistema === sub ? 'selected' : ''}>${sub}</option>`
-    ).join('');
+    const subsistemaOptions = '<option value="">Selecione</option>' + subsistemasAtuais.map(sub => `<option value="${sub}">${sub}</option>`).join('');
     
     const inputClass = "mt-1 w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow";
     const labelClass = "block text-[10px] font-bold text-gray-500 uppercase mb-1";
@@ -3568,7 +3558,13 @@ function preencherDetalhesServico(s) {
         </div>
     </div>`;
     
-    // 6. VALIDAÇÃO DE TEMPO (UX)
+    // 6. ATRIBUIÇÃO NATIVA DOS VALORES DOS SELECTS DINÂMICOS
+    detalhes.querySelector(`select[data-field="frota"]`).value = s.frota || "";
+    detalhes.querySelector(`select[data-field="atividade"]`).value = s.atividade || "";
+    detalhes.querySelector(`select[data-field="sistema"]`).value = s.sistema || "";
+    detalhes.querySelector(`select[data-field="subsistema"]`).value = s.subsistema || "";
+    
+    // 7. VALIDAÇÃO DE TEMPO (UX)
     const inputFim = detalhes.querySelector(`#fim-${s.id}`);
     const inputDataFinal = detalhes.querySelector(`#dataFinal-${s.id}`);
     const servicoValidado = servicos.find(item => item.id === s.id);
@@ -3583,7 +3579,7 @@ function preencherDetalhesServico(s) {
         }
     }
     
-    // 7. ATIVAÇÃO DOS LISTENERS
+    // 8. ATIVAÇÃO DOS LISTENERS
     detalhes.querySelectorAll('input, select, textarea').forEach(el => { 
         el.addEventListener('change', handleServicoInputChange);
         el.addEventListener('input', handleServicoInputChange); 
@@ -3593,47 +3589,59 @@ function preencherDetalhesServico(s) {
         
         // MODIFICADO: Lida com a entrada de dados do serviço E aplica validação de tempo
         function handleServicoInputChange(event) { 
-            const el = event.target; 
-            const id = parseInt(el.dataset.id); 
-            const field = el.dataset.field; 
-            const servico = servicos.find(s => s.id === id); 
-            if (!servico) return; 
+    const el = event.target; 
+    const id = parseInt(el.dataset.id); 
+    const field = el.dataset.field; 
+    const servico = servicos.find(s => s.id === id); 
+    if (!servico) return; 
+    
+    servico[field] = el.value; 
+    el.classList.remove('campo-invalido'); 
+    
+    // [NOVO] Atualização cirúrgica do DOM para o Subsistema (Sem recriar todos os cards)
+    if (field === 'sistema') { 
+        servico.subsistema = ""; 
+        const selectSub = document.querySelector(`#servico_${id} select[data-field="subsistema"]`);
+        if (selectSub) {
+            const subsistemasAtuais = subsistemas[el.value] || [];
+            selectSub.innerHTML = '<option value="">Selecione</option>' + 
+                subsistemasAtuais.map(sub => `<option value="${sub}">${sub}</option>`).join('');
             
-            servico[field] = el.value; 
-            el.classList.remove('campo-invalido'); 
-            
-            if (field === 'sistema') { 
-                servico.subsistema = ""; 
-                renderizarServicos(); 
-            } 
-            
-            // NOVO BLOCO: Validação Imediata do Tempo
-            if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
-                const isValid = validarTempoServico(servico);
-                const inputFim = document.getElementById(`fim-${servico.id}`);
-                const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
-                
-                if (inputFim && inputDataFinal) {
-                    if (!isValid) {
-                        inputFim.classList.add('campo-invalido');
-                        inputDataFinal.classList.add('campo-invalido');
-                    } else {
-                        inputFim.classList.remove('campo-invalido');
-                        inputDataFinal.classList.remove('campo-invalido');
-                    }
-                }
-            }
-            
-            const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
-            if (camposQueAtualizamCabecalho.includes(field)) { 
-                const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
-                if (cabecalhoInfo) { 
-                    cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
-                } 
-            } 
-            
-            salvarTudo(); 
+            // Efeito visual sutil para indicar mudança
+            selectSub.classList.add('bg-blue-50', 'transition-colors');
+            setTimeout(() => selectSub.classList.remove('bg-blue-50'), 600);
         }
+    } 
+    
+    // Validação Imediata do Tempo
+    if (['data', 'inicio', 'dataFinal', 'fim'].includes(field)) {
+        const isValid = validarTempoServico(servico);
+        const inputFim = document.getElementById(`fim-${servico.id}`);
+        const inputDataFinal = document.getElementById(`dataFinal-${servico.id}`);
+        
+        if (inputFim && inputDataFinal) {
+            if (!isValid) {
+                inputFim.classList.add('campo-invalido');
+                inputDataFinal.classList.add('campo-invalido');
+            } else {
+                inputFim.classList.remove('campo-invalido');
+                inputDataFinal.classList.remove('campo-invalido');
+            }
+        }
+    }
+    
+    // Atualiza o cabeçalho dinamicamente
+    const camposQueAtualizamCabecalho = ['frota', 'atividade', 'sistema', 'subsistema', 'inicio', 'fim']; 
+    if (camposQueAtualizamCabecalho.includes(field)) { 
+        const cabecalhoInfo = document.querySelector(`#servico_${id} .servico-cabecalho-info`); 
+        if (cabecalhoInfo) { 
+            cabecalhoInfo.innerHTML = gerarTextoCabecalhoServico(servico); 
+        } 
+    } 
+    
+    salvarTudo(); 
+}
+
         function adicionarServico(dadosPreenchidos = null) { 
             if (!validarCamposTurnoBasicos()) return; 
             const id = Date.now(); 
@@ -3698,12 +3706,18 @@ function preencherDetalhesServico(s) {
                 return;
             }
             
-            const gerarTextoFinal = () => { 
-                const frente = document.getElementById("frente").value.trim() || "NÃO INFORMADA"; 
-                const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n') : "Equipe não informada."; 
-                const dataFormatada = formatarDataParaExibicao(servico.data); 
-                const dataFinalFormatada = formatarDataParaExibicao(servico.dataFinal); 
-
+            const gerarTextoFinal = () => {
+        // [NOVO] Busca de contexto à prova de falhas (DOM -> Cache -> Padrão)
+        let frente = document.getElementById("frente")?.value.trim();
+        if (!frente || frente === 'Carregando...') frente = localStorage.getItem('ctx_frente') || "NÃO INFORMADA";
+        
+        let turnoAtualOS = document.getElementById("turnoLetra")?.value;
+        if (!turnoAtualOS) turnoAtualOS = localStorage.getItem('ctx_turno') || "";
+        
+        const equipeTexto = equipe.length > 0 ? equipe.map(item => `${item.nome} - ${item.matricula}`).join('\n') : "Equipe não informada.";
+        const dataFormatada = formatarDataParaExibicao(servico.data);
+        const dataFinalFormatada = formatarDataParaExibicao(servico.dataFinal);
+        
                 // MODIFICADO: Geração da seção de Peças
                 let secaoPecas = '';
                 if (servico.pecasUtilizadas && servico.pecasUtilizadas.length > 0) {
