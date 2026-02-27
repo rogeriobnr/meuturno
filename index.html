@@ -2020,16 +2020,11 @@ function carregarEstado(dados) {
 // FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
 // ============================================================
 function salvarTudo(forcar = false) {
-    // --- CORREÇÃO CRÍTICA: TRAVA DE INICIALIZAÇÃO ---
-    // Impede que o app salve arrays vazios sobre o banco de dados 
-    // enquanto ainda está carregando as informações iniciais.
     if (!appCarregadoComSucesso && !forcar) {
         console.warn("⛔ Salvamento bloqueado: O app ainda está carregando os dados.");
         return;
     }
-    // ------------------------------------------------
 
-    // 1. Cancela o timer anterior para evitar sobreposição
     clearTimeout(debounceTimer);
 
     const executar = async () => {
@@ -2039,35 +2034,53 @@ function salvarTudo(forcar = false) {
                 await initDB();
             }
 
+            const timestampAtual = Date.now();
+            window.ultimoTimestampLocal = timestampAtual; // Atualiza relógio local
+
             const dados = {
                 id: TURNO_ATUAL_ID,
                 data: document.getElementById("dataTurno")?.value || dataHojeInputLocal(),
                 fazenda: document.getElementById("fazenda")?.value.trim() || '',
                 frente: document.getElementById("frente")?.value.trim() || '',
                 turno: document.getElementById("turnoLetra")?.value || '',
-                
-                // Garante que arrays nunca sejam nulos
                 equipe: Array.isArray(equipe) ? equipe : [],
                 frotas: Array.isArray(frotasTurno) ? frotasTurno : [],
                 servicos: Array.isArray(servicos) ? servicos : [],
-                
                 linhasApontamento: Array.isArray(linhasApontamento) ? linhasApontamento : [],
                 relatorio: document.getElementById("relatorio_bruto")?.value || '',
                 relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
-                
-                timestamp: Date.now()
+                timestamp: timestampAtual
             };
 
+            // 1. Salva sempre no IndexedDB (Modo Local/Offline)
             await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
             
-            // Salva Contexto Crítico no LocalStorage
             localStorage.setItem('ctx_fazenda', dados.fazenda);
             localStorage.setItem('ctx_frente', dados.frente);
             localStorage.setItem('ctx_turno', dados.turno);
 
+            // 2. Tenta espelhar Equipe e Frota na Nuvem atrelado à Frente/Turno
+            const idNuvem = obterIdTurnoNuvem();
+            if (idNuvem && navigator.onLine) {
+                const payloadNuvem = {
+                    id: idNuvem,
+                    frente: dados.frente,
+                    turno: dados.turno,
+                    equipe: dados.equipe,
+                    frotas: dados.frotas,
+                    timestamp: timestampAtual,
+                    atualizadoEm: new Date().toISOString()
+                };
+                
+                if (typeof firestore !== 'undefined') {
+                    firestore.collection('turnos_ativos').doc(idNuvem)
+                        .set(payloadNuvem, { merge: true })
+                        .catch(err => console.warn("Fila offline turno ativo:", err));
+                }
+            }
+
         } catch (err) {
             console.error("❌ Erro ao salvar dados:", err);
-            // Backup de emergência
             try {
                 localStorage.setItem('emergencia_equipe', JSON.stringify(equipe));
                 localStorage.setItem('emergencia_frotas', JSON.stringify(frotasTurno));
