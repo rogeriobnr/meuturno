@@ -2495,6 +2495,69 @@ function iniciarSincronizacaoAuxiliares() {
         }, (error) => tratarErroOffline(error, 'Frentes'));
 }
 
+// ============================================================
+// [NOVO] SINCRONIZAÇÃO EM TEMPO REAL: TURNO ATIVO (EQUIPE E FROTAS)
+// ============================================================
+
+let unsubscribeTurnoAtivo = null;
+
+function obterIdTurnoNuvem() {
+    const frente = document.getElementById('frente')?.value || localStorage.getItem('ctx_frente');
+    const turno = document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno');
+    if (!frente || !turno || frente === 'Carregando...' || frente === '') return null;
+    
+    // Gera um ID padronizado: ex: TURNO_ATIVO_MODULO_1_A
+    return `TURNO_ATIVO_${frente}_${turno}`.replace(/\s+/g, '_').toUpperCase();
+}
+
+function iniciarSincronizacaoTurnoAtivo() {
+    const idNuvem = obterIdTurnoNuvem();
+    if (!idNuvem) return;
+
+    if (unsubscribeTurnoAtivo) {
+        unsubscribeTurnoAtivo();
+        unsubscribeTurnoAtivo = null;
+    }
+
+    console.log(`📡 Ouvindo Equipe/Frotas do Turno Ativo: ${idNuvem}`);
+    
+    unsubscribeTurnoAtivo = firestore.collection('turnos_ativos').doc(idNuvem)
+        .onSnapshot((doc) => {
+            if (!db) return; // Trava de segurança
+            if (doc.metadata.hasPendingWrites) return; // Ignora eco local
+
+            if (doc.exists) {
+                const dadosNuvem = doc.data();
+                
+                // LWW (Last Write Wins): Só aceita se a nuvem for mais recente que a RAM
+                if (dadosNuvem.timestamp > (window.ultimoTimestampLocal || 0)) {
+                    console.log("☁️ Atualizando Equipe/Frota local com dados da Nuvem");
+                    
+                    equipe = dadosNuvem.equipe || [];
+                    frotasTurno = dadosNuvem.frotas || [];
+                    
+                    // Atualiza a interface visualmente se estiver na tela de turno
+                    if (document.getElementById('boxEquipe') && !document.getElementById('turno').classList.contains('hidden')) {
+                        renderizarEquipe();
+                        renderizarFrotasDoTurno();
+                    }
+                    
+                    // Salva a atualização silenciosamente no banco local
+                    dbExec(STORE_TURNO, 'readwrite', s => s.get(TURNO_ATUAL_ID)).then(turnoLocal => {
+                        if (turnoLocal) {
+                            turnoLocal.equipe = equipe;
+                            turnoLocal.frotas = frotasTurno;
+                            dbExec(STORE_TURNO, 'readwrite', s => s.put(turnoLocal));
+                        }
+                    });
+                    
+                    // Atualiza o relógio interno
+                    window.ultimoTimestampLocal = dadosNuvem.timestamp;
+                }
+            }
+        }, (error) => tratarErroOffline(error, 'Turno Ativo'));
+}
+
 
 // 2. Carrega do IndexedDB para a Tela
 async function carregarFazendasDoCache() {
