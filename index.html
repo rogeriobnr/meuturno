@@ -1948,6 +1948,10 @@ async function main() {
             if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
             if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
             if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
+            
+            // [NOVO] Ativa escuta da Equipe/Frotas do Turno do dia atual
+            if (typeof iniciarSincronizacaoTurnoAtivo === 'function') iniciarSincronizacaoTurnoAtivo();
+
 
             // 6. Garante que a seção atual está renderizada com dados completos
             let secaoInicial = localStorage.getItem('secaoAtiva') || 'turno';
@@ -2020,23 +2024,22 @@ function carregarEstado(dados) {
 // FIX DE PERSISTÊNCIA: SALVAMENTO OTIMIZADO (v2.1)
 // ============================================================
 function salvarTudo(forcar = false) {
-    // --- CORREÇÃO CRÍTICA: TRAVA DE INICIALIZAÇÃO ---
-    // Impede que o app salve arrays vazios sobre o banco de dados 
-    // enquanto ainda está carregando as informações iniciais.
     if (!appCarregadoComSucesso && !forcar) {
         console.warn("⛔ Salvamento bloqueado: O app ainda está carregando os dados.");
         return;
     }
-    // ------------------------------------------------
 
-    // 1. Cancela o timer anterior para evitar sobreposição
     clearTimeout(debounceTimer);
 
     const executar = async () => {
         try {
-            if (!db) { 
-                console.warn("⚠️ DB desconectado. Tentando reconectar...");
-                await initDB();
+            if (!db) await initDB();
+
+            const timestampAtual = Date.now();
+            
+            // Só atualiza o relógio se NÃO estivermos no meio de um download
+            if (!window.bloqueioSincronizacao) {
+                window.ultimoTimestampLocal = timestampAtual;
             }
 
             const dados = {
@@ -2045,29 +2048,44 @@ function salvarTudo(forcar = false) {
                 fazenda: document.getElementById("fazenda")?.value.trim() || '',
                 frente: document.getElementById("frente")?.value.trim() || '',
                 turno: document.getElementById("turnoLetra")?.value || '',
-                
-                // Garante que arrays nunca sejam nulos
                 equipe: Array.isArray(equipe) ? equipe : [],
                 frotas: Array.isArray(frotasTurno) ? frotasTurno : [],
                 servicos: Array.isArray(servicos) ? servicos : [],
-                
                 linhasApontamento: Array.isArray(linhasApontamento) ? linhasApontamento : [],
                 relatorio: document.getElementById("relatorio_bruto")?.value || '',
                 relatorioGeradoComServicos: document.getElementById("relatorio_snapshot")?.value || '[]',
-                
-                timestamp: Date.now()
+                timestamp: window.ultimoTimestampLocal || timestampAtual
             };
 
+            // 1. SEMPRE salva localmente (Offline)
             await dbExec(STORE_TURNO, 'readwrite', s => s.put(dados));
             
-            // Salva Contexto Crítico no LocalStorage
             localStorage.setItem('ctx_fazenda', dados.fazenda);
             localStorage.setItem('ctx_frente', dados.frente);
             localStorage.setItem('ctx_turno', dados.turno);
 
+            // 2. SÓ ENVIA PARA A NUVEM se a trava estiver desligada
+            const idNuvem = obterIdTurnoNuvem();
+            if (idNuvem && navigator.onLine && !window.bloqueioSincronizacao) {
+                const payloadNuvem = {
+                    id: idNuvem,
+                    frente: dados.frente,
+                    turno: dados.turno,
+                    equipe: dados.equipe,
+                    frotas: dados.frotas,
+                    timestamp: window.ultimoTimestampLocal,
+                    atualizadoEm: new Date().toISOString()
+                };
+                
+                if (typeof firestore !== 'undefined') {
+                    firestore.collection('turnos_ativos').doc(idNuvem)
+                        .set(payloadNuvem, { merge: true })
+                        .catch(err => console.warn("Fila offline turno ativo:", err));
+                }
+            }
+
         } catch (err) {
             console.error("❌ Erro ao salvar dados:", err);
-            // Backup de emergência
             try {
                 localStorage.setItem('emergencia_equipe', JSON.stringify(equipe));
                 localStorage.setItem('emergencia_frotas', JSON.stringify(frotasTurno));
@@ -2111,22 +2129,40 @@ function backupEmergenciaSincrono() {
     }
 }
 
-
- function salvarDadosParciaisTurno() { 
+function salvarDadosParciaisTurno() { 
     validarCamposTurnoBasicos(); 
     
-    // --- CORREÇÃO GENIUSES FIXER: Persistência Imediata ---
     const fazendaVal = document.getElementById("fazenda").value;
     const frenteVal = document.getElementById("frente").value;
     const turnoVal = document.getElementById("turnoLetra").value;
 
+    // --- PROTEÇÃO CONTRA VAZAMENTO DE CONTEXTO ---
+    // Verifica se a Frente ou o Turno foram alterados agora no dropdown
+    const frenteAntiga = localStorage.getItem('ctx_frente');
+    const turnoAntigo = localStorage.getItem('ctx_turno');
+
+    if ((frenteAntiga && frenteAntiga !== frenteVal) || (turnoAntigo && turnoAntigo !== turnoVal)) {
+        console.log("🔄 Mudança de Setor detectada. Limpando tela atual para não misturar dados.");
+        equipe = [];
+        frotasTurno = [];
+        if (document.getElementById('boxEquipe')) renderizarEquipe();
+        if (document.getElementById('listaFrotas')) renderizarFrotasDoTurno();
+    }
+    // ---------------------------------------------
+
+    // Salva o novo contexto
     if(fazendaVal) localStorage.setItem('ctx_fazenda', fazendaVal);
     if(frenteVal) localStorage.setItem('ctx_frente', frenteVal);
     if(turnoVal) localStorage.setItem('ctx_turno', turnoVal);
-    // ------------------------------------------------------
 
-    salvarTudo(); 
     atualizarCabecalhoContexto();
+    
+    // Dispara a busca (e possível criação) na nuvem
+    if (typeof iniciarSincronizacaoTurnoAtivo === 'function') {
+        iniciarSincronizacaoTurnoAtivo();
+    } else {
+        salvarTudo(true); 
+    }
 }
 
         // SUBSTITUIÇÃO: Esta é a função 'abrir' modificada para persistência de tela
@@ -2495,6 +2531,92 @@ function iniciarSincronizacaoAuxiliares() {
         }, (error) => tratarErroOffline(error, 'Frentes'));
 }
 
+// ============================================================
+// [NOVO] SINCRONIZAÇÃO EM TEMPO REAL: TURNO ATIVO (EQUIPE E FROTAS)
+// ============================================================
+
+let unsubscribeTurnoAtivo = null;
+
+function obterIdTurnoNuvem() {
+    const frente = document.getElementById('frente')?.value || localStorage.getItem('ctx_frente');
+    const turno = document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno');
+    if (!frente || !turno || frente === 'Carregando...' || frente === '') return null;
+    return `TURNO_ATIVO_${frente}_${turno}`.replace(/\s+/g, '_').toUpperCase();
+}
+
+async function iniciarSincronizacaoTurnoAtivo() {
+    const idNuvem = obterIdTurnoNuvem();
+    if (!idNuvem) return;
+
+    if (unsubscribeTurnoAtivo) {
+        unsubscribeTurnoAtivo();
+        unsubscribeTurnoAtivo = null;
+    }
+
+    console.log(`📡 Buscando dados da nuvem para: ${idNuvem}`);
+    
+    // 1. TRAVA DE SEGURANÇA: Bloqueia o celular de sobrescrever a nuvem
+    window.bloqueioSincronizacao = true;
+
+    // 2. LÊ DA NUVEM PRIMEIRO (Network-First)
+    if (navigator.onLine) {
+        try {
+            const doc = await firestore.collection('turnos_ativos').doc(idNuvem).get();
+            if (doc.exists) {
+                const dadosNuvem = doc.data();
+                console.log("☁️ Dados encontrados! Puxando da nuvem para o celular...");
+                
+                equipe = dadosNuvem.equipe || [];
+                frotasTurno = dadosNuvem.frotas || [];
+                window.ultimoTimestampLocal = dadosNuvem.timestamp;
+                
+                // Atualiza a interface com o que veio da nuvem
+                if (document.getElementById('boxEquipe')) renderizarEquipe();
+                if (document.getElementById('listaFrotas')) renderizarFrotasDoTurno();
+            } else {
+                // EXATAMENTE O QUE VOCÊ FALOU:
+                console.log("☁️ Nuvem vazia para este turno. O Celular empurrará os dados atuais para lá.");
+                // Não apagamos 'equipe' nem 'frotasTurno'. Mantemos o que está na RAM.
+            }
+        } catch (e) {
+            console.warn("⚠️ Sem rede para buscar. Usando dados locais.", e);
+        }
+    }
+
+    // 3. DESTRAVA E SALVA O QUE BAIOXOU NO BANCO LOCAL
+    window.bloqueioSincronizacao = false;
+    salvarTudo(true); 
+
+    // 4. LIGA O "RÁDIO" (Fica ouvindo as próximas mudanças de outros usuários)
+    unsubscribeTurnoAtivo = firestore.collection('turnos_ativos').doc(idNuvem)
+        .onSnapshot((doc) => {
+            if (!db || window.bloqueioSincronizacao) return;
+            if (doc.metadata.hasPendingWrites) return; 
+
+            if (doc.exists) {
+                const dadosNuvem = doc.data();
+                if (dadosNuvem.timestamp > (window.ultimoTimestampLocal || 0)) {
+                    console.log("☁️ Atualização de equipe/frota recebida!");
+                    equipe = dadosNuvem.equipe || [];
+                    frotasTurno = dadosNuvem.frotas || [];
+                    
+                    if (document.getElementById('boxEquipe')) renderizarEquipe();
+                    if (document.getElementById('listaFrotas')) renderizarFrotasDoTurno();
+                    
+                    window.ultimoTimestampLocal = dadosNuvem.timestamp;
+                    
+                    // Salva no IndexedDB silenciosamente
+                    dbExec(STORE_TURNO, 'readwrite', s => s.get(TURNO_ATUAL_ID)).then(turnoLocal => {
+                        if (turnoLocal) {
+                            turnoLocal.equipe = equipe;
+                            turnoLocal.frotas = frotasTurno;
+                            dbExec(STORE_TURNO, 'readwrite', s => s.put(turnoLocal));
+                        }
+                    });
+                }
+            }
+        }, (error) => tratarErroOffline(error, 'Turno Ativo'));
+}
 
 // 2. Carrega do IndexedDB para a Tela
 async function carregarFazendasDoCache() {
