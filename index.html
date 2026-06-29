@@ -22,6 +22,7 @@
     <script src="assets.js"></script>
 
     <script src="/libs/jspdf.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
     <script src="/libs/xlsx.js" defer></script>
     <script src="/libs/chart.js" defer></script>
 
@@ -6554,7 +6555,8 @@
         async function renderizarSecaoEstatisticas(container) {
             const statsFrente = (document.getElementById('statsFrente')?.value || document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL').trim().toUpperCase();
             const statsTurno = (document.getElementById('statsTurno')?.value || document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A').trim().toUpperCase();
-            const statsMaquina = document.getElementById('statsMaquina')?.value || '';
+            const statsMaquinaInput = document.getElementById('statsMaquina')?.value || '';
+            const statsMaquina = catalogoFrotas.some(f => f.nome === statsMaquinaInput && f.tipo === 'maquina') ? statsMaquinaInput : '';
 
             const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina');
             const totalHorasParadas = calcularHorasParadasCorretivasTotais();
@@ -6641,7 +6643,6 @@
             }
 
             // --- Dashboard por Máquina ---
-            const optsFrota = Array.isArray(frotasTurno) ? frotasTurno.filter(f => f.tipo === 'maquina').map(f => `<option value="${f.nome}" ${f.nome === statsMaquina ? 'selected' : ''}>${f.nome}</option>`).join('') : '';
             let maquinaDashboardHTML = '<p class="text-xs text-gray-400 text-center py-4">Selecione uma máquina para ver o dashboard.</p>';
             if (statsMaquina) {
                 try {
@@ -6660,7 +6661,7 @@
                         }).length;
                     }
 
-                    const maqOS = osFiltradas.filter(o => o.frota?.trim().toUpperCase() === statsMaquina);
+                    const maqOS = osHistorico.filter(o => o.frota?.trim().toUpperCase() === statsMaquina);
                     const osSemana = contarOS(maqOS, inicioSemana, fimSemana);
                     const osMes = contarOS(maqOS, inicioMes, fimMes);
                     const osAno = contarOS(maqOS, inicioAno, fimAno);
@@ -6677,9 +6678,7 @@
                         });
                         return items;
                     };
-                    const fichaItemsMaq = fichasMaq(fichasTodas.filter(r =>
-                        r.frente?.trim().toUpperCase() === statsFrente && r.turno?.trim().toUpperCase() === statsTurno
-                    ));
+                    const fichaItemsMaq = fichasMaq(fichasTodas);
                     const fichaSemana = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioSemana && d <= fimSemana; }).length;
                     const fichaMes = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioMes && d <= fimMes; }).length;
                     const fichaAno = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioAno && d <= fimAno; }).length;
@@ -6691,6 +6690,9 @@
                     // Turno breakdown (OS)
                     turnosOcorrencias = {};
                     maqOS.forEach(o => { turnosOcorrencias[o.turno] = (turnosOcorrencias[o.turno] || 0) + 1; });
+                    // Turnos de atuação (frente + turno)
+                    const turnosAtuacao = [...new Set(maqOS.map(o => `${o.frente}/${o.turno}`))].sort();
+                    const maqAtivaTurnoAtual = frotasTurno.some(f => f.nome === statsMaquina);
 
                     const tipoLabels = Object.keys(tipos);
                     const tipoData = Object.values(tipos);
@@ -6702,7 +6704,7 @@
                         if (typeof fichaCalcularDuracao === 'function') return s + fichaCalcularDuracao(i).horas;
                         return s;
                     }, 0);
-                    const planMaq = maquinasPrincipais.find(f => f.nome === statsMaquina);
+                    const planMaq = frotasTurno.find(f => f.nome === statsMaquina);
                     const horasPlanMaq = planMaq?.horas || 0;
                     const dmMaq = horasPlanMaq > 0 ? ((Math.max(0, horasPlanMaq - horasCorretivas) / horasPlanMaq) * 100).toFixed(2) : '--';
 
@@ -6752,7 +6754,7 @@
                                 <div class="text-center">
                                     <div class="text-xs text-gray-500 font-semibold">🔧 DM da Máquina</div>
                                     <div class="text-xl font-bold ${dmMaq !== '--' && parseFloat(dmMaq) >= 90 ? 'text-green-600' : 'text-red-600'}">${dmMaq !== '--' ? dmMaq + '%' : '--'}</div>
-                                    <div class="text-[10px] text-gray-400">Horas plan: ${horasPlanMaq}h | Corretivas: ${horasCorretivas.toFixed(2)}h</div>
+                                    <div class="text-[10px] text-gray-400">${maqAtivaTurnoAtual ? 'Horas plan: ' + horasPlanMaq + 'h | ' : 'Máquina não ativa neste turno | '}Corretivas: ${horasCorretivas.toFixed(2)}h</div>
                                 </div>
                                 <div class="text-center">
                                     <div class="text-xs text-gray-500 font-semibold">📋 Total Ocorrências (OS+Ficha)</div>
@@ -6760,6 +6762,10 @@
                                 </div>
                             </div>
                         </div>
+                        ${turnosAtuacao.length > 0 ? `<div class="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-3">
+                            <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Turnos de Atuação</h4>
+                            <div class="flex flex-wrap gap-1">${turnosAtuacao.map(ta => `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700">${ta}</span>`).join('')}</div>
+                        </div>` : ''}
                         ${tipoLabels.length > 0 ? `<div class="grid grid-cols-2 gap-2 mb-3"><div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">Por Tipo (O.S.)</h4><canvas id="estatsGraficoPizzaTipo"></canvas></div><div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">Por Turno (O.S.)</h4><canvas id="estatsGraficoPizzaTurno"></canvas></div></div>` : ''}
                         ${ultimos30.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">O.S. Últimos 30 Dias</h4><canvas id="estatsGraficoTimelineOS"></canvas></div>` : ''}
                     `;
@@ -6768,7 +6774,13 @@
 
             const secaoId = 'estatisticas';
             container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6">
-                <h2 class="text-2xl font-semibold text-blue-700 border-b pb-3 mb-6 text-center">📊 Estatísticas</h2>
+                <div class="flex items-center justify-between border-b pb-3 mb-6">
+                    <h2 class="text-2xl font-semibold text-blue-700">📊 Estatísticas</h2>
+                    <button onclick="exportarEstatisticasPDF()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-sm transition-colors active:scale-95 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Exportar PDF
+                    </button>
+                </div>
 
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <div>
@@ -6804,10 +6816,13 @@
                 <div class="p-4 border border-gray-200 rounded-lg">
                     <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">🔧 Dashboard por Máquina</h4>
                     <div class="mb-3">
-                        <select id="statsMaquina" onchange="renderizarSecaoEstatisticas(document.getElementById('${secaoId}'))" class="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white">
-                            <option value="">— Selecione uma máquina —</option>
-                            ${optsFrota}
-                        </select>
+                        <input id="statsMaquina" list="statsMaquinaList" placeholder="Buscar máquina no catálogo..."
+                               onchange="renderizarSecaoEstatisticas(document.getElementById('${secaoId}'))"
+                               class="w-full p-2 border border-gray-300 rounded-lg text-sm" autocomplete="off"
+                               value="${catalogoFrotas.some(f => f.nome === statsMaquina && f.tipo === 'maquina') ? statsMaquina : ''}">
+                        <datalist id="statsMaquinaList">
+                            ${catalogoFrotas.filter(f => f.tipo === 'maquina').map(f => `<option value="${f.nome}">${f.nome}</option>`).join('')}
+                        </datalist>
                     </div>
                     <div id="statsMaquinaConteudo">${maquinaDashboardHTML}</div>
                 </div>
@@ -6871,6 +6886,47 @@
                         options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
                     });
                 }
+            }
+        }
+        async function exportarEstatisticasPDF() {
+            const alvo = document.getElementById('estatisticas');
+            if (!alvo) return showToast("Seção de estatísticas não encontrada.", "error");
+            try {
+                showToast("Gerando PDF...", "info");
+                if (typeof html2canvas === 'undefined') {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                    await new Promise((res, rej) => { s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+                }
+                const canvas = await html2canvas(alvo, {
+                    scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false
+                });
+                if (!window.jspdf?.jsPDF) { showToast("Biblioteca PDF ausente.", "error"); return; }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                const pw = doc.internal.pageSize.getWidth();
+                const ph = doc.internal.pageSize.getHeight();
+                const ratio = canvas.height / canvas.width;
+                const totalImgH = pw * ratio;
+                if (totalImgH <= ph) {
+                    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, totalImgH);
+                } else {
+                    const paginas = Math.ceil(totalImgH / ph);
+                    for (let i = 0; i < paginas; i++) {
+                        if (i > 0) doc.addPage();
+                        const sy = (i / paginas) * canvas.height;
+                        const sh = canvas.height / paginas;
+                        const tmp = document.createElement('canvas');
+                        tmp.width = canvas.width; tmp.height = sh;
+                        tmp.getContext('2d').drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+                        doc.addImage(tmp.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, pw * (sh / canvas.width));
+                    }
+                }
+                doc.save(`Estatisticas_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+                showToast("PDF exportado!", "success");
+            } catch (e) {
+                console.error('Erro exportar PDF:', e);
+                showToast("Erro ao exportar PDF: " + e.message, "error");
             }
         }
         async function renderizarSecaoRelatorio(container) {
