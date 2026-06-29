@@ -9009,32 +9009,6 @@
      ===================================================================== -->
 
 
-    <!-- Modal Histórico de DM -->
-    <div id="modalHistoricoDM" class="fixed inset-0 z-[10004] hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharModalHistoricoDM()"></div>
-        <div class="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                <h3 class="text-base font-bold text-gray-800">📅 Histórico de DM</h3>
-                <button onclick="fecharModalHistoricoDM()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="overflow-y-auto flex-1 min-h-0 px-5 py-4">
-                <div class="flex items-center justify-between mb-4">
-                    <button onclick="navegarMesFicha(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                    </button>
-                    <span id="fichaMesLabel" class="text-sm font-bold text-gray-700"></span>
-                    <button onclick="navegarMesFicha(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                </div>
-                <div id="fichaCalendarioGrid" class="grid grid-cols-7 gap-1 text-center"></div>
-                <div id="fichaMesResumo" class="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 text-center"></div>
-            </div>
-        </div>
-    </div>
-
     <!-- =====================================================================
      MODAL: ADMIN DB
      ===================================================================== -->
@@ -9118,22 +9092,22 @@
         // --------------------------------
 
         function abrirModalHistoricoDM() {
-            document.getElementById('modalHistoricoDM').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+            const conteudo = '<div class="overflow-y-auto min-h-0 px-2 py-2" id="fichaPopupCalendario">' +
+                '<div class="flex items-center justify-between mb-4">' +
+                    '<button onclick="navegarMesFicha(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
+                        '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>' +
+                    '</button>' +
+                    '<span id="fichaMesLabel" class="text-sm font-bold text-gray-700"></span>' +
+                    '<button onclick="navegarMesFicha(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
+                        '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>' +
+                    '</button>' +
+                '</div>' +
+                '<div id="fichaCalendarioGrid" class="grid grid-cols-7 gap-1 text-center"></div>' +
+                '<div id="fichaMesResumo" class="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 text-center"></div>' +
+            '</div>';
+            abrirPopup('📅 Histórico de DM', conteudo, []);
             renderizarCalendarioFichas();
         }
-
-
-        function fecharModalHistoricoDM() {
-            document.getElementById('modalHistoricoDM').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        document.addEventListener('keydown', function fichaModalEscape(e) {
-            if (e.key === 'Escape' && !document.getElementById('modalHistoricoDM').classList.contains('hidden')) {
-                fecharModalHistoricoDM();
-            }
-        });
 
         function fichaSetTab(tab) {
             fichaTabAtual = tab;
@@ -9477,7 +9451,7 @@
         }
 
         async function fichaCarregarDia(dataStr) {
-            fecharModalHistoricoDM();
+            fecharPopup();
             const frente = (document.getElementById('frente')?.value?.trim()?.toUpperCase() || localStorage.getItem('ctx_frente') || 'GERAL');
             const turno = (document.getElementById('turnoLetra')?.value?.trim()?.toUpperCase() || localStorage.getItem('ctx_turno') || 'A');
             const idComp = `FICHA_${dataStr}_${frente}_${turno}`;
