@@ -232,7 +232,9 @@
         }
 
         @media (max-width: 439px) {
-            .grid-cols-2 { grid-template-columns: repeat(1, 1fr) !important; }
+            .grid-cols-2 {
+                grid-template-columns: repeat(1, 1fr) !important;
+            }
         }
 
         /* --- MENU LATERAL --- */
@@ -1954,7 +1956,7 @@
         // =================================================================================
 
         async function main() {
-            console.log("🚀 Main: Iniciando aplicação...");
+            console.log("🚀 Main: Iniciando aplicação... (build: 2026-06-29, SW: v7.2.5)");
 
             // Referência ao loader (Tela Azul)
             const loader = document.getElementById('app-loader');
@@ -2753,40 +2755,98 @@
         // 3. Funções de CRUD (Adicionar / Remover)
         // --- FAZENDAS ---
 
+        // --- Similaridade para evitar duplicatas ---
+        function normalizar(str) {
+            return str.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+        }
+        function levenshtein(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+                }
+            }
+            return dp[m][n];
+        }
+        function encontrarSimilar(lista, input) {
+            const norm = normalizar(input);
+            let melhor = null, menorDist = Infinity;
+            for (const item of lista) {
+                const dist = levenshtein(norm, normalizar(item.nome));
+                console.log('[Similar] vs', item.nome, 'dist:', dist);
+                if (dist < menorDist && dist > 0) { menorDist = dist; melhor = item; }
+            }
+            const maxLen = Math.max(norm.length, melhor ? normalizar(melhor.nome).length : 0);
+            const threshold = Math.max(2, Math.floor(maxLen * 0.25));
+            console.log('[Similar] melhor:', melhor?.nome, 'menorDist:', menorDist, 'threshold:', threshold);
+            if (melhor && menorDist <= threshold) return melhor;
+            return null;
+        }
+
         function adicionarNovaFazenda(callbackSucesso = null) {
             abrirPopupInput('Nova Fazenda', 'Nome:', 'Ex: FAZENDA SANTA MARIA', '', (nome) => {
                 if (!nome) return;
-                const nomeUpper = nome.trim().toUpperCase();
+                const nomeUpper = normalizar(nome);
+                console.log('[Similar] Input normalizado:', nomeUpper, 'Total fazendas:', listaFazendas.length);
 
-                // 1. Validação Local
-                if (listaFazendas.some(f => f.nome === nomeUpper)) {
-                    showToast("Esta fazenda já existe.", "error");
+                const existente = listaFazendas.find(f => normalizar(f.nome) === nomeUpper);
+                if (existente) {
+                    console.log('[Similar] Exact match:', existente.nome);
+                    if (document.getElementById('fazenda')) {
+                        document.getElementById('fazenda').value = existente.nome;
+                    }
+                    showToast("Fazenda já existe. Selecionada.", "info");
+                    if (callbackSucesso) callbackSucesso(existente.nome);
+                    else salvarDadosParciaisTurno();
                     return;
                 }
 
-                // 2. Nuvem (Fire and Forget)
-                const novoItem = { nome: nomeUpper };
-                firestore.collection('lista_fazendas').add(novoItem).catch(() => { });
-
-                // 3. Atualização Otimista (RAM)
-                // Adiciona com ID temporário para aparecer na hora
-                const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
-                listaFazendas.push(itemLocal);
-                listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
-
-                // 4. Salva no IndexedDB (Pra não sumir no F5)
-                dbExec(STORE_FAZENDAS, 'readwrite', s => s.put(itemLocal));
-
-                // 5. Atualiza UI
-                showToast("Fazenda adicionada!", "success");
-                if (document.getElementById('fazenda')) {
-                    atualizarSelectGenerico('fazenda', listaFazendas);
-                    document.getElementById('fazenda').value = nomeUpper;
+                const similar = encontrarSimilar(listaFazendas, nome);
+                console.log('[Similar] Resultado encontrarSimilar:', similar);
+                if (similar) {
+                    setTimeout(() => abrirPopup('Nome similar encontrado',
+                        '<p class="text-sm text-gray-600 text-center">Você quis dizer <strong>' + similar.nome + '</strong>? Esta fazenda já existe.</p>',
+                        [
+                            {
+                                texto: 'Sim, usar \n"' + similar.nome + '"', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
+                                    if (document.getElementById('fazenda')) {
+                                        document.getElementById('fazenda').value = similar.nome;
+                                    }
+                                    if (callbackSucesso) callbackSucesso(similar.nome);
+                                    else salvarDadosParciaisTurno();
+                                }
+                            },
+                            {
+                                texto: 'Não, usar "' + nomeUpper + '"', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => {
+                                    criarFazenda(nomeUpper, callbackSucesso);
+                                }
+                            }
+                        ]
+                    ), 0);
+                    return;
                 }
 
-                if (callbackSucesso) callbackSucesso(nomeUpper);
-                else salvarDadosParciaisTurno();
+                criarFazenda(nomeUpper, callbackSucesso);
             });
+        }
+
+        function criarFazenda(nomeUpper, callbackSucesso) {
+            const novoItem = { nome: nomeUpper };
+            firestore.collection('lista_fazendas').add(novoItem).catch(() => { });
+            const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
+            listaFazendas.push(itemLocal);
+            listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+            dbExec(STORE_FAZENDAS, 'readwrite', s => s.put(itemLocal));
+            showToast("Fazenda adicionada!", "success");
+            if (document.getElementById('fazenda')) {
+                atualizarSelectGenerico('fazenda', listaFazendas);
+                document.getElementById('fazenda').value = nomeUpper;
+            }
+            if (callbackSucesso) callbackSucesso(nomeUpper);
+            else salvarDadosParciaisTurno();
         }
 
         function removerFazendaSelecionada() {
@@ -2825,31 +2885,64 @@
         function adicionarNovaFrente(callbackSucesso = null) {
             abrirPopupInput('Nova Frente', 'Nome:', 'Ex: MÓDULO 1', '', (nome) => {
                 if (!nome) return;
-                const nomeUpper = nome.trim().toUpperCase();
+                const nomeUpper = normalizar(nome);
+                console.log('[Similar] Input normalizado:', nomeUpper, 'Total frentes:', listaFrentes.length);
 
-                if (listaFrentes.some(f => f.nome === nomeUpper)) {
-                    showToast("Esta frente já existe.", "error");
+                const existente = listaFrentes.find(f => normalizar(f.nome) === nomeUpper);
+                if (existente) {
+                    console.log('[Similar] Exact match frente:', existente.nome);
+                    if (document.getElementById('frente')) {
+                        document.getElementById('frente').value = existente.nome;
+                    }
+                    showToast("Frente já existe. Selecionada.", "info");
+                    if (callbackSucesso) callbackSucesso(existente.nome);
+                    else salvarDadosParciaisTurno();
                     return;
                 }
 
-                const novoItem = { nome: nomeUpper };
-                firestore.collection('lista_frentes').add(novoItem).catch(() => { });
-
-                const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
-                listaFrentes.push(itemLocal);
-                listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
-
-                dbExec(STORE_FRENTES, 'readwrite', s => s.put(itemLocal));
-
-                showToast("Frente adicionada!", "success");
-                if (document.getElementById('frente')) {
-                    atualizarSelectGenerico('frente', listaFrentes);
-                    document.getElementById('frente').value = nomeUpper;
+                const similar = encontrarSimilar(listaFrentes, nome);
+                console.log('[Similar] Resultado encontrarSimilar frente:', similar);
+                if (similar) {
+                    setTimeout(() => abrirPopup('Nome similar encontrado',
+                        '<p class="text-sm text-gray-600 text-center">Você quis dizer <strong>' + similar.nome + '</strong>? Esta frente já existe.</p>',
+                        [
+                            {
+                                texto: 'Sim, usar "' + similar.nome + '"', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
+                                    if (document.getElementById('frente')) {
+                                        document.getElementById('frente').value = similar.nome;
+                                    }
+                                    if (callbackSucesso) callbackSucesso(similar.nome);
+                                    else salvarDadosParciaisTurno();
+                                }
+                            },
+                            {
+                                texto: 'Não, usar "' + nomeUpper + '"', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => {
+                                    criarFrente(nomeUpper, callbackSucesso);
+                                }
+                            }
+                        ]
+                    ), 0);
+                    return;
                 }
 
-                if (callbackSucesso) callbackSucesso(nomeUpper);
-                else salvarDadosParciaisTurno();
+                criarFrente(nomeUpper, callbackSucesso);
             });
+        }
+
+        function criarFrente(nomeUpper, callbackSucesso) {
+            const novoItem = { nome: nomeUpper };
+            firestore.collection('lista_frentes').add(novoItem).catch(() => { });
+            const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
+            listaFrentes.push(itemLocal);
+            listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
+            dbExec(STORE_FRENTES, 'readwrite', s => s.put(itemLocal));
+            showToast("Frente adicionada!", "success");
+            if (document.getElementById('frente')) {
+                atualizarSelectGenerico('frente', listaFrentes);
+                document.getElementById('frente').value = nomeUpper;
+            }
+            if (callbackSucesso) callbackSucesso(nomeUpper);
+            else salvarDadosParciaisTurno();
         }
 
         function removerFrenteSelecionada() {
@@ -6676,11 +6769,12 @@
                 });
             }
             const dataTurno = document.getElementById('dataTurno')?.value || '';
-            ['fichaDataIni','fichaDataFim','fichaDeslocDataIni','fichaDeslocDataFim'].forEach(id => {
+            ['fichaDataIni', 'fichaDataFim', 'fichaDeslocDataIni', 'fichaDeslocDataFim'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = dataTurno;
             });
             await carregarFichaMecanicoDB();
+            sincronizarFichaMecanicoCloud(); // fire-and-forget
             fichaRenderizarLista();
         }
 
@@ -6950,19 +7044,23 @@
             const conteudo = `<label for="admin-password-input" class="block text-sm font-medium text-gray-700 mb-1">Digite a senha de admin:</label>
 <input type="password" id="admin-password-input" class="w-full p-2 border border-gray-300 rounded-md" placeholder="********" autofocus>`;
             abrirPopup('Acesso Administrativo', conteudo, [
-                { texto: 'Confirmar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
-                    const senha = document.getElementById('admin-password-input').value;
-                    if (senha !== adminGetSenha()) { showToast('Senha incorreta.', 'error'); return false; }
-                    document.getElementById('modalAdminDB').classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                    adminSetTab('idx');
-                }},
-                { texto: '🔑 Esqueci a senha', classe: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', acao: () => {
-                    fecharPopup();
-                    setTimeout(adminRecuperarSenha, 0);
-                    return false;
-                }},
-                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => {}}
+                {
+                    texto: 'Confirmar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
+                        const senha = document.getElementById('admin-password-input').value;
+                        if (senha !== adminGetSenha()) { showToast('Senha incorreta.', 'error'); return false; }
+                        document.getElementById('modalAdminDB').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        adminSetTab('idx');
+                    }
+                },
+                {
+                    texto: '🔑 Esqueci a senha', classe: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', acao: () => {
+                        fecharPopup();
+                        setTimeout(adminRecuperarSenha, 0);
+                        return false;
+                    }
+                },
+                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => { } }
             ]);
             setTimeout(() => document.getElementById('admin-password-input')?.focus(), 50);
         }
@@ -6988,17 +7086,19 @@
                 </div>
             </div>`;
             abrirPopup('🔑 Alterar Senha', conteudo, [
-                { texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
-                    const atual = document.getElementById('alt-senha-atual').value;
-                    const nova = document.getElementById('alt-senha-nova').value;
-                    const confirm = document.getElementById('alt-senha-confirm').value;
-                    if (atual !== adminGetSenha()) { showToast('Senha atual incorreta.', 'error'); return false; }
-                    if (nova.length < 4) { showToast('A nova senha deve ter pelo menos 4 caracteres.', 'error'); return false; }
-                    if (nova !== confirm) { showToast('As senhas não coincidem.', 'error'); return false; }
-                    adminSetSenha(nova);
-                    showToast('Senha alterada com sucesso!', 'success');
-                }},
-                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => {}}
+                {
+                    texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
+                        const atual = document.getElementById('alt-senha-atual').value;
+                        const nova = document.getElementById('alt-senha-nova').value;
+                        const confirm = document.getElementById('alt-senha-confirm').value;
+                        if (atual !== adminGetSenha()) { showToast('Senha atual incorreta.', 'error'); return false; }
+                        if (nova.length < 4) { showToast('A nova senha deve ter pelo menos 4 caracteres.', 'error'); return false; }
+                        if (nova !== confirm) { showToast('As senhas não coincidem.', 'error'); return false; }
+                        adminSetSenha(nova);
+                        showToast('Senha alterada com sucesso!', 'success');
+                    }
+                },
+                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => { } }
             ]);
             setTimeout(() => document.getElementById('alt-senha-atual')?.focus(), 50);
         }
@@ -7027,8 +7127,8 @@
                 abrirPopup('📧 Email Enviado',
                     '<p class="text-sm text-gray-600 text-center">Uma senha temporária foi enviada para <strong>' + destino + '</strong>.</p>' +
                     '<p class="text-xs text-gray-400 text-center mt-2">Verifique sua caixa de entrada ou spam. Use a nova senha para acessar o painel Admin.</p>',
-                    [{ texto: 'OK, entendi', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {}}
-                ]);
+                    [{ texto: 'OK, entendi', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => { } }
+                    ]);
             }).catch((err) => {
                 console.error('EmailJS error:', err);
                 showToast('Erro ao enviar email: ' + (err.text || err.message || 'desconhecido'), 'error');
@@ -7046,36 +7146,40 @@
                 '<div><label class="block text-sm font-medium text-gray-700 mb-1">Service ID</label><input type="text" id="cfg-sid" class="w-full p-2 border border-gray-300 rounded-md text-xs" value="' + sid + '" placeholder="ex: service_xxxxxxx"></div>' +
                 '<div><label class="block text-sm font-medium text-gray-700 mb-1">Template ID</label><input type="text" id="cfg-tid" class="w-full p-2 border border-gray-300 rounded-md text-xs" value="' + tid + '" placeholder="ex: template_xxxxxxx"></div>' +
                 '<div><label class="block text-sm font-medium text-gray-700 mb-1">Email de destino</label><input type="email" id="cfg-dest" class="w-full p-2 border border-gray-300 rounded-md text-xs" value="' + dest + '"></div>' +
-            '</div>';
+                '</div>';
             abrirPopup('📧 Configurar Email', conteudo, [
-                { texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
-                    emailSetConfig('public_key', document.getElementById('cfg-pk').value.trim());
-                    emailSetConfig('service_id', document.getElementById('cfg-sid').value.trim());
-                    emailSetConfig('template_id', document.getElementById('cfg-tid').value.trim());
-                    emailSetConfig('destino', document.getElementById('cfg-dest').value.trim());
-                    showToast('Configurações salvas!', 'success');
-                }},
-                { texto: 'Testar envio', classe: 'bg-green-600 text-white hover:bg-green-700', acao: () => {
-                    const pk = document.getElementById('cfg-pk').value.trim();
-                    const sid = document.getElementById('cfg-sid').value.trim();
-                    const tid = document.getElementById('cfg-tid').value.trim();
-                    const dest = document.getElementById('cfg-dest').value.trim();
-                    if (!pk || !sid || !tid || !dest) { showToast('Preencha todos os campos.', 'error'); return false; }
-                    emailjs.init(pk);
-                    emailjs.send(sid, tid, {
-                        to_name: 'Admin',
-                        to_email: dest,
-                        subject: 'Teste - Meu Turno',
-                        message: 'Este é um email de teste da configuração do Meu Turno.',
-                        senha_temporaria: ''
-                    }).then(() => {
-                        showToast('Email de teste enviado com sucesso!', 'success');
-                    }).catch((err) => {
-                        showToast('Erro: ' + (err.text || err.message || 'desconhecido'), 'error');
-                    });
-                    return false;
-                }},
-                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => {}}
+                {
+                    texto: 'Salvar', classe: 'bg-blue-600 text-white hover:bg-blue-700', acao: () => {
+                        emailSetConfig('public_key', document.getElementById('cfg-pk').value.trim());
+                        emailSetConfig('service_id', document.getElementById('cfg-sid').value.trim());
+                        emailSetConfig('template_id', document.getElementById('cfg-tid').value.trim());
+                        emailSetConfig('destino', document.getElementById('cfg-dest').value.trim());
+                        showToast('Configurações salvas!', 'success');
+                    }
+                },
+                {
+                    texto: 'Testar envio', classe: 'bg-green-600 text-white hover:bg-green-700', acao: () => {
+                        const pk = document.getElementById('cfg-pk').value.trim();
+                        const sid = document.getElementById('cfg-sid').value.trim();
+                        const tid = document.getElementById('cfg-tid').value.trim();
+                        const dest = document.getElementById('cfg-dest').value.trim();
+                        if (!pk || !sid || !tid || !dest) { showToast('Preencha todos os campos.', 'error'); return false; }
+                        emailjs.init(pk);
+                        emailjs.send(sid, tid, {
+                            to_name: 'Admin',
+                            to_email: dest,
+                            subject: 'Teste - Meu Turno',
+                            message: 'Este é um email de teste da configuração do Meu Turno.',
+                            senha_temporaria: ''
+                        }).then(() => {
+                            showToast('Email de teste enviado com sucesso!', 'success');
+                        }).catch((err) => {
+                            showToast('Erro: ' + (err.text || err.message || 'desconhecido'), 'error');
+                        });
+                        return false;
+                    }
+                },
+                { texto: 'Cancelar', classe: 'bg-gray-300 text-gray-800 hover:bg-gray-400', acao: () => { } }
             ]);
             setTimeout(() => document.getElementById('cfg-pk')?.focus(), 50);
         }
@@ -7110,13 +7214,13 @@
                                 </div>
                             </div>
                             ${qtd > 0 ? `<div class="text-xs text-gray-500 mt-1 max-h-32 overflow-y-auto space-y-1 border-t border-gray-200 pt-1">${dados.slice(0, 50).map(d => {
-                                const chave = d[store.key] || '(sem chave)';
-                                const json = JSON.stringify(d).slice(0, 200);
-                                return `<div class="flex items-start gap-1 hover:bg-white rounded p-1">
+                            const chave = d[store.key] || '(sem chave)';
+                            const json = JSON.stringify(d).slice(0, 200);
+                            return `<div class="flex items-start gap-1 hover:bg-white rounded p-1">
                                     <code class="text-[10px] text-gray-600 break-all flex-1">${escapeHtml(json)}</code>
                                     <button onclick='adminDeletarDoc("${store.name}","${store.key}","${encodeURIComponent(String(chave))}")' class="text-red-400 hover:text-red-600 shrink-0 text-xs">✕</button>
                                 </div>`;
-                            }).join('')}</div>` : '<div class="text-xs text-gray-400 italic mt-1">Vazio</div>'}
+                        }).join('')}</div>` : '<div class="text-xs text-gray-400 italic mt-1">Vazio</div>'}
                         </div>`;
                     } catch (e) {
                         html += `<div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">Erro ao ler ${store.label}: ${e.message}</div>`;
@@ -7142,12 +7246,12 @@
                                     </div>
                                 </div>
                                 ${qtd > 0 ? `<div class="text-xs text-gray-500 mt-1 max-h-32 overflow-y-auto space-y-1 border-t border-gray-200 pt-1">${docs.map(d => {
-                                    const json = JSON.stringify(d.data).slice(0, 200);
-                                    return `<div class="flex items-start gap-1 hover:bg-white rounded p-1">
+                                const json = JSON.stringify(d.data).slice(0, 200);
+                                return `<div class="flex items-start gap-1 hover:bg-white rounded p-1">
                                         <code class="text-[10px] text-gray-600 break-all flex-1">${escapeHtml(json)}</code>
                                         <button onclick='adminDeletarDocFB("${col.name}","${encodeURIComponent(d.id)}")' class="text-red-400 hover:text-red-600 shrink-0 text-xs">✕</button>
                                     </div>`;
-                                }).join('')}</div>` : '<div class="text-xs text-gray-400 italic mt-1">Vazio</div>'}
+                            }).join('')}</div>` : '<div class="text-xs text-gray-400 italic mt-1">Vazio</div>'}
                             </div>`;
                         } catch (e) {
                             html += `<div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">Erro ao ler ${col.label}: ${e.message}</div>`;
@@ -9023,7 +9127,9 @@
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <h3 class="text-base font-bold text-gray-800">🛡️ Admin — Banco de Dados</h3>
                 <button onclick="fecharAdminDB()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
             <div class="overflow-y-auto flex-1 min-h-0 px-5 py-4">
@@ -9060,7 +9166,24 @@
         async function carregarFichaMecanicoDB() {
             try {
                 const idComposto = gerarIdCompostoFicha();
-                const registro = await dbExec('fichaMecanico', 'readonly', s => s.get(idComposto));
+                let registro = await dbExec('fichaMecanico', 'readonly', s => s.get(idComposto));
+
+                if (navigator.onLine && typeof firestore !== 'undefined') {
+                    try {
+                        const doc = await firestore.collection('ficha_mecanico_cloud').doc(idComposto).get();
+                        if (doc.exists) {
+                            const cloudReg = doc.data();
+                            if (!registro || (cloudReg.atualizadoEm > registro.atualizadoEm)) {
+                                if (!cloudReg.id_composto) cloudReg.id_composto = idComposto;
+                                await dbExec('fichaMecanico', 'readwrite', s => s.put(cloudReg));
+                                registro = cloudReg;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("Falha nuvem ficha (ignorado):", err);
+                    }
+                }
+
                 fichaItems = (registro && Array.isArray(registro.itens)) ? registro.itens : [];
             } catch (e) {
                 console.warn('Erro ao carregar ficha mecânico:', e);
@@ -9078,6 +9201,10 @@
                 let turno = document.getElementById('turnoLetra')?.value?.trim() || localStorage.getItem('ctx_turno') || 'A';
                 if (!Array.isArray(fichaItems) || fichaItems.length === 0) {
                     await dbExec('fichaMecanico', 'readwrite', s => s.delete(idComposto));
+                    if (typeof firestore !== 'undefined') {
+                        firestore.collection('ficha_mecanico_cloud').doc(idComposto)
+                            .delete().catch(err => console.warn("Fila offline ficha delete:", err));
+                    }
                     return;
                 }
                 const registro = {
@@ -9089,8 +9216,33 @@
                     atualizadoEm: new Date().toISOString()
                 };
                 await dbExec('fichaMecanico', 'readwrite', s => s.put(registro));
+                if (typeof firestore !== 'undefined') {
+                    firestore.collection('ficha_mecanico_cloud').doc(idComposto)
+                        .set(registro, { merge: true })
+                        .catch(err => console.warn("Fila offline ficha:", err));
+                }
             } catch (e) {
                 console.warn('Erro ao salvar ficha mecânico:', e);
+            }
+        }
+
+        async function sincronizarFichaMecanicoCloud() {
+            if (!navigator.onLine || typeof firestore === 'undefined') return;
+            try {
+                const snap = await firestore.collection('ficha_mecanico_cloud').get();
+                let count = 0;
+                for (const doc of snap.docs) {
+                    const cloudReg = doc.data();
+                    if (!cloudReg.id_composto) continue;
+                    const localReg = await dbExec('fichaMecanico', 'readonly', s => s.get(cloudReg.id_composto));
+                    if (!localReg || (cloudReg.atualizadoEm > localReg.atualizadoEm)) {
+                        await dbExec('fichaMecanico', 'readwrite', s => s.put(cloudReg));
+                        count++;
+                    }
+                }
+                if (count > 0) console.log(`☁️ Ficha Mecânico: ${count} registros sincronizados da nuvem.`);
+            } catch (err) {
+                console.warn("Falha na sincronização em massa da ficha:", err);
             }
         }
         // --------------------------------
@@ -9098,17 +9250,17 @@
         function abrirModalHistoricoDM() {
             const conteudo = '<div class="overflow-y-auto min-h-0 px-2 py-2" id="fichaPopupCalendario">' +
                 '<div class="flex items-center justify-between mb-4">' +
-                    '<button onclick="navegarMesFicha(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
-                        '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>' +
-                    '</button>' +
-                    '<span id="fichaMesLabel" class="text-sm font-bold text-gray-700"></span>' +
-                    '<button onclick="navegarMesFicha(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
-                        '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>' +
-                    '</button>' +
+                '<button onclick="navegarMesFicha(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
+                '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>' +
+                '</button>' +
+                '<span id="fichaMesLabel" class="text-sm font-bold text-gray-700"></span>' +
+                '<button onclick="navegarMesFicha(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors">' +
+                '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>' +
+                '</button>' +
                 '</div>' +
                 '<div id="fichaCalendarioGrid" class="grid grid-cols-7 gap-1 text-center"></div>' +
                 '<div id="fichaMesResumo" class="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 text-center"></div>' +
-            '</div>';
+                '</div>';
             abrirPopup('📅 Histórico de DM', conteudo, []);
             renderizarCalendarioFichas();
         }
@@ -9460,14 +9612,31 @@
             const turno = (document.getElementById('turnoLetra')?.value?.trim()?.toUpperCase() || localStorage.getItem('ctx_turno') || 'A');
             const idComp = `FICHA_${dataStr}_${frente}_${turno}`;
             try {
-                const registro = await dbExec('fichaMecanico', 'readonly', s => s.get(idComp));
+                let registro = await dbExec('fichaMecanico', 'readonly', s => s.get(idComp));
+
+                if (navigator.onLine && typeof firestore !== 'undefined') {
+                    try {
+                        const doc = await firestore.collection('ficha_mecanico_cloud').doc(idComp).get();
+                        if (doc.exists) {
+                            const cloudReg = doc.data();
+                            if (!registro || (cloudReg.atualizadoEm > registro.atualizadoEm)) {
+                                if (!cloudReg.id_composto) cloudReg.id_composto = idComp;
+                                await dbExec('fichaMecanico', 'readwrite', s => s.put(cloudReg));
+                                registro = cloudReg;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("Falha nuvem fichaCarregarDia (ignorado):", err);
+                    }
+                }
+
                 fichaItems = (registro && Array.isArray(registro.itens)) ? JSON.parse(JSON.stringify(registro.itens)) : [];
             } catch (e) {
                 console.warn('Erro ao carregar ficha do dia:', e);
                 fichaItems = [];
             }
             fichaRenderizarLista();
-            ['fichaDataIni','fichaDataFim','fichaDeslocDataIni','fichaDeslocDataFim'].forEach(id => {
+            ['fichaDataIni', 'fichaDataFim', 'fichaDeslocDataIni', 'fichaDeslocDataFim'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = dataStr;
             });
@@ -9481,13 +9650,13 @@
 
             const frenteAtual = (document.getElementById('frente')?.value?.trim()?.toUpperCase() || localStorage.getItem('ctx_frente') || 'GERAL');
             const turnoAtual = (document.getElementById('turnoLetra')?.value?.trim()?.toUpperCase() || localStorage.getItem('ctx_turno') || 'A');
-            const prefixo = `FICHA_${fichaCalendarioAno}-${String(fichaCalendarioMes).padStart(2,'0')}`;
+            const prefixo = `FICHA_${fichaCalendarioAno}-${String(fichaCalendarioMes).padStart(2, '0')}`;
 
             document.getElementById('fichaMesLabel').textContent =
-                `${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][fichaCalendarioMes-1]} ${fichaCalendarioAno}`;
+                `${['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][fichaCalendarioMes - 1]} ${fichaCalendarioAno}`;
 
             const grid = document.getElementById('fichaCalendarioGrid');
-            grid.innerHTML = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="text-xs font-bold text-gray-400 py-1">${d}</div>`).join('');
+            grid.innerHTML = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => `<div class="text-xs font-bold text-gray-400 py-1">${d}</div>`).join('');
 
             try {
                 const todos = await dbExec('fichaMecanico', 'readonly', s => s.getAll());
@@ -9510,7 +9679,7 @@
                 for (let i = 0; i < primeiroDiaSem; i++) grid.innerHTML += `<div class="p-1"></div>`;
                 for (let d = 1; d <= diasNoMes; d++) {
                     const diaStr = String(d).padStart(2, '0');
-                    const dataStr = `${fichaCalendarioAno}-${String(fichaCalendarioMes).padStart(2,'0')}-${diaStr}`;
+                    const dataStr = `${fichaCalendarioAno}-${String(fichaCalendarioMes).padStart(2, '0')}-${diaStr}`;
                     const registro = fichasPorDia[diaStr];
                     const temItens = Array.isArray(registro?.itens) && registro.itens.length > 0;
                     const dm = temItens ? calcularDMFicha(registro.itens) : null;
