@@ -6552,16 +6552,166 @@
         // (Cole aqui o restante das funções: renderizarEstatisticas, Relatorio, Config, etc)
 
 
-        function debounceRenderizarEstatisticas(secaoId) {
+        function debounceRenderizarEstatisticas() {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => renderizarSecaoEstatisticas(document.getElementById(secaoId)), 400);
+            debounceTimer = setTimeout(renderizarDashboardFrota, 800);
+        }
+        async function renderizarDashboardFrota() {
+            const conteudo = document.getElementById('statsMaquinaConteudo');
+            const input = document.getElementById('statsMaquina');
+            if (!conteudo || !input) return;
+            const nome = input.value || '';
+            const frota = catalogoFrotas.find(f => f.nome === nome);
+            if (!frota) {
+                conteudo.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Selecione uma frota para ver o dashboard.</p>';
+                if (window.estatsGraficoPizzaTipo) { try { window.estatsGraficoPizzaTipo.destroy(); } catch(e) {} window.estatsGraficoPizzaTipo = null; }
+                if (window.estatsGraficoPizzaFichaTipo) { try { window.estatsGraficoPizzaFichaTipo.destroy(); } catch(e) {} window.estatsGraficoPizzaFichaTipo = null; }
+                if (window.estatsGraficoPizzaTurno) { try { window.estatsGraficoPizzaTurno.destroy(); } catch(e) {} window.estatsGraficoPizzaTurno = null; }
+                if (window.estatsGraficoTimelineOS) { try { window.estatsGraficoTimelineOS.destroy(); } catch(e) {} window.estatsGraficoTimelineOS = null; }
+                return;
+            }
+            try {
+                const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
+                const fichasTodas = await dbExec('fichaMecanico', 'readonly', s => s.getAll());
+                const statsFrente = (document.getElementById('statsFrente')?.value || localStorage.getItem('ctx_frente') || 'GERAL').trim().toUpperCase();
+                const statsTurno = (document.getElementById('statsTurno')?.value || localStorage.getItem('ctx_turno') || 'A').trim().toUpperCase();
+
+                const agora = new Date();
+                const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - agora.getDay()); inicioSemana.setHours(0,0,0,0);
+                const fimSemana = new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate() + 6);
+                const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+                const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+                const inicioAno = new Date(agora.getFullYear(), 0, 1);
+                const fimAno = new Date(agora.getFullYear(), 11, 31);
+
+                const maqOS = osHistorico.filter(o => o.frota?.trim().toUpperCase() === nome);
+                const fichasMaq = f => { const i = []; f.forEach(r => { if (Array.isArray(r.itens)) r.itens.forEach(item => { if (item.frota?.trim().toUpperCase() === nome) i.push({ ...item, data: r.data }); }); }); return i; };
+                const fichaItemsMaq = fichasMaq(fichasTodas);
+
+                const contarOS = (r, di, df) => r.filter(o => { const d = new Date(o.dataOS + 'T00:00:00'); return d >= di && d <= df; }).length;
+                const osSemana = contarOS(maqOS, inicioSemana, fimSemana);
+                const osMes = contarOS(maqOS, inicioMes, fimMes);
+                const osAno = contarOS(maqOS, inicioAno, fimAno);
+                const osTotal = maqOS.length;
+                const fichaSemana = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioSemana && d <= fimSemana; }).length;
+                const fichaMes = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioMes && d <= fimMes; }).length;
+                const fichaAno = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioAno && d <= fimAno; }).length;
+                const fichaTotal = fichaItemsMaq.length;
+
+                const tiposOS = {};
+                maqOS.forEach(o => { tiposOS[o.tipo] = (tiposOS[o.tipo] || 0) + 1; });
+                const fichaTipos = {};
+                fichaItemsMaq.forEach(i => { const t = i.tipManut || 'SEM TIPO'; fichaTipos[t] = (fichaTipos[t] || 0) + 1; });
+                const turnosOcorrencias = {};
+                maqOS.forEach(o => { turnosOcorrencias[o.turno] = (turnosOcorrencias[o.turno] || 0) + 1; });
+                const turnosAtuacao = [...new Set(maqOS.map(o => `${o.frente}/${o.turno}`))].sort();
+                const maqAtivaTurnoAtual = frotasTurno.some(f => f.nome === nome);
+                const horasCorretivas = fichaItemsMaq.filter(i => i.tipManut === 'CORRETIVA').reduce((s, i) => { if (typeof fichaCalcularDuracao === 'function') return s + fichaCalcularDuracao(i).horas; return s; }, 0);
+                const planMaq = frotasTurno.find(f => f.nome === nome);
+                const horasPlanMaq = planMaq?.horas || 0;
+                const dmMaq = horasPlanMaq > 0 ? ((Math.max(0, horasPlanMaq - horasCorretivas) / horasPlanMaq) * 100).toFixed(2) : '--';
+                const ultimos30 = [...Array(30)].map((_, i) => { const d = new Date(agora); d.setDate(d.getDate() - i); return d.toISOString().split('T')[0]; }).reverse();
+                const osTimeline = ultimos30.map(d => maqOS.filter(o => o.dataOS === d).length);
+
+                const tipoLabels = Object.keys(tiposOS);
+                const fichaTipoLabels = Object.keys(fichaTipos);
+                const turnoLabels = Object.keys(turnosOcorrencias);
+
+                const badgeClass = frota.tipo === 'maquina' ? 'bg-blue-50 text-blue-700 border-blue-200' : frota.tipo === 'caminhao' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-purple-50 text-purple-700 border-purple-200';
+                const badgeLabel = frota.tipo === 'maquina' ? '🔧 Máquina' : frota.tipo === 'caminhao' ? '🚛 Caminhão' : '⚙ Implemento';
+
+                conteudo.innerHTML = `
+                    <div class="grid grid-cols-4 gap-2 mb-3">
+                        <div class="p-2 bg-orange-50 border border-orange-200 rounded-lg text-center">
+                            <div class="text-[10px] text-orange-600 font-semibold">O.S. na Semana</div>
+                            <div class="text-lg font-bold text-orange-700">${osSemana}</div>
+                        </div>
+                        <div class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                            <div class="text-[10px] text-amber-600 font-semibold">O.S. no Mês</div>
+                            <div class="text-lg font-bold text-amber-700">${osMes}</div>
+                        </div>
+                        <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                            <div class="text-[10px] text-yellow-600 font-semibold">O.S. no Ano</div>
+                            <div class="text-lg font-bold text-yellow-700">${osAno}</div>
+                        </div>
+                        <div class="p-2 bg-red-50 border border-red-200 rounded-lg text-center">
+                            <div class="text-[10px] text-red-600 font-semibold">O.S. Total</div>
+                            <div class="text-lg font-bold text-red-700">${osTotal}</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mb-3">
+                        <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
+                            <div class="text-[10px] text-indigo-600 font-semibold">Ficha na Semana</div>
+                            <div class="text-lg font-bold text-indigo-700">${fichaSemana}</div>
+                        </div>
+                        <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
+                            <div class="text-[10px] text-indigo-600 font-semibold">Ficha no Mês</div>
+                            <div class="text-lg font-bold text-indigo-700">${fichaMes}</div>
+                        </div>
+                        <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
+                            <div class="text-[10px] text-indigo-600 font-semibold">Ficha no Ano</div>
+                            <div class="text-lg font-bold text-indigo-700">${fichaAno}</div>
+                        </div>
+                        <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
+                            <div class="text-[10px] text-indigo-600 font-semibold">Ficha Total</div>
+                            <div class="text-lg font-bold text-indigo-700">${fichaTotal}</div>
+                        </div>
+                    </div>
+                    <div class="text-center mb-2">
+                        <span class="inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${badgeClass}">${badgeLabel} — ${frota.nome}</span>
+                        ${maqAtivaTurnoAtual ? `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 ml-1">✅ Ativa neste turno</span>` : `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 ml-1">⏸️ Inativa neste turno</span>`}
+                    </div>
+                    ${turnosAtuacao.length > 0 ? `<div class="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-3">
+                        <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Turnos de Atuação</h4>
+                        <div class="flex flex-wrap gap-1">${turnosAtuacao.map(ta => `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700">${ta}</span>`).join('')}</div>
+                    </div>` : ''}
+                    <div class="p-2 bg-white border border-gray-200 rounded-lg mb-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="text-center">
+                                <div class="text-xs text-gray-500 font-semibold">🔧 DM da Frota</div>
+                                <div class="text-xl font-bold ${dmMaq !== '--' && parseFloat(dmMaq) >= 90 ? 'text-green-600' : 'text-red-600'}">${dmMaq !== '--' ? dmMaq + '%' : '--'}</div>
+                                <div class="text-[10px] text-gray-400">${maqAtivaTurnoAtual ? 'Horas plan: ' + horasPlanMaq + 'h | ' : 'Frota não ativa neste turno | '}Corretivas: ${horasCorretivas.toFixed(2)}h</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-gray-500 font-semibold">📋 Total Ocorrências (OS+Ficha)</div>
+                                <div class="text-xl font-bold text-gray-700">${osTotal + fichaTotal}</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${tipoLabels.length > 0 || fichaTipoLabels.length > 0 ? `<div class="grid grid-cols-${tipoLabels.length > 0 && fichaTipoLabels.length > 0 ? '3' : '2'} gap-2 mb-3">
+                        ${tipoLabels.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">📋 Tipo O.S.</h4><canvas id="estatsGraficoPizzaTipo"></canvas></div>` : ''}
+                        ${fichaTipoLabels.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔧 Tipo Ficha</h4><canvas id="estatsGraficoPizzaFichaTipo"></canvas></div>` : ''}
+                        <div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Por Turno (O.S.)</h4><canvas id="estatsGraficoPizzaTurno"></canvas></div>
+                    </div>` : ''}
+                    ${ultimos30.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">O.S. Últimos 30 Dias</h4><canvas id="estatsGraficoTimelineOS"></canvas></div>` : ''}
+                `;
+
+                // Charts
+                if (typeof Chart !== 'undefined') {
+                    ['estatsGraficoPizzaTipo', 'estatsGraficoPizzaFichaTipo', 'estatsGraficoPizzaTurno', 'estatsGraficoTimelineOS'].forEach(id => { if (window[id]) { try { window[id].destroy(); } catch(e) {} window[id] = null; } });
+                    function corTipo(l) { const u = (l||'').trim().toUpperCase(); return u === 'CORRETIVA' ? 'rgba(239,68,68,0.8)' : u === 'CONDICIONAL' ? 'rgba(59,130,246,0.8)' : 'rgba(34,197,94,0.8)'; }
+                    function corTurno(_, i) { return ['rgba(34,197,94,0.8)','rgba(168,85,247,0.8)','rgba(251,146,60,0.8)'][i % 3]; }
+                    ['estatsGraficoPizzaTipo', 'estatsGraficoPizzaFichaTipo', 'estatsGraficoPizzaTurno'].forEach(id => {
+                        const ctx = document.getElementById(id);
+                        if (!ctx) { window[id] = null; return; }
+                        const labels = id === 'estatsGraficoPizzaTipo' ? tipoLabels : id === 'estatsGraficoPizzaFichaTipo' ? fichaTipoLabels : turnoLabels;
+                        const data = id === 'estatsGraficoPizzaTipo' ? Object.values(tiposOS) : id === 'estatsGraficoPizzaFichaTipo' ? Object.values(fichaTipos) : Object.values(turnosOcorrencias);
+                        if (labels.length === 0) { window[id] = null; return; }
+                        const bg = id.includes('Tipo') ? labels.map(corTipo) : labels.map(corTurno);
+                        window[id] = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: bg, borderWidth: 0 }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } } });
+                    });
+                    const tlCtx = document.getElementById('estatsGraficoTimelineOS');
+                    if (tlCtx && osTimeline.length > 0) {
+                        window.estatsGraficoTimelineOS = new Chart(tlCtx, { type: 'bar', data: { labels: ultimos30.map(d => d.slice(5)), datasets: [{ label: 'O.S.', data: osTimeline, backgroundColor: 'rgba(37,99,235,0.6)', borderColor: 'rgb(37,99,235)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } } });
+                    } else if (tlCtx) { window.estatsGraficoTimelineOS = null; }
+                }
+            } catch (e) { console.error('Erro dashboard frota:', e); conteudo.innerHTML = '<p class="text-xs text-red-400 text-center py-4">Erro ao carregar dashboard.</p>'; }
         }
         async function renderizarSecaoEstatisticas(container) {
             const statsFrente = (document.getElementById('statsFrente')?.value || document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL').trim().toUpperCase();
             const statsTurno = (document.getElementById('statsTurno')?.value || document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A').trim().toUpperCase();
             const statsMaquinaInput = document.getElementById('statsMaquina')?.value || '';
             const statsMaquina = catalogoFrotas.some(f => f.nome === statsMaquinaInput) ? statsMaquinaInput : '';
-            const frotaSelecionada = statsMaquina ? catalogoFrotas.find(f => f.nome === statsMaquina) : null;
 
             const frotasDoTurno = frotasTurno;
             const frotasAtivas = frotasDoTurno.filter(f => f.horas > 0);
@@ -6648,149 +6798,8 @@
                 fichaStatsHTML = '<p class="text-xs text-gray-400 text-center py-4">Erro ao carregar dados da ficha mecânico.</p>';
             }
 
-            // --- Dashboard por Frota ---
-            let maquinaDashboardHTML = '<p class="text-xs text-gray-400 text-center py-4">Selecione uma frota para ver o dashboard.</p>';
-            if (statsMaquina) {
-                try {
-                    const agora = new Date();
-                    const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - agora.getDay()); inicioSemana.setHours(0,0,0,0);
-                    const fimSemana = new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate() + 6);
-                    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-                    const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
-                    const inicioAno = new Date(agora.getFullYear(), 0, 1);
-                    const fimAno = new Date(agora.getFullYear(), 11, 31);
-
-                    function contarOS(registros, dataInicio, dataFim) {
-                        return registros.filter(o => {
-                            const d = new Date(o.dataOS + 'T00:00:00');
-                            return d >= dataInicio && d <= dataFim;
-                        }).length;
-                    }
-
-                    const maqOS = osHistorico.filter(o => o.frota?.trim().toUpperCase() === statsMaquina);
-                    const osSemana = contarOS(maqOS, inicioSemana, fimSemana);
-                    const osMes = contarOS(maqOS, inicioMes, fimMes);
-                    const osAno = contarOS(maqOS, inicioAno, fimAno);
-                    const osTotal = maqOS.length;
-
-                    const fichasMaq = registrosFicha => {
-                        const items = [];
-                        registrosFicha.forEach(r => {
-                            if (Array.isArray(r.itens)) {
-                                r.itens.forEach(i => {
-                                    if (i.frota?.trim().toUpperCase() === statsMaquina) items.push({ ...i, data: r.data });
-                                });
-                            }
-                        });
-                        return items;
-                    };
-                    const fichaItemsMaq = fichasMaq(fichasTodas);
-                    const fichaSemana = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioSemana && d <= fimSemana; }).length;
-                    const fichaMes = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioMes && d <= fimMes; }).length;
-                    const fichaAno = fichaItemsMaq.filter(i => { const d = new Date(i.data + 'T00:00:00'); return d >= inicioAno && d <= fimAno; }).length;
-                    const fichaTotal = fichaItemsMaq.length;
-
-                    // Type breakdown (OS)
-                    tipos = {};
-                    maqOS.forEach(o => { tipos[o.tipo] = (tipos[o.tipo] || 0) + 1; });
-                    // Type breakdown (Ficha)
-                    const fichaTipos = {};
-                    fichaItemsMaq.forEach(i => {
-                        const t = i.tipManut || 'SEM TIPO';
-                        fichaTipos[t] = (fichaTipos[t] || 0) + 1;
-                    });
-                    // Turno breakdown (OS)
-                    turnosOcorrencias = {};
-                    maqOS.forEach(o => { turnosOcorrencias[o.turno] = (turnosOcorrencias[o.turno] || 0) + 1; });
-                    // Turnos de atuação (frente + turno)
-                    const turnosAtuacao = [...new Set(maqOS.map(o => `${o.frente}/${o.turno}`))].sort();
-                    const maqAtivaTurnoAtual = frotasTurno.some(f => f.nome === statsMaquina);
-
-                    const tipoLabels = Object.keys(tipos);
-                    const tipoData = Object.values(tipos);
-                    const turnoLabels = Object.keys(turnosOcorrencias);
-                    const turnoData = Object.values(turnosOcorrencias);
-
-                    // Ficha corretiva hours for DM impact
-                    const horasCorretivas = fichaItemsMaq.filter(i => i.tipManut === 'CORRETIVA').reduce((s, i) => {
-                        if (typeof fichaCalcularDuracao === 'function') return s + fichaCalcularDuracao(i).horas;
-                        return s;
-                    }, 0);
-                    const planMaq = frotasTurno.find(f => f.nome === statsMaquina);
-                    const horasPlanMaq = planMaq?.horas || 0;
-                    const dmMaq = horasPlanMaq > 0 ? ((Math.max(0, horasPlanMaq - horasCorretivas) / horasPlanMaq) * 100).toFixed(2) : '--';
-
-                    // OS timeline (last 30 days)
-                    ultimos30 = [...Array(30)].map((_, i) => { const d = new Date(agora); d.setDate(d.getDate() - i); return d.toISOString().split('T')[0]; }).reverse();
-                    osTimeline = ultimos30.map(d => maqOS.filter(o => o.dataOS === d).length);
-
-                    maquinaDashboardHTML = `
-                        <div class="grid grid-cols-4 gap-2 mb-3">
-                            <div class="p-2 bg-orange-50 border border-orange-200 rounded-lg text-center">
-                                <div class="text-[10px] text-orange-600 font-semibold">O.S. na Semana</div>
-                                <div class="text-lg font-bold text-orange-700">${osSemana}</div>
-                            </div>
-                            <div class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-center">
-                                <div class="text-[10px] text-amber-600 font-semibold">O.S. no Mês</div>
-                                <div class="text-lg font-bold text-amber-700">${osMes}</div>
-                            </div>
-                            <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                                <div class="text-[10px] text-yellow-600 font-semibold">O.S. no Ano</div>
-                                <div class="text-lg font-bold text-yellow-700">${osAno}</div>
-                            </div>
-                            <div class="p-2 bg-red-50 border border-red-200 rounded-lg text-center">
-                                <div class="text-[10px] text-red-600 font-semibold">O.S. Total</div>
-                                <div class="text-lg font-bold text-red-700">${osTotal}</div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-4 gap-2 mb-3">
-                            <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
-                                <div class="text-[10px] text-indigo-600 font-semibold">Ficha na Semana</div>
-                                <div class="text-lg font-bold text-indigo-700">${fichaSemana}</div>
-                            </div>
-                            <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
-                                <div class="text-[10px] text-indigo-600 font-semibold">Ficha no Mês</div>
-                                <div class="text-lg font-bold text-indigo-700">${fichaMes}</div>
-                            </div>
-                            <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
-                                <div class="text-[10px] text-indigo-600 font-semibold">Ficha no Ano</div>
-                                <div class="text-lg font-bold text-indigo-700">${fichaAno}</div>
-                            </div>
-                            <div class="p-2 bg-indigo-50 border border-indigo-200 rounded-lg text-center">
-                                <div class="text-[10px] text-indigo-600 font-semibold">Ficha Total</div>
-                                <div class="text-lg font-bold text-indigo-700">${fichaTotal}</div>
-                            </div>
-                        </div>
-                        <div class="p-2 bg-white border border-gray-200 rounded-lg mb-3">
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="text-center">
-                                    <div class="text-xs text-gray-500 font-semibold">🔧 DM da Máquina</div>
-                                    <div class="text-xl font-bold ${dmMaq !== '--' && parseFloat(dmMaq) >= 90 ? 'text-green-600' : 'text-red-600'}">${dmMaq !== '--' ? dmMaq + '%' : '--'}</div>
-                                    <div class="text-[10px] text-gray-400">${maqAtivaTurnoAtual ? 'Horas plan: ' + horasPlanMaq + 'h | ' : 'Máquina não ativa neste turno | '}Corretivas: ${horasCorretivas.toFixed(2)}h</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-xs text-gray-500 font-semibold">📋 Total Ocorrências (OS+Ficha)</div>
-                                    <div class="text-xl font-bold text-gray-700">${osTotal + fichaTotal}</div>
-                                </div>
-                            </div>
-                        </div>
-                        ${frotaSelecionada ? `<div class="text-center mb-2">
-                            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${frotaSelecionada.tipo === 'maquina' ? 'bg-blue-50 text-blue-700 border border-blue-200' : frotaSelecionada.tipo === 'caminhao' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}">${frotaSelecionada.tipo === 'maquina' ? '🔧 Máquina' : frotaSelecionada.tipo === 'caminhao' ? '🚛 Caminhão' : '⚙ Implemento'} — ${frotaSelecionada.nome}</span>
-                            ${maqAtivaTurnoAtual ? `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 ml-1">✅ Ativa neste turno</span>` : `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 ml-1">⏸️ Inativa neste turno</span>`}
-                        </div>` : ''}
-                        ${turnosAtuacao.length > 0 ? `<div class="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-3">
-                            <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Turnos de Atuação</h4>
-                            <div class="flex flex-wrap gap-1">${turnosAtuacao.map(ta => `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700">${ta}</span>`).join('')}</div>
-                        </div>` : ''}
-                        ${tipoLabels.length > 0 || Object.keys(fichaTipos).length > 0 ? `<div class="grid grid-cols-${tipoLabels.length > 0 && Object.keys(fichaTipos).length > 0 ? '3' : '2'} gap-2 mb-3">
-                            ${tipoLabels.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">📋 Tipo O.S.</h4><canvas id="estatsGraficoPizzaTipo"></canvas></div>` : ''}
-                            ${Object.keys(fichaTipos).length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔧 Tipo Ficha</h4><canvas id="estatsGraficoPizzaFichaTipo"></canvas></div>` : ''}
-                            <div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Por Turno (O.S.)</h4><canvas id="estatsGraficoPizzaTurno"></canvas></div>
-                        </div>` : ''}
-                        ${ultimos30.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">O.S. Últimos 30 Dias</h4><canvas id="estatsGraficoTimelineOS"></canvas></div>` : ''}
-                    `;
-                } catch (e) { console.error('Erro dashboard máquina:', e); maquinaDashboardHTML = '<p class="text-xs text-red-400 text-center py-4">Erro ao carregar dashboard.</p>'; }
-            }
+            // --- Dashboard por Frota (placeholder, renderizado por renderizarDashboardFrota) ---
+            const maquinaDashboardHTML = '<p class="text-xs text-gray-400 text-center py-4">Digite o nome da frota para ver o dashboard.</p>';
 
             const secaoId = 'estatisticas';
             container.innerHTML = `<div class="bg-white p-4 rounded-lg shadow space-y-6">
@@ -6837,7 +6846,7 @@
                     <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">📋 Dashboard por Frota</h4>
                     <div class="mb-3">
                         <input id="statsMaquina" list="statsMaquinaList" placeholder="Buscar frota no catálogo..."
-                               oninput="debounceRenderizarEstatisticas('${secaoId}')"
+                               oninput="debounceRenderizarEstatisticas()"
                                class="w-full p-2 border border-gray-300 rounded-lg text-sm" autocomplete="off"
                                value="${catalogoFrotas.some(f => f.nome === statsMaquina) ? statsMaquina : ''}">
                         <datalist id="statsMaquinaList">
@@ -6871,55 +6880,7 @@
                     options: { scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }, plugins: { legend: { display: false } } }
                 });
             }
-            // Machine charts
-            if (statsMaquina && typeof Chart !== 'undefined') {
-                const tipoCtx = document.getElementById('estatsGraficoPizzaTipo');
-                const turnoCtx = document.getElementById('estatsGraficoPizzaTurno');
-                const tlCtx = document.getElementById('estatsGraficoTimelineOS');
-                if (tipoCtx) {
-                    if (window.estatsGraficoPizzaTipo) window.estatsGraficoPizzaTipo.destroy();
-                    window.estatsGraficoPizzaTipo = new Chart(tipoCtx, {
-                        type: 'doughnut', data: {
-                            labels: Object.keys(tipos || {}), datasets: [{ data: Object.values(tipos || {}),
-                                backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)', 'rgba(234,179,8,0.7)'],
-                                borderWidth: 0 }]
-                        }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
-                    });
-                }
-                const fichaTipoCtx = document.getElementById('estatsGraficoPizzaFichaTipo');
-                if (fichaTipoCtx) {
-                    if (window.estatsGraficoPizzaFichaTipo) window.estatsGraficoPizzaFichaTipo.destroy();
-                    const ftLabels = Object.keys(fichaTipos || {});
-                    const ftData = Object.values(fichaTipos || {});
-                    window.estatsGraficoPizzaFichaTipo = new Chart(fichaTipoCtx, {
-                        type: 'doughnut', data: {
-                            labels: ftLabels, datasets: [{ data: ftData,
-                                backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(234,179,8,0.7)', 'rgba(59,130,246,0.7)'],
-                                borderWidth: 0 }]
-                        }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
-                    });
-                }
-                if (turnoCtx) {
-                    if (window.estatsGraficoPizzaTurno) window.estatsGraficoPizzaTurno.destroy();
-                    window.estatsGraficoPizzaTurno = new Chart(turnoCtx, {
-                        type: 'doughnut', data: {
-                            labels: Object.keys(turnosOcorrencias || {}), datasets: [{ data: Object.values(turnosOcorrencias || {}),
-                                backgroundColor: ['rgba(34,197,94,0.7)', 'rgba(234,179,8,0.7)', 'rgba(99,102,241,0.7)'],
-                                borderWidth: 0 }]
-                        }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
-                    });
-                }
-                if (tlCtx) {
-                    if (window.estatsGraficoTimelineOS) window.estatsGraficoTimelineOS.destroy();
-                    window.estatsGraficoTimelineOS = new Chart(tlCtx, {
-                        type: 'bar', data: {
-                            labels: ultimos30.map(d => d.slice(5)), datasets: [{ label: 'O.S.', data: osTimeline,
-                                backgroundColor: 'rgba(37,99,235,0.6)', borderColor: 'rgb(37,99,235)', borderWidth: 1 }]
-                        },
-                        options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
-                    });
-                }
-            }
+            renderizarDashboardFrota();
         }
         async function exportarEstatisticasPDF() {
             const alvo = document.getElementById('estatisticas');
