@@ -1140,6 +1140,7 @@
                 try {
                     if (!db) await initDB();
                     const tx = db.transaction('turno', 'readonly');
+                    tx.onerror = () => {}; // guard, ignore
                     return true;
                 } catch (e) { return false; }
             }
@@ -1219,6 +1220,7 @@
                         }
                     };
                     request.onerror = () => reject(request.error);
+                    tx.onerror = (e) => reject(e.target?.error || e);
                 });
 
                 if (pendentes.length === 0) return;
@@ -1226,26 +1228,31 @@
                 console.log(`📡 Enviando lote de ${pendentes.length} itens de ${storeName}...`);
 
                 const batch = firestore.batch();
-                const tx = db.transaction(storeName, 'readwrite');
-                const store = tx.objectStore(storeName);
+                const agora = new Date().toISOString();
 
                 for (const item of pendentes) {
                     const payload = { ...item };
                     delete payload._syncStatus;
-                    payload.atualizadoEm = new Date().toISOString();
+                    payload.atualizadoEm = agora;
 
                     const docId = String(item.uniqueId || item.id || item.id_composto);
                     const ref = firestore.collection(firebaseCollection).doc(docId);
 
                     batch.set(ref, payload, { merge: true });
-
-                    // Atualiza localmente para "sincronizado"
-                    item._syncStatus = 'sincronizado';
-                    item._dataSincronizacao = new Date().toISOString();
-                    store.put(item);
                 }
 
+                // 1. Firestore primeiro
                 await batch.commit();
+
+                // 2. Se OK, atualiza IDB
+                const tx = db.transaction(storeName, 'readwrite');
+                tx.onerror = (e) => console.error('Sync tx error:', e.target?.error || e);
+                const store = tx.objectStore(storeName);
+                for (const item of pendentes) {
+                    item._syncStatus = 'sincronizado';
+                    item._dataSincronizacao = agora;
+                    store.put(item);
+                }
                 console.log(`✅ Lote sincronizado com sucesso!`);
 
                 // Se a tela de histórico estiver aberta, atualiza ela suavemente
@@ -1271,6 +1278,7 @@
                 const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
                 const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+                tx.onerror = (e) => console.error('Faxina tx error:', e.target?.error || e);
                 const store = tx.objectStore(STORE_HISTORICO);
                 const request = store.openCursor();
 
@@ -2071,6 +2079,19 @@
             }, 100);
         }
 
+        // Cleanup de listeners ao sair da página ou quando ficar invisível
+        window.addEventListener('beforeunload', () => pararTodasSincronizacoes());
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) pararTodasSincronizacoes();
+            else {
+                if (typeof iniciarSincronizacaoAuxiliares === 'function') iniciarSincronizacaoAuxiliares();
+                if (typeof iniciarSincronizacaoEquipe === 'function') iniciarSincronizacaoEquipe();
+                if (typeof iniciarSincronizacaoHistorico === 'function') iniciarSincronizacaoHistorico();
+                if (typeof iniciarSincronizacaoTurnoAtivo === 'function') iniciarSincronizacaoTurnoAtivo();
+                if (typeof sincronizarCatalogoPecas === 'function' && monitoramentoCatalogoIniciado) sincronizarCatalogoPecas();
+                if (typeof sincronizarCatalogoFrotas === 'function' && monitoramentoFrotasIniciado) sincronizarCatalogoFrotas();
+            }
+        });
 
         // Inicia a aplicação quando o DOM estiver pronto
         document.addEventListener("DOMContentLoaded", main);
@@ -2576,11 +2597,14 @@
 
         let listaFazendas = [];
         let listaFrentes = [];
+        let unsubscribeFazendas = null, unsubscribeFrentes = null;
 
         // 1. Inicia a escuta do Firebase (Chamar no main)
         function iniciarSincronizacaoAuxiliares() {
+            if (unsubscribeFazendas) unsubscribeFazendas();
+            if (unsubscribeFrentes) unsubscribeFrentes();
             // Fazendas
-            firestore.collection('lista_fazendas').orderBy('nome')
+            unsubscribeFazendas = firestore.collection('lista_fazendas').orderBy('nome')
                 .onSnapshot({ includeMetadataChanges: true }, snapshot => {
                     if (!db) return; // TRAVA DE SEGURANÇA
                     if (snapshot.metadata.hasPendingWrites) return;
@@ -2594,16 +2618,18 @@
                         if (change.type === 'removed') store.delete(item.docId);
                     });
 
+                    tx.onerror = (e) => console.error('Fazendas tx:', e.target?.error || e);
                     tx.oncomplete = () => carregarFazendasDoCache();
                 }, (error) => tratarErroOffline(error, 'Fazendas'));
 
             // Frentes
-            firestore.collection('lista_frentes').orderBy('nome')
+            unsubscribeFrentes = firestore.collection('lista_frentes').orderBy('nome')
                 .onSnapshot({ includeMetadataChanges: true }, snapshot => {
                     if (!db) return; // TRAVA DE SEGURANÇA
                     if (snapshot.metadata.hasPendingWrites) return;
 
                     const tx = db.transaction(STORE_FRENTES, 'readwrite');
+                    tx.onerror = (e) => console.error('Frentes tx:', e.target?.error || e);
                     const store = tx.objectStore(STORE_FRENTES);
 
                     snapshot.docChanges().forEach(change => {
@@ -2695,9 +2721,9 @@
                                 if (turnoLocal) {
                                     turnoLocal.equipe = equipe;
                                     turnoLocal.frotas = frotasTurno;
-                                    dbExec(STORE_TURNO, 'readwrite', s => s.put(turnoLocal));
+                                    dbExec(STORE_TURNO, 'readwrite', s => s.put(turnoLocal)).catch(e => console.warn('dbExec turno:', e));
                                 }
-                            });
+                            }).catch(e => console.warn('dbExec turno get:', e));
                         }
                     }
                 }, (error) => tratarErroOffline(error, 'Turno Ativo'));
@@ -2840,7 +2866,7 @@
             const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
             listaFazendas.push(itemLocal);
             listaFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
-            dbExec(STORE_FAZENDAS, 'readwrite', s => s.put(itemLocal));
+            dbExec(STORE_FAZENDAS, 'readwrite', s => s.put(itemLocal)).catch(e => console.warn('dbExec fazenda put:', e));
             showToast("Fazenda adicionada!", "success");
             if (document.getElementById('fazenda')) {
                 atualizarSelectGenerico('fazenda', listaFazendas);
@@ -2870,7 +2896,7 @@
                     listaFazendas = listaFazendas.filter(f => f.docId !== docId);
 
                     // 3. IndexedDB
-                    dbExec(STORE_FAZENDAS, 'readwrite', s => s.delete(docId));
+                    dbExec(STORE_FAZENDAS, 'readwrite', s => s.delete(docId)).catch(e => console.warn('dbExec fazenda del:', e));
 
                     // 4. UI
                     showToast("Fazenda removida.", "success");
@@ -2936,7 +2962,7 @@
             const itemLocal = { ...novoItem, docId: 'temp_' + Date.now() };
             listaFrentes.push(itemLocal);
             listaFrentes.sort((a, b) => a.nome.localeCompare(b.nome));
-            dbExec(STORE_FRENTES, 'readwrite', s => s.put(itemLocal));
+            dbExec(STORE_FRENTES, 'readwrite', s => s.put(itemLocal)).catch(e => console.warn('dbExec frente put:', e));
             showToast("Frente adicionada!", "success");
             if (document.getElementById('frente')) {
                 atualizarSelectGenerico('frente', listaFrentes);
@@ -2961,7 +2987,7 @@
                 if (ok) {
                     firestore.collection('lista_frentes').doc(docId).delete().catch(() => { });
                     listaFrentes = listaFrentes.filter(f => f.docId !== docId);
-                    dbExec(STORE_FRENTES, 'readwrite', s => s.delete(docId));
+                    dbExec(STORE_FRENTES, 'readwrite', s => s.delete(docId)).catch(e => console.warn('dbExec frente del:', e));
 
                     showToast("Frente removida.", "success");
                     select.value = "";
@@ -2976,14 +3002,18 @@
         // ============================================================
 
         let listaEquipeCache = [];
+        let unsubscribeEquipe = null;
 
         // 1. SINCRONIZAÇÃO (Firebase -> App)
         // Chamar no main()
         function iniciarSincronizacaoEquipe() {
-            firestore.collection('lista_equipe').orderBy('nome').onSnapshot(snapshot => {
+            if (unsubscribeEquipe) unsubscribeEquipe();
+            unsubscribeEquipe = firestore.collection('lista_equipe').orderBy('nome').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 if (!db) return; // TRAVA DE SEGURANÇA
+                if (snapshot.metadata?.hasPendingWrites) return;
 
                 const tx = db.transaction(STORE_EQUIPE, 'readwrite');
+                tx.onerror = (e) => console.error('Equipe tx:', e.target?.error || e);
                 const store = tx.objectStore(STORE_EQUIPE);
 
                 listaEquipeCache = [];
@@ -3212,7 +3242,7 @@
                         listaEquipeCache = listaEquipeCache.filter(c => c.docId !== docId);
 
                         // 3. IndexedDB (Persistência Local)
-                        dbExec(STORE_EQUIPE, 'readwrite', s => s.delete(docId));
+                        dbExec(STORE_EQUIPE, 'readwrite', s => s.delete(docId)).catch(e => console.warn('dbExec equipe:', e));
 
                         // 4. UI (Reabre o popup de lista atualizado instantaneamente)
                         abrirPopupSelecaoEquipe();
@@ -3345,7 +3375,7 @@
             catalogoFrotas.push(itemLocal);
 
             // ATENÇÃO: É vital salvar no IndexedDB 'catalogoFrotas'
-            dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal));
+            dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal)).catch(e => console.warn('dbExec frota put:', e));
 
             showToast('Frota adicionada!', 'success');
         }
@@ -3361,7 +3391,7 @@
                 catalogoFrotas = catalogoFrotas.filter(f => f.docId !== docId);
 
                 // 3. IndexedDB
-                dbExec(STORE_FROTAS, 'readwrite', s => s.delete(docId));
+                dbExec(STORE_FROTAS, 'readwrite', s => s.delete(docId)).catch(e => console.warn('dbExec frota del:', e));
 
                 // 4. UI
                 renderizarCatalogoFrotas(); // Atualiza a lista visualmente
@@ -3523,7 +3553,7 @@
             catalogoFrotas.push(itemLocal);
 
             // B. Salva no IndexedDB imediatamente (Garante que não some se der F5)
-            dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal));
+            dbExec(STORE_FROTAS, 'readwrite', s => s.put(itemLocal)).catch(e => console.warn('dbExec frota rapida:', e));
 
             // C. Envia para a nuvem em segundo plano (Fire and Forget)
             if (typeof firestore !== 'undefined') {
@@ -6199,6 +6229,7 @@
                 }
 
                 const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+                tx.onerror = (e) => console.error('Historico delete tx:', e.target?.error || e);
                 const store = tx.objectStore(STORE_HISTORICO);
                 itensParaApagar.forEach(item => store.delete(item.uniqueId || item.id));
 
@@ -6500,6 +6531,7 @@
                     if (snapshot.empty) return;
 
                     const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+                    tx.onerror = (e) => console.error('Historico snapshot tx:', e.target?.error || e);
                     const store = tx.objectStore(STORE_HISTORICO);
                     let changed = false;
 
@@ -6529,6 +6561,7 @@
                 if (legados.length === 0) return;
 
                 const tx = db.transaction(STORE_HISTORICO, 'readwrite');
+                tx.onerror = (e) => console.error('Migracao tx:', e.target?.error || e);
                 const store = tx.objectStore(STORE_HISTORICO);
                 const batch = firestore.batch();
 
@@ -8129,13 +8162,16 @@
 
         let monitoramentoCatalogoIniciado = false;
 
+        let unsubscribeCatalogo = null;
+
         function sincronizarCatalogoPecas() {
-            if (monitoramentoCatalogoIniciado) return;
+            if (monitoramentoCatalogoIniciado && unsubscribeCatalogo) return;
+            if (unsubscribeCatalogo) unsubscribeCatalogo();
             monitoramentoCatalogoIniciado = true;
 
             console.log("📡 Iniciando Sincronização Inteligente do Catálogo...");
 
-            firestore.collection('catalogo').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+            unsubscribeCatalogo = firestore.collection('catalogo').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
                 // Se o DB não estiver pronto ou for apenas gravação local pendente, ignora
                 if (!db) return;
                 if (snapshot.metadata.hasPendingWrites) return;
@@ -8171,6 +8207,9 @@
                     // Define o fim deste lote
                     const fimLote = Math.min(indiceAtual + TAMANHO_LOTE, mudancas.length);
 
+                    // Usa array temporário para evitar race conditions com CRUD concorrente
+                    let tempCatalogo = [...catalogoLocal];
+
                     // Loop apenas neste lote
                     for (let i = indiceAtual; i < fimLote; i++) {
                         const change = mudancas[i];
@@ -8191,17 +8230,19 @@
                             store.put(item);
 
                             // Atualiza memória RAM
-                            const index = catalogoLocal.findIndex(x => x.docId === docId);
-                            if (index > -1) catalogoLocal[index] = item;
-                            else catalogoLocal.push(item);
+                            const index = tempCatalogo.findIndex(x => x.docId === docId);
+                            if (index > -1) tempCatalogo[index] = item;
+                            else tempCatalogo.push(item);
                         }
 
                         // Remove
                         if (change.type === 'removed') {
                             store.delete(docId);
-                            catalogoLocal = catalogoLocal.filter(x => x.docId !== docId);
+                            tempCatalogo = tempCatalogo.filter(x => x.docId !== docId);
                         }
                     }
+
+                    catalogoLocal = tempCatalogo;
 
                     // Quando o banco terminar de gravar este lote, agenda o próximo
                     tx.oncomplete = () => {
@@ -8227,17 +8268,32 @@
 
         let monitoramentoFrotasIniciado = false;
 
+        let unsubscribeFrotas = null;
+
+        function pararTodasSincronizacoes() {
+            if (window.unsubscribeTurnoAtivo) { window.unsubscribeTurnoAtivo(); window.unsubscribeTurnoAtivo = null; }
+            if (window.unsubscribeHistorico) { window.unsubscribeHistorico(); window.unsubscribeHistorico = null; }
+            if (window.unsubscribeApontamento) { window.unsubscribeApontamento(); window.unsubscribeApontamento = null; }
+            if (unsubscribeFazendas) { unsubscribeFazendas(); unsubscribeFazendas = null; }
+            if (unsubscribeFrentes) { unsubscribeFrentes(); unsubscribeFrentes = null; }
+            if (unsubscribeEquipe) { unsubscribeEquipe(); unsubscribeEquipe = null; }
+            if (unsubscribeCatalogo) { unsubscribeCatalogo(); unsubscribeCatalogo = null; }
+            if (unsubscribeFrotas) { unsubscribeFrotas(); unsubscribeFrotas = null; }
+        }
+
         function sincronizarCatalogoFrotas() {
-            if (monitoramentoFrotasIniciado) return;
+            if (monitoramentoFrotasIniciado && unsubscribeFrotas) return;
+            if (unsubscribeFrotas) unsubscribeFrotas();
             monitoramentoFrotasIniciado = true;
 
-            firestore.collection('catalogoFrotas').onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
+            unsubscribeFrotas = firestore.collection('catalogoFrotas').onSnapshot({ includeMetadataChanges: true }, async (snapshot) => {
                 // TRAVA DE SEGURANÇA
                 if (!db) return;
 
                 if (snapshot.metadata.hasPendingWrites) return;
 
                 const tx = db.transaction(STORE_FROTAS, 'readwrite');
+                tx.onerror = (e) => console.error('Frotas snapshot tx:', e.target?.error || e);
                 const store = tx.objectStore(STORE_FROTAS);
                 let houveMudanca = false;
 
@@ -8413,6 +8469,7 @@
 
                 if (confirmado) {
                     const tx = db.transaction('apontamentos_diarios', 'readwrite');
+                    tx.onerror = (e) => console.error('Limpeza apontamentos tx:', e.target?.error || e);
                     const store = tx.objectStore('apontamentos_diarios');
 
                     fantasmas.forEach(item => {
@@ -8462,14 +8519,14 @@
                         if (dadosNuvem.linhas) {
                             console.log("🔄 Recebida atualização do parceiro na nuvem!");
 
-                            // ATUALIZA A RAM
-                            linhasApontamento = dadosNuvem.linhas;
+                            // ATUALIZA A RAM (pula se usuário estiver editando)
+                            if (!window.editandoApontamento) linhasApontamento = dadosNuvem.linhas;
 
                             // ATUALIZA A TELA
                             renderizarListaLinhas();
 
                             // ATUALIZA O BANCO LOCAL (Para backup)
-                            dbExec('apontamentos_diarios', 'readwrite', s => s.put(dadosNuvem));
+                            dbExec('apontamentos_diarios', 'readwrite', s => s.put(dadosNuvem)).catch(e => console.warn('dbExec apontamento:', e));
 
                             // Se o preview estiver gerado, avisa que mudou
                             marcarComoDesatualizado();
@@ -9335,6 +9392,7 @@
         // Executa Exclusão Local (Dinâmico)
         async function executarExclusaoLocal(itens) {
             const tx = db.transaction(contextoLimpezaAtual.store, 'readwrite');
+            tx.onerror = (e) => console.error('Exclusao local tx:', e.target?.error || e);
             const store = tx.objectStore(contextoLimpezaAtual.store);
 
             itens.forEach(item => store.delete(item.id_composto));
@@ -9386,6 +9444,7 @@
 
             try {
                 const tx = db.transaction(contextoLimpezaAtual.store, 'readwrite');
+                tx.onerror = (e) => { throw new Error('Falha na transação local: ' + (e.target?.error || e)); };
                 const store = tx.objectStore(contextoLimpezaAtual.store);
                 itens.forEach(item => store.delete(item.id_composto));
 
