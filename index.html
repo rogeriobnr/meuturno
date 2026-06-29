@@ -6556,11 +6556,13 @@
             const statsFrente = (document.getElementById('statsFrente')?.value || document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL').trim().toUpperCase();
             const statsTurno = (document.getElementById('statsTurno')?.value || document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A').trim().toUpperCase();
             const statsMaquinaInput = document.getElementById('statsMaquina')?.value || '';
-            const statsMaquina = catalogoFrotas.some(f => f.nome === statsMaquinaInput && f.tipo === 'maquina') ? statsMaquinaInput : '';
+            const statsMaquina = catalogoFrotas.some(f => f.nome === statsMaquinaInput) ? statsMaquinaInput : '';
+            const frotaSelecionada = statsMaquina ? catalogoFrotas.find(f => f.nome === statsMaquina) : null;
 
-            const maquinasPrincipais = frotasTurno.filter(f => f.tipo === 'maquina');
+            const frotasDoTurno = frotasTurno;
+            const frotasAtivas = frotasDoTurno.filter(f => f.horas > 0);
             const totalHorasParadas = calcularHorasParadasCorretivasTotais();
-            const dmTurnoAtual = calcularDMGeral(maquinasPrincipais, totalHorasParadas);
+            const dmTurnoAtual = calcularDMGeral(frotasDoTurno, totalHorasParadas);
             const osHistorico = await dbExec(STORE_HISTORICO, 'readonly', s => s.getAll());
             const fichasTodas = await dbExec('fichaMecanico', 'readonly', s => s.getAll());
 
@@ -6642,8 +6644,8 @@
                 fichaStatsHTML = '<p class="text-xs text-gray-400 text-center py-4">Erro ao carregar dados da ficha mecânico.</p>';
             }
 
-            // --- Dashboard por Máquina ---
-            let maquinaDashboardHTML = '<p class="text-xs text-gray-400 text-center py-4">Selecione uma máquina para ver o dashboard.</p>';
+            // --- Dashboard por Frota ---
+            let maquinaDashboardHTML = '<p class="text-xs text-gray-400 text-center py-4">Selecione uma frota para ver o dashboard.</p>';
             if (statsMaquina) {
                 try {
                     const agora = new Date();
@@ -6687,6 +6689,12 @@
                     // Type breakdown (OS)
                     tipos = {};
                     maqOS.forEach(o => { tipos[o.tipo] = (tipos[o.tipo] || 0) + 1; });
+                    // Type breakdown (Ficha)
+                    const fichaTipos = {};
+                    fichaItemsMaq.forEach(i => {
+                        const t = i.tipManut || 'SEM TIPO';
+                        fichaTipos[t] = (fichaTipos[t] || 0) + 1;
+                    });
                     // Turno breakdown (OS)
                     turnosOcorrencias = {};
                     maqOS.forEach(o => { turnosOcorrencias[o.turno] = (turnosOcorrencias[o.turno] || 0) + 1; });
@@ -6762,11 +6770,19 @@
                                 </div>
                             </div>
                         </div>
+                        ${frotaSelecionada ? `<div class="text-center mb-2">
+                            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${frotaSelecionada.tipo === 'maquina' ? 'bg-blue-50 text-blue-700 border border-blue-200' : frotaSelecionada.tipo === 'caminhao' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}">${frotaSelecionada.tipo === 'maquina' ? '🔧 Máquina' : frotaSelecionada.tipo === 'caminhao' ? '🚛 Caminhão' : '⚙ Implemento'} — ${frotaSelecionada.nome}</span>
+                            ${maqAtivaTurnoAtual ? `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 ml-1">✅ Ativa neste turno</span>` : `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 ml-1">⏸️ Inativa neste turno</span>`}
+                        </div>` : ''}
                         ${turnosAtuacao.length > 0 ? `<div class="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-3">
                             <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Turnos de Atuação</h4>
                             <div class="flex flex-wrap gap-1">${turnosAtuacao.map(ta => `<span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700">${ta}</span>`).join('')}</div>
                         </div>` : ''}
-                        ${tipoLabels.length > 0 ? `<div class="grid grid-cols-2 gap-2 mb-3"><div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">Por Tipo (O.S.)</h4><canvas id="estatsGraficoPizzaTipo"></canvas></div><div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">Por Turno (O.S.)</h4><canvas id="estatsGraficoPizzaTurno"></canvas></div></div>` : ''}
+                        ${tipoLabels.length > 0 || Object.keys(fichaTipos).length > 0 ? `<div class="grid grid-cols-${tipoLabels.length > 0 && Object.keys(fichaTipos).length > 0 ? '3' : '2'} gap-2 mb-3">
+                            ${tipoLabels.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">📋 Tipo O.S.</h4><canvas id="estatsGraficoPizzaTipo"></canvas></div>` : ''}
+                            ${Object.keys(fichaTipos).length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔧 Tipo Ficha</h4><canvas id="estatsGraficoPizzaFichaTipo"></canvas></div>` : ''}
+                            <div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">🔄 Por Turno (O.S.)</h4><canvas id="estatsGraficoPizzaTurno"></canvas></div>
+                        </div>` : ''}
                         ${ultimos30.length > 0 ? `<div class="p-2 bg-white border border-gray-200 rounded-lg"><h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">O.S. Últimos 30 Dias</h4><canvas id="estatsGraficoTimelineOS"></canvas></div>` : ''}
                     `;
                 } catch (e) { console.error('Erro dashboard máquina:', e); maquinaDashboardHTML = '<p class="text-xs text-red-400 text-center py-4">Erro ao carregar dashboard.</p>'; }
@@ -6800,7 +6816,7 @@
                 <div class="p-4 border border-gray-200 rounded-lg text-center">
                     <h4 class="text-lg font-semibold text-blue-700 mb-2">DM do Turno Atual</h4>
                     <p class="text-4xl font-bold text-green-600">${dmTurnoAtual}%</p>
-                    <p class="text-sm text-gray-500 mt-1">Frente: ${statsFrente} | Turno: ${statsTurno} | ${maquinasPrincipais.length} máquinas</p>
+                    <p class="text-sm text-gray-500 mt-1">Frente: ${statsFrente} | Turno: ${statsTurno} | ${frotasAtivas.length} frota(s) ativa(s)</p>
                 </div>
 
                 <div class="p-4 border border-gray-200 rounded-lg">
@@ -6814,14 +6830,14 @@
                 </div>
 
                 <div class="p-4 border border-gray-200 rounded-lg">
-                    <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">🔧 Dashboard por Máquina</h4>
+                    <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">📋 Dashboard por Frota</h4>
                     <div class="mb-3">
-                        <input id="statsMaquina" list="statsMaquinaList" placeholder="Buscar máquina no catálogo..."
+                        <input id="statsMaquina" list="statsMaquinaList" placeholder="Buscar frota no catálogo..."
                                onchange="renderizarSecaoEstatisticas(document.getElementById('${secaoId}'))"
                                class="w-full p-2 border border-gray-300 rounded-lg text-sm" autocomplete="off"
-                               value="${catalogoFrotas.some(f => f.nome === statsMaquina && f.tipo === 'maquina') ? statsMaquina : ''}">
+                               value="${catalogoFrotas.some(f => f.nome === statsMaquina) ? statsMaquina : ''}">
                         <datalist id="statsMaquinaList">
-                            ${catalogoFrotas.filter(f => f.tipo === 'maquina').map(f => `<option value="${f.nome}">${f.nome}</option>`).join('')}
+                            ${catalogoFrotas.map(f => `<option value="${f.nome}">${f.nome} (${f.tipo === 'maquina' ? '🔧 Máquina' : f.tipo === 'caminhao' ? '🚛 Caminhão' : '⚙ Implemento'})</option>`).join('')}
                         </datalist>
                     </div>
                     <div id="statsMaquinaConteudo">${maquinaDashboardHTML}</div>
@@ -6862,6 +6878,19 @@
                         type: 'doughnut', data: {
                             labels: Object.keys(tipos || {}), datasets: [{ data: Object.values(tipos || {}),
                                 backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(59,130,246,0.7)', 'rgba(234,179,8,0.7)'],
+                                borderWidth: 0 }]
+                        }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
+                    });
+                }
+                const fichaTipoCtx = document.getElementById('estatsGraficoPizzaFichaTipo');
+                if (fichaTipoCtx) {
+                    if (window.estatsGraficoPizzaFichaTipo) window.estatsGraficoPizzaFichaTipo.destroy();
+                    const ftLabels = Object.keys(fichaTipos || {});
+                    const ftData = Object.values(fichaTipos || {});
+                    window.estatsGraficoPizzaFichaTipo = new Chart(fichaTipoCtx, {
+                        type: 'doughnut', data: {
+                            labels: ftLabels, datasets: [{ data: ftData,
+                                backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(234,179,8,0.7)', 'rgba(59,130,246,0.7)'],
                                 borderWidth: 0 }]
                         }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
                     });
@@ -9966,9 +9995,9 @@
         let fichaCalendarioAno = null;
 
         function calcularDMFicha(itens) {
-            const maquinas = Array.isArray(frotasTurno) ? frotasTurno.filter(f => f.tipo === 'maquina') : [];
-            const horasPlan = maquinas.reduce((s, f) => s + (f.horas || 0), 0);
-            if (horasPlan === 0) return maquinas.length > 0 ? '0.00' : '100.00';
+            const frotasPlan = Array.isArray(frotasTurno) ? frotasTurno : [];
+            const horasPlan = frotasPlan.reduce((s, f) => s + (f.horas || 0), 0);
+            if (horasPlan === 0) return frotasPlan.length > 0 ? '0.00' : '100.00';
             const horasParada = itens
                 .filter(i => i.tipo === 'servico' && i.tipManut === 'CORRETIVA')
                 .reduce((s, i) => s + fichaCalcularDuracao(i).horas, 0);
