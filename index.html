@@ -168,7 +168,7 @@
             opacity: 1;
             transition: opacity 0.3s;
         }
-
+ 
         /* --- TOAST --- */
         #toast {
             position: fixed;
@@ -7238,6 +7238,26 @@
             await carregarFichaMecanicoDB();
             sincronizarFichaMecanicoCloud(); // fire-and-forget
             fichaRenderizarLista();
+
+            // Event listeners para limpar erro vermelho ao digitar
+            const camposServico = ['fichaFrota', 'fichaTipo', 'fichaDataIni', 'fichaDataFim', 'fichaHrIni', 'fichaHrFim', 'fichaDescricao'];
+            camposServico.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => el.classList.remove('campo-invalido'));
+                    el.addEventListener('change', () => el.classList.remove('campo-invalido'));
+                }
+            });
+
+            const camposDesloc = ['fichaDeslocIni', 'fichaDeslocFim', 'fichaDeslocDataIni', 'fichaDeslocDataFim', 'fichaDeslocHrIni', 'fichaDeslocHrFim'];
+            camposDesloc.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => el.classList.remove('campo-invalido'));
+                    el.addEventListener('change', () => el.classList.remove('campo-invalido'));
+                }
+            });
+
         }
 
         async function gerarRelatorioFinal() {
@@ -9801,24 +9821,58 @@
         }
 
         function fichaAdicionarServico() {
-            const frota = document.getElementById('fichaFrota').value.trim();
-            const tipo = document.getElementById('fichaTipo').value;
-            const dataIni = document.getElementById('fichaDataIni').value;
-            const dataFim = document.getElementById('fichaDataFim').value;
-            const hrIni = document.getElementById('fichaHrIni').value;
-            const hrFim = document.getElementById('fichaHrFim').value;
-            const descricao = document.getElementById('fichaDescricao').value.trim();
+            const frotaEl = document.getElementById('fichaFrota');
+            const tipoEl = document.getElementById('fichaTipo');
+            const dataIniEl = document.getElementById('fichaDataIni');
+            const dataFimEl = document.getElementById('fichaDataFim');
+            const hrIniEl = document.getElementById('fichaHrIni');
+            const hrFimEl = document.getElementById('fichaHrFim');
+            const descricaoEl = document.getElementById('fichaDescricao');
 
-            if (!frota || !hrIni || !hrFim || !descricao || !dataIni || !dataFim) {
+            const frota = frotaEl.value.trim();
+            const tipo = tipoEl.value;
+            const dataIni = dataIniEl.value;
+            const dataFim = dataFimEl.value;
+            const hrIni = hrIniEl.value;
+            const hrFim = hrFimEl.value;
+            const descricao = descricaoEl.value.trim();
+
+            let valido = true;
+            const campos = [
+                { el: frotaEl, val: frota },
+                { el: tipoEl, val: tipo },
+                { el: dataIniEl, val: dataIni },
+                { el: dataFimEl, val: dataFim },
+                { el: hrIniEl, val: hrIni },
+                { el: hrFimEl, val: hrFim },
+                { el: descricaoEl, val: descricao }
+            ];
+
+            campos.forEach(({ el, val }) => {
+                if (!val) {
+                    el.classList.add('campo-invalido');
+                    valido = false;
+                } else {
+                    el.classList.remove('campo-invalido');
+                }
+            });
+
+            if (!valido) {
                 showToast('Preencha todos os campos (datas, frota, horários, descrição).', 'error');
                 return;
             }
+
             const dtIni = new Date(`${dataIni}T${hrIni}`);
             const dtFim = new Date(`${dataFim}T${hrFim}`);
             if (isNaN(dtIni.getTime()) || isNaN(dtFim.getTime()) || dtFim <= dtIni) {
+                hrFimEl.classList.add('campo-invalido');
+                dataFimEl.classList.add('campo-invalido');
                 showToast('Data/Hora Fim deve ser posterior à Data/Hora Início.', 'error');
                 return;
             }
+
+            hrFimEl.classList.remove('campo-invalido');
+            dataFimEl.classList.remove('campo-invalido');
 
             fichaItems.push({ tipo: 'servico', frota, tipManut: tipo, dataIni, dataFim, hrIni, hrFim, descricao, id: Date.now() });
             fichaItems.sort((a, b) => {
@@ -9827,10 +9881,10 @@
                 return aIni - bIni;
             });
 
-            document.getElementById('fichaFrota').value = '';
-            document.getElementById('fichaHrIni').value = '';
-            document.getElementById('fichaHrFim').value = '';
-            document.getElementById('fichaDescricao').value = '';
+            frotaEl.value = '';
+            hrIniEl.value = '';
+            hrFimEl.value = '';
+            descricaoEl.value = '';
 
             fichaRenderizarLista();
             salvarFichaMecanicoDB();
@@ -9838,23 +9892,55 @@
         }
 
         function fichaAdicionarDesloc() {
-            const locIni = document.getElementById('fichaDeslocIni').value.trim();
-            const locFim = document.getElementById('fichaDeslocFim').value.trim();
-            const dataIni = document.getElementById('fichaDeslocDataIni').value;
-            const dataFim = document.getElementById('fichaDeslocDataFim').value;
-            const hrIni = document.getElementById('fichaDeslocHrIni').value;
-            const hrFim = document.getElementById('fichaDeslocHrFim').value;
+            const locIniEl = document.getElementById('fichaDeslocIni');
+            const locFimEl = document.getElementById('fichaDeslocFim');
+            const dataIniEl = document.getElementById('fichaDeslocDataIni');
+            const dataFimEl = document.getElementById('fichaDeslocDataFim');
+            const hrIniEl = document.getElementById('fichaDeslocHrIni');
+            const hrFimEl = document.getElementById('fichaDeslocHrFim');
 
-            if (!locIni || !locFim || !hrIni || !hrFim || !dataIni || !dataFim) {
+            const locIni = locIniEl.value.trim();
+            const locFim = locFimEl.value.trim();
+            const dataIni = dataIniEl.value;
+            const dataFim = dataFimEl.value;
+            const hrIni = hrIniEl.value;
+            const hrFim = hrFimEl.value;
+
+            let valido = true;
+            const campos = [
+                { el: locIniEl, val: locIni },
+                { el: locFimEl, val: locFim },
+                { el: dataIniEl, val: dataIni },
+                { el: dataFimEl, val: dataFim },
+                { el: hrIniEl, val: hrIni },
+                { el: hrFimEl, val: hrFim }
+            ];
+
+            campos.forEach(({ el, val }) => {
+                if (!val) {
+                    el.classList.add('campo-invalido');
+                    valido = false;
+                } else {
+                    el.classList.remove('campo-invalido');
+                }
+            });
+
+            if (!valido) {
                 showToast('Preencha todos os campos do deslocamento.', 'error');
                 return;
             }
+
             const dtIni = new Date(`${dataIni}T${hrIni}`);
             const dtFim = new Date(`${dataFim}T${hrFim}`);
             if (isNaN(dtIni.getTime()) || isNaN(dtFim.getTime()) || dtFim <= dtIni) {
+                hrFimEl.classList.add('campo-invalido');
+                dataFimEl.classList.add('campo-invalido');
                 showToast('Data/Hora Fim deve ser posterior à Data/Hora Início.', 'error');
                 return;
             }
+
+            hrFimEl.classList.remove('campo-invalido');
+            dataFimEl.classList.remove('campo-invalido');
 
             fichaItems.push({ tipo: 'desloc', locIni, locFim, dataIni, dataFim, hrIni, hrFim, id: Date.now() });
             fichaItems.sort((a, b) => {
@@ -9863,10 +9949,10 @@
                 return aIni - bIni;
             });
 
-            document.getElementById('fichaDeslocIni').value = '';
-            document.getElementById('fichaDeslocFim').value = '';
-            document.getElementById('fichaDeslocHrIni').value = '';
-            document.getElementById('fichaDeslocHrFim').value = '';
+            locIniEl.value = '';
+            locFimEl.value = '';
+            hrIniEl.value = '';
+            hrFimEl.value = '';
 
             fichaRenderizarLista();
             salvarFichaMecanicoDB();
