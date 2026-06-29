@@ -6552,6 +6552,10 @@
         // (Cole aqui o restante das funções: renderizarEstatisticas, Relatorio, Config, etc)
 
 
+        function debounceRenderizarEstatisticas(secaoId) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => renderizarSecaoEstatisticas(document.getElementById(secaoId)), 400);
+        }
         async function renderizarSecaoEstatisticas(container) {
             const statsFrente = (document.getElementById('statsFrente')?.value || document.getElementById('frente')?.value || localStorage.getItem('ctx_frente') || 'GERAL').trim().toUpperCase();
             const statsTurno = (document.getElementById('statsTurno')?.value || document.getElementById('turnoLetra')?.value || localStorage.getItem('ctx_turno') || 'A').trim().toUpperCase();
@@ -6833,7 +6837,7 @@
                     <h4 class="text-lg font-semibold text-blue-700 mb-3 text-center">📋 Dashboard por Frota</h4>
                     <div class="mb-3">
                         <input id="statsMaquina" list="statsMaquinaList" placeholder="Buscar frota no catálogo..."
-                               onchange="renderizarSecaoEstatisticas(document.getElementById('${secaoId}'))"
+                               oninput="debounceRenderizarEstatisticas('${secaoId}')"
                                class="w-full p-2 border border-gray-300 rounded-lg text-sm" autocomplete="off"
                                value="${catalogoFrotas.some(f => f.nome === statsMaquina) ? statsMaquina : ''}">
                         <datalist id="statsMaquinaList">
